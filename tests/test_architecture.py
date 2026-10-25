@@ -23,11 +23,18 @@ def test_core_has_only_stdlib_and_core_dependencies():
 
 
 def test_adapters_cannot_select_backend_or_import_composition_root():
-    for path in (ROOT / "src/endpoint_gateway/adapters").glob("*.py"):
+    for path in [
+        *(ROOT / "src/endpoint_gateway/adapters").glob("*.py"),
+        *(ROOT / "src/endpoint_gateway/backends").glob("*.py"),
+    ]:
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
-                assert node.module not in {"endpoint_gateway.app", "endpoint_gateway.testing"}
+                assert node.module not in {
+                    "endpoint_gateway.app",
+                    "endpoint_gateway.testing",
+                    "endpoint_gateway.runtime",
+                }
 
 
 def test_importing_core_does_not_import_framework_or_adapters():
@@ -47,3 +54,21 @@ def test_importing_core_does_not_import_framework_or_adapters():
         ],
         check=True,
     )
+
+
+def test_livepeer_imports_are_confined_to_integration_and_composition():
+    allowed = {"runtime.py"}
+    for path in (ROOT / "src/endpoint_gateway").rglob("*.py"):
+        if "backends" in path.parts or path.name in allowed:
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            names = (
+                [n.name for n in node.names]
+                if isinstance(node, ast.Import)
+                else [node.module or ""]
+                if isinstance(node, ast.ImportFrom)
+                else []
+            )
+            assert not any(name.startswith("livepeer_") for name in names), (
+                f"{path}: keep Livepeer dependencies behind the backend or composition root"
+            )

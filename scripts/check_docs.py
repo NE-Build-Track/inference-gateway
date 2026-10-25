@@ -20,7 +20,11 @@ def main() -> None:
     for name in REQUIRED:
         if not (ROOT / name).is_file():
             errors.append(f"Missing {name}; restore the repository knowledge map")
-    paths = list(ROOT.glob("*.md")) + list((ROOT / "docs").rglob("*.md"))
+    paths = (
+        list(ROOT.glob("*.md"))
+        + list((ROOT / "docs").rglob("*.md"))
+        + list((ROOT / "deploy").glob("*.md"))
+    )
     for path in paths:
         for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", path.read_text()):
             if "://" in target or target.startswith("#"):

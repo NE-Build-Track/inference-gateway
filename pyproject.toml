@@ -3,7 +3,13 @@ name = "agent-compatible-endpoint-gateway"
 version = "0.1.0"
 description = "Extensible OpenAI and Anthropic protocol gateway"
 requires-python = ">=3.12"
-dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+    "pydantic>=2.7,<3",
+    "anyio>=4,<5",
+    "livepeer-builder @ git+https://github.com/NE-Build-Track/livepeer-builder-core.git@629f1ab0ff84d1b350db7aea66c01989262d1325",
+]
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "httpx>=0.27,<1", "ruff>=0.9,<1", "mypy>=1.14,<2", "openai>=1.60,<3", "anthropic>=0.45,<1"]
@@ -30,3 +36,6 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 python_version = "3.12"
 strict = true
 files = ["src"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

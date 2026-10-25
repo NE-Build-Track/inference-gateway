@@ -12,3 +12,6 @@ and tests together when behavior changes. Verification status is in [Quality](QU
 - [Execution plans](exec-plans/index.md): work history and planning procedure.
 - [Technical debt](exec-plans/tech-debt-tracker.md): remaining work.
 - [References](references/index.md): checked upstream contracts and requested design sources.
+
+- [Deployment scaffold](../deploy/README.md): copied ChatLPT configuration and activation constraints.
+- [Livepeer backend](design-docs/livepeer.md): model routing, engine ownership, and paid stream semantics.

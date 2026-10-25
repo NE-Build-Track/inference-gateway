@@ -7,6 +7,7 @@ The repository is the source of truth; record durable decisions here.
 
 - [Documentation index](docs/index.md): navigation and ownership.
 - [Compatibility contract](docs/product-specs/compatibility.md): supported behavior and limits.
+- [Livepeer integration](docs/design-docs/livepeer.md): model routing and engine lifecycle.
 - [Backend guide](docs/design-docs/backends.md): ports, event order, resource ownership.
 - [Design decisions](docs/design-docs/decisions.md): rationale and revisit triggers.
 - [Quality status](docs/QUALITY.md): verified properties and gaps.
@@ -19,7 +20,7 @@ The repository is the source of truth; record durable decisions here.
 
 1. Define acceptance behavior before changing a protocol or backend contract.
 2. Keep `core` independent of frameworks, protocol DTOs, configuration, and I/O clients.
-3. Translate provider formats in `adapters`; select implementations only in `app.py`.
+3. Translate provider formats in `adapters`; select implementations only in `app.py` and `runtime.py`.
 4. Pass collaborators explicitly. Do not add service locators or import-time clients.
 5. Preserve cancellation, deadlines, and async-generator cleanup on every backend path.
 6. Reject unsupported inputs explicitly. Expand the compatibility document with each feature.

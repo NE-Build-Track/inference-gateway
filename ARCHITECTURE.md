@@ -7,7 +7,7 @@ contract. It owns no conversation history. Clients submit history on every reque
 OpenAI clients ────┐
                   ├─ HTTP boundary → protocol translators → GenerationService → Backend
 Anthropic clients ┘                                                          │
-                                                          FakeBackend now ──┘
+                                                          FakeBackend or LivepeerBackend ──┘
 ```
 
 The generation context is the project's core capability. Protocol translation is
@@ -23,7 +23,10 @@ application; there is no requirement for separate services or persistent aggrega
 | `adapters/translate.py` | Convert requests and validate tool-result references | Schemas, core |
 | `adapters/responses.py` | JSON and SSE wire encoders | Core, standard library |
 | `testing.py` | Reusable deterministic fake | Core, standard library |
-| `app.py` | Compose, authenticate, enforce deadlines, route and log | All layers |
+| `backends/` | Encode runner requests, decode SSE, call Builder Core, filter discovery | Core, configuration, public Livepeer API |
+| `config.py` | Frozen gateway and routing settings | Standard library, Pydantic |
+| `runtime.py` | Load environment, construct/start/stop the engine | Configuration, backends, public Livepeer API |
+| `app.py` | Own lifespan, authenticate, enforce deadlines, route and log | All layers |
 | `__main__.py` | Process entry point and logging setup | Uvicorn |
 
 Dependency tests enforce the core boundary and prevent adapters from selecting the
@@ -33,7 +36,10 @@ a DI container would add a dependency without simplifying this graph.
 One ordered event stream feeds both response modes. Streaming encodes events as they
 arrive; nonstreaming accumulates them into a completion. Events are transient output
 fragments, not persisted domain events. Request and response IDs provide correlation,
-not durable deduplication. There is no retry, replay, cache, database, or message broker.
+not durable deduplication. The gateway adds no retry, replay, cache, database, or message broker. In Livepeer mode,
+Builder Core owns its durable job/payment/cost records and eligible prepayment failover.
+Gateway request IDs become engine operation references for correlation. Client disconnects
+stop reading and preserve the engine's outcome; no application reply is saved.
 
 The inbound adapters protect the core from external vocabulary changes. This costs
 translation code and contract tests, but allows either interface to evolve independently.
@@ -42,3 +48,5 @@ do not force embeddings or stored responses through `Generate`.
 
 See [decisions](docs/design-docs/decisions.md), [backend ownership](docs/design-docs/backends.md),
 and the [compatibility contract](docs/product-specs/compatibility.md).
+
+See [the Livepeer design](docs/design-docs/livepeer.md) for paid stream lifecycle and bounded tool buffering.

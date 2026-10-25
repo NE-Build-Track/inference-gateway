@@ -4,12 +4,10 @@ import asyncio
 import hmac
 import json
 import logging
-import math
-import os
 import time
-from collections.abc import AsyncGenerator
-from contextlib import aclosing
-from dataclasses import dataclass
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
+from contextlib import aclosing, asynccontextmanager
+from dataclasses import replace
 from typing import Any
 from uuid import uuid4
 
@@ -17,6 +15,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 
+from endpoint_gateway.adapters.http_stream import ManagedStreamingResponse
 from endpoint_gateway.adapters.responses import (
     Protocol,
     ResponseIdentity,
@@ -27,22 +26,47 @@ from endpoint_gateway.adapters.responses import (
 )
 from endpoint_gateway.adapters.schemas import AnthropicRequest, OpenAIRequest
 from endpoint_gateway.adapters.translate import anthropic_request, openai_request
-from endpoint_gateway.core.backend import Backend
+from endpoint_gateway.config import LivepeerSettings, Settings
+from endpoint_gateway.core.backend import Backend, BackendError
 from endpoint_gateway.core.models import Event
 from endpoint_gateway.core.service import GenerationService
+from endpoint_gateway.runtime import (
+    EngineFactory,
+    build_engine,
+    livepeer_backend,
+    load_livepeer_settings,
+    load_settings,
+)
 from endpoint_gateway.testing import FakeBackend
 
 
-@dataclass(frozen=True)
-class Settings:
-    api_key: str | None = None
-    timeout_seconds: float = 30
+class ClientDisconnected(Exception):
+    pass
 
-    def __post_init__(self) -> None:
-        if not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
-            raise ValueError("timeout_seconds must be positive")
-        if self.api_key == "":
-            raise ValueError("api_key cannot be empty")
+
+async def while_connected[T](request: Request, work: Awaitable[T]) -> T:
+    """Cancel generation even when a nonstream client or pre-header client leaves."""
+
+    async def run() -> T:
+        return await work
+
+    async def watch() -> None:
+        while True:
+            if (await request.receive())["type"] == "http.disconnect":
+                return
+
+    task = asyncio.create_task(run())
+    watcher = asyncio.create_task(watch())
+    try:
+        await asyncio.wait({task, watcher}, return_when=asyncio.FIRST_COMPLETED)
+        if task.done():
+            return await task
+        raise ClientDisconnected()
+    finally:
+        watcher.cancel()
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, watcher, return_exceptions=True)
 
 
 def error_payload(protocol: Protocol, message: str, kind: str) -> dict[str, Any]:
@@ -56,13 +80,20 @@ def failure(protocol: Protocol, message: str, status: int, request_id: str) -> J
     kinds = {
         400: "invalid_request_error",
         401: "authentication_error",
+        409: "invalid_request_error",
+        499: "api_error",
         502: "api_error",
+        503: "api_error",
         504: "timeout_error",
     }
     return JSONResponse(
         error_payload(protocol, message, kinds[status]),
         status_code=status,
-        headers={"x-request-id": request_id, "request-id": request_id},
+        headers={
+            "x-request-id": request_id,
+            "request-id": request_id,
+            "x-should-retry": "false",
+        },
     )
 
 
@@ -79,19 +110,52 @@ async def deadline_stream(
             yield item
 
 
-def create_app(backend: Backend | None = None, settings: Settings | None = None) -> FastAPI:
-    """Borrow an injected backend; the caller opens/closes any resources it owns."""
-    config = (
-        settings
-        if settings is not None
-        else Settings(
-            api_key=os.environ.get("GATEWAY_API_KEY"),
-            timeout_seconds=float(os.environ.get("GATEWAY_TIMEOUT_SECONDS", "30")),
-        )
+def create_app(
+    backend: Backend | None = None,
+    settings: Settings | None = None,
+    *,
+    livepeer_settings: LivepeerSettings | None = None,
+    engine_factory: EngineFactory | None = None,
+) -> FastAPI:
+    """Borrow injected backends; own configured Builder Core through ASGI lifespan."""
+    config = settings if settings is not None else load_settings()
+    owns_engine = backend is None and config.backend == "livepeer"
+    service = (
+        None
+        if owns_engine
+        else GenerationService(backend if backend is not None else FakeBackend())
     )
-    service = GenerationService(backend if backend is not None else FakeBackend())
+
+    def service_ready() -> bool:
+        return service is not None
+
+    ready: Callable[[], bool] = service_ready
     logger = logging.getLogger("endpoint_gateway")
-    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        nonlocal service, ready
+        if owns_engine:
+            options = livepeer_settings or load_livepeer_settings(config)
+            async with livepeer_backend(options, engine_factory or build_engine) as live:
+                service = GenerationService(live)
+                ready = live.ready
+                try:
+                    yield
+                finally:
+                    service = None
+                    ready = service_ready
+        else:
+            yield
+
+    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.1.0", lifespan=lifespan)
+
+    @app.get("/readyz")
+    async def readiness() -> JSONResponse:
+        ok = ready()
+        return JSONResponse(
+            {"status": "ready" if ok else "unavailable"}, status_code=200 if ok else 503
+        )
 
     @app.get("/healthz")
     async def health() -> dict[str, str]:
@@ -129,6 +193,9 @@ def create_app(backend: Backend | None = None, settings: Settings | None = None)
             return failure(
                 protocol, "Invalid or unsupported request; see compatibility docs", 400, request_id
             )
+        command = replace(command, request_id=request_id)
+        if service is None:
+            return failure(protocol, "Generation backend unavailable", 503, request_id)
         identity = ResponseIdentity(
             ("chatcmpl_" if protocol == "openai" else "msg_") + uuid4().hex,
             command.model,
@@ -136,7 +203,9 @@ def create_app(backend: Backend | None = None, settings: Settings | None = None)
         )
         try:
             if not streaming:
-                result = await asyncio.wait_for(service.complete(command), config.timeout_seconds)
+                result = await while_connected(
+                    request, asyncio.wait_for(service.complete(command), config.timeout_seconds)
+                )
                 logger.info(
                     json.dumps(
                         {
@@ -151,7 +220,11 @@ def create_app(backend: Backend | None = None, settings: Settings | None = None)
             deadline = asyncio.get_running_loop().time() + config.timeout_seconds
             events = deadline_stream(service.stream(command), deadline)
             # Fail before committing HTTP 200 if the backend cannot start.
-            first = await anext(events)
+            first = await while_connected(request, anext(events))
+        except ClientDisconnected:
+            return failure(protocol, "Client disconnected", 499, request_id)
+        except BackendError as exc:
+            return failure(protocol, exc.public_message, exc.status_code, request_id)
         except TimeoutError:
             return failure(protocol, "Generation deadline exceeded", 504, request_id)
         except Exception:
@@ -193,9 +266,9 @@ def create_app(backend: Backend | None = None, settings: Settings | None = None)
                     )
                 )
 
-        return StreamingResponse(
+        return ManagedStreamingResponse(
             render(),
-            media_type="text/event-stream",
+            events.aclose,
             headers={**headers, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 

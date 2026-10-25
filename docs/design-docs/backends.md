@@ -49,8 +49,8 @@ any await. Do not swallow cancellation or start an unowned background task. Cons
 should receive clients/settings and perform no I/O. If initialization opens several
 resources, use an async exit stack so partial startup failure closes earlier resources.
 
-The default fake owns no network resources. When adding a real backend, add a composition
-root with lifespan management for its clients. `create_app` deliberately does not close
+The default fake owns no network resources. Livepeer mode uses `runtime.py` and application lifespan to own its engine.
+A new backend that owns clients should follow that lifecycle. `create_app` deliberately does not close
 borrowed objects. Core and adapter modules must not read environment variables or import
 a DI container. Configuration loading belongs in the application root.
 
@@ -64,3 +64,5 @@ the upstream finishes. Tests using an in-memory HTTP transport alone cannot prov
 For a new endpoint family, define its acceptance contract first. Add a separate port
 when the capability differs from generation, wire it at the application root, and add
 its protocol adapter and compatibility tests. Do not add unused placeholder routes.
+
+The implemented [Livepeer adapter](livepeer.md) shows public-port integration, failure mapping, and cancellation.

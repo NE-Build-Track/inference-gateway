@@ -8,3 +8,14 @@ __pycache__/
 .env
 dist/
 .idea/
+
+# Deployment credentials and local state
+.env.*
+!.env.example
+deploy/secrets/
+deploy/config/pinned-certs/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+deploy/config/runner-trust/

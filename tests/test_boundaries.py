@@ -243,3 +243,27 @@ async def test_explicit_tool_named_none_is_distinct_from_disabling_tools(client)
     )
     assert response.status_code == 200
     assert response.json()["choices"][0]["message"]["tool_calls"][0]["function"]["name"] == "none"
+
+
+async def test_stream_resource_closed_when_sending_headers_fails():
+    from starlette.requests import ClientDisconnect
+
+    from endpoint_gateway.adapters.http_stream import ManagedStreamingResponse
+
+    backend = BrokenBackend(after_start=True)
+    events = GenerationService(backend).stream(Generate("fake", (Message("user", (Text("hi"),)),)))
+    await anext(events)  # Response headers have not yet been committed.
+
+    async def body():
+        yield "unused"
+
+    async def receive():
+        await asyncio.Event().wait()
+
+    async def send(message):
+        raise OSError("client already gone")
+
+    response = ManagedStreamingResponse(body(), events.aclose, headers={})
+    with pytest.raises(ClientDisconnect):
+        await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+    assert backend.closed

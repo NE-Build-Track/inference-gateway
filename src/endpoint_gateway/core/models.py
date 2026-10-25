@@ -52,6 +52,7 @@ class Generate:
     tool_choice: Literal["auto", "none", "required"] | NamedTool = "auto"
     max_tokens: int = 1024
     temperature: float | None = None
+    request_id: str = ""  # Server-generated correlation/operation reference, never a credential.
 
 
 @dataclass(frozen=True)

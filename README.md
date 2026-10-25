@@ -1,7 +1,7 @@
 # Agent-compatible endpoint gateway
 
 A Python gateway with OpenAI Chat Completions and Anthropic Messages interfaces.
-The initial backend is a deterministic fake. Both interfaces support text,
+Choose a deterministic fake or an embedded Livepeer Builder Core backend. Both interfaces support text,
 streaming, tool calls, and tool-result follow-ups within the
 [documented compatibility subset](docs/product-specs/compatibility.md).
 
@@ -72,3 +72,15 @@ The lockfile fixes dependency versions for local development and CI.
 
 Start with [architecture](ARCHITECTURE.md), the [documentation index](docs/index.md),
 or the [backend extension guide](docs/design-docs/backends.md).
+
+## Deployment scaffold
+
+The [deployment guide](deploy/README.md) describes the Compose setup copied from ChatLPT,
+including an overlay that reuses its existing payment stack. Compose defaults to Livepeer;
+local Python startup defaults to the fake. The [Livepeer guide](docs/design-docs/livepeer.md)
+covers model routing, actor identity, engine lifecycle, usage, and cancellation.
+
+With Livepeer selected, clients use `qwen3.8-27b` by default. Other names must be configured;
+unknown names fail before dispatch. Both public API formats route to the same Livepeer model.
+No Claude/OpenAI provider account is required. Payment services are never started implicitly
+by the gateway-only Compose command.

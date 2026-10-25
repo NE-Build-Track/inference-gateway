@@ -11,10 +11,11 @@ It does not mean every provider feature or every agent application is supported.
 | OpenAI Chat Completions | `POST /v1/chat/completions` | Bearer key when local authentication is enabled |
 | Anthropic Messages | `POST /v1/messages` | Requires `anthropic-version: 2023-06-01`; uses `x-api-key` when enabled |
 | Liveness | `GET /healthz` | Unauthenticated; returns `{"status":"ok"}` |
+| Readiness | `GET /readyz` | Backend/discovery readiness; 503 when unavailable |
 
 OpenAI uses `/v1` in the SDK base URL; Anthropic uses the server root.
 Both generation endpoints return `x-request-id` and `request-id` headers.
-No real upstream calls occur.
+The fake makes no upstream calls. Livepeer mode dispatches paid jobs through Builder Core.
 
 ## Supported inputs
 
@@ -82,3 +83,16 @@ parallel interleaved tool blocks, sampling controls beyond temperature, model di
 Responses, embeddings, stored conversations, persistence, and billing are outside this
 slice. The server's generated OpenAPI page lists routes but does not yet describe the
 manually parsed request bodies; this document and request models define the contract.
+
+## Livepeer backend
+
+Livepeer mode requires a configured model route; the default public name is `qwen3.8-27b`.
+It preserves the interfaces above but uses real runner output and usage. It supports one
+choice and a runner that streams OpenAI chat chunks with usage and `[DONE]`. The first tool
+streams immediately; later interleaved calls buffer within a configured limit and emit in
+sequential blocks. Missing usage, malformed/truncated output, unsupported finish reasons,
+reasoning content, or text after tools fail explicitly. No token counts are fabricated.
+
+Engine capacity/payment failures map to 503, operation conflicts to 409, and deadlines to
+504 before headers. Public errors omit upstream details. See the [Livepeer contract](../design-docs/livepeer.md)
+for cancellation, tool-result translation, request correlation, and engine-owned accounting.
