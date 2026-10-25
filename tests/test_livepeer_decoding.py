@@ -86,3 +86,17 @@ def test_sse_incomplete_frame():
     decoder.feed(b"data: {}\n")
     with pytest.raises(BackendError):
         decoder.finish()
+
+
+def test_runner_stop_with_valid_tool_call_is_normalized():
+    decoder = CompletionDecoder(1000)
+    decoder.feed(call(0, '{"city":"Boston"}', id="call_1", name="weather"))
+    assert end(decoder, "stop")[-1] == Finished("tool_calls", 3, 7)
+
+
+@pytest.mark.parametrize("reason,arguments", [("length", "{}"), ("stop", "{")])
+def test_normalization_does_not_accept_truncated_tools(reason, arguments):
+    decoder = CompletionDecoder(1000)
+    decoder.feed(call(0, arguments, id="call_1", name="weather"))
+    with pytest.raises(BackendError):
+        end(decoder, reason)

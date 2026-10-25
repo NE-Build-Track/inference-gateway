@@ -12,3 +12,7 @@ check:
 format:
 	uv run ruff check --fix src tests scripts
 	uv run ruff format src tests scripts
+
+.PHONY: test-live
+test-live:
+	uv run python scripts/test-live-provider.py

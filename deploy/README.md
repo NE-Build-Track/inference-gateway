@@ -111,5 +111,31 @@ lets Builder Core finalize its active jobs before closing its store. The gateway
 not save conversation history, replies, or a duplicate cost ledger.
 
 `/healthz` checks process liveness. `/readyz` checks configured backend readiness and is used
-by Compose. A live paid smoke test has not been run; offline tests and builds do not verify
-network availability, the allocation balance, or current model behavior.
+by Compose. Offline tests and builds do not verify network availability, the allocation balance,
+or current model behavior. Use the separate black-box acceptance suite below.
+
+## Repeatable live black-box tests
+
+With the gateway and its payment stack running, execute:
+
+```sh
+GATEWAY_TEST_URL=http://127.0.0.1:8000 \
+GATEWAY_MODEL_NAME=qwen3.8-27b make test-live
+```
+
+For an authenticated gateway, supply `GATEWAY_API_KEY` through your environment. The suite
+imports only the official OpenAI and Anthropic clients and Python's standard library.
+It exercises public HTTP endpoints without inspecting gateway internals or its database;
+it can run against another host without Docker access or local payment credentials.
+
+A successful run makes 12 paid inference requests: text, forced tool calls, and tool-result
+follow-ups, each in JSON and streaming mode through both SDKs. The weather tool uses a fixed
+local result; it does not call an external weather service. Assertions cover nonempty text,
+finish reasons, token usage, valid tool IDs/arguments, and use of the supplied tool result.
+Streaming checks consume incremental SDK events and require normal termination.
+
+The suite disables SDK retries, prints a result for each case, and exits nonzero on failure.
+A failed tool-call case skips its dependent follow-up. Error output includes the exception
+class and HTTP status, without response bodies or credentials. These paid tests are opt-in:
+`make check` does not run them. The assertions target the configured chat model's behavior;
+a different model must still support forced tools and disabling further calls on follow-up.

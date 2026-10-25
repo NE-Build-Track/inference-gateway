@@ -4,7 +4,7 @@ Repository maintainers own these entries. None is represented as implemented beh
 
 | Item | Trigger / next action |
 | --- | --- |
-| Live paid acceptance | Verify the intended existing payment stack, allowance, and approved test spend before running a paid smoke |
+| Live operational coverage | The 12-case paid black-box suite passes; load, live disconnects, and provider-failure drills remain outside that matrix |
 | OpenAPI request bodies | Expose request schemas with protocol-specific validation errors preserved |
 | Production resource controls | Before shared hosting: request-body limits, per-tenant concurrency quotas, proxy TLS, tenant authentication |
 | Observability | Define SLOs, then add metrics, tracing, and validation/failure counters |

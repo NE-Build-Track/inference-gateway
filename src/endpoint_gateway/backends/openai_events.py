@@ -157,7 +157,7 @@ class CompletionDecoder:
     def _end(self) -> list[Event]:
         if self._finish is None or self._usage is None:
             raise BackendError("Runner omitted finish reason or token usage")
-        if self._tools and self._finish != "tool_calls":
+        if self._tools and self._finish not in {"tool_calls", "stop"}:
             raise BackendError("Incomplete runner tool calls")
         if not self._tools and self._finish == "tool_calls":
             raise BackendError("Runner finished with no tool calls")
@@ -182,6 +182,7 @@ class CompletionDecoder:
             out.append(BlockEnd(self._next_block))
         if not self._tools and not self._text_open:
             out.extend([BlockStart(0), Delta(0, ""), BlockEnd(0)])
-        out.append(Finished(self._finish, self._usage.prompt_tokens, self._usage.completion_tokens))
+        reason = "tool_calls" if self._tools else self._finish
+        out.append(Finished(reason, self._usage.prompt_tokens, self._usage.completion_tokens))
         self.done = True
         return out

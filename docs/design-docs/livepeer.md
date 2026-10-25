@@ -120,3 +120,7 @@ honor. This prevents their default status-code retries from repeating a paid req
 Other clients must disable automatic retries themselves. Connection failures can still
 trigger SDK retries; use `max_retries=0` when paid uncertainty must never cause a repeat.
 Request IDs provide correlation, not cross-request idempotency or result replay.
+
+Live runner compatibility: a completed tool call may arrive with `finish_reason: stop`.
+After validating its identity and JSON-object arguments, the adapter maps it to the core
+`tool_calls` outcome. A `length` finish or malformed arguments still fails validation.

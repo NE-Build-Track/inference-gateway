@@ -14,7 +14,7 @@ checks with the lockfile. These are behavior checks, not a claim of complete API
 | Observability | Correlated logs and response headers | Metrics, traces, operational SLOs |
 
 The fake provides deterministic fixtures, not inference quality, accurate token counts,
-or schema-based argument generation. No live provider account was used for verification.
+or schema-based argument generation. Live verification used the configured Livepeer shared application allocation.
 Request models define the supported schema; generated OpenAPI request-body coverage is
 tracked as debt. See the [debt tracker](exec-plans/tech-debt-tracker.md).
 
@@ -24,5 +24,16 @@ services using scripted transports. File-backed SQLite socket tests cover discon
 headers, during streaming, and during nonstream collection. They assert paid uncertainty,
 closed transport, and released engine slots. Engine failover is checked before payment only.
 
-The integration verification run passed 101 tests. Both offline image smoke scripts passed;
+The integration verification run passed 104 tests. Both offline image smoke scripts passed;
 the Livepeer smoke uses the real engine with scripted transport and networking disabled.
+
+Live black-box acceptance on 2026-10-25 passed all 12 cases against the deployed gateway
+and `qwen3.8-27b`: text, forced tool calls, and tool-result follow-ups in JSON and streaming
+mode through both official SDKs. This verifies the OpenAI and Anthropic API formats over
+Livepeer; it does not test inference hosted by OpenAI or Anthropic. Run `make test-live`
+to repeat the matrix. These are paid, opt-in checks with SDK retries disabled.
+
+The first live run exposed a runner returning `stop` for complete forced tool calls. The
+adapter now normalizes that outcome after validating the call; regression tests retain
+rejection of truncated or malformed calls. The final live run passed after rebuilding the
+image. Availability and model behavior can change; this is a dated acceptance result.
