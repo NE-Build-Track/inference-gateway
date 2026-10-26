@@ -1,50 +1,72 @@
-# Agent-compatible endpoint gateway
+# Inference Gateway
 
-A Python gateway with OpenAI Chat Completions and Anthropic Messages interfaces.
-Choose a deterministic fake or an embedded Livepeer Builder Core backend. Both interfaces support text,
-streaming, tool calls, and tool-result follow-ups within the
-[documented compatibility subset](docs/product-specs/compatibility.md).
+[![Checks](https://github.com/NE-Build-Track/inference-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/NE-Build-Track/inference-gateway/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## Run locally
+OpenAI- and Anthropic-compatible APIs with pluggable backends, multi-user access,
+and separate retail and wholesale accounting.
 
-Install Python 3.12 and [uv](https://docs.astral.sh/uv/), then run:
+## Motivation
+
+Agent applications should be able to change inference infrastructure without replacing
+all their client integrations. Operators also need to know who used the service, what
+they charged that user, and what the backend charged them. Those are different records.
+
+Inference Gateway provides both API formats over a shared generation contract. It ships
+with a deterministic fake for development and a Livepeer Builder Core adapter for paid
+inference. Using the Anthropic interface does not imply that the underlying model is Claude;
+both interfaces use the configured backend and model route.
+
+## Capabilities and limits
+
+- Text, SSE streaming, tool calls and tool-result follow-ups through both APIs.
+- Multiple users and scoped API keys, administered through a local CLI.
+- Versioned retail rates, cached-input accounting, append-only charges and adjustments.
+- Backend wholesale evidence, correlated jobs and durable accounting reconciliation.
+- Provider-shaped usage/cost reports with user isolation and administrative reporting.
+
+This is a documented compatibility subset. Images, audio, reasoning blocks, provider-hosted
+tools and the Responses API are not implemented. The gateway does not execute tools,
+collect customer payments or replay generated responses. See the
+[compatibility contract](docs/product-specs/compatibility.md).
+
+## Quick start
+
+Install Python 3.12+ and [uv](https://docs.astral.sh/uv/), then:
 
 ```sh
+git clone https://github.com/NE-Build-Track/inference-gateway.git
+cd inference-gateway
 uv sync --locked
-uv run python -m endpoint_gateway
+uv run python -m inference_gateway
 ```
 
-The server binds to `127.0.0.1:8000`. Use `--port 8001` for a separate worktree.
-No provider account or API key is needed. Set `GATEWAY_API_KEY` to require a local
-shared key. Set `GATEWAY_TIMEOUT_SECONDS` to change the 30-second generation deadline.
+This starts the fake backend on `127.0.0.1:8000`. Local startup has no authentication
+unless configured. No GPU, payer account or provider credentials are needed for this mode.
+The Python package is `inference_gateway`; the installed CLI is `gateway`.
 
 ```sh
 curl http://127.0.0.1:8000/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"fake-model","messages":[{"role":"user","content":"hello"}]}'
-
-curl -N http://127.0.0.1:8000/v1/messages \
-  -H 'Content-Type: application/json' \
-  -H 'anthropic-version: 2023-06-01' \
-  -d '{"model":"fake-model","max_tokens":128,"stream":true,"messages":[{"role":"user","content":"hello"}]}'
 ```
 
-Both produce `Echo: hello`, one as JSON and one as SSE. Any nonempty model name
-selects the fake; it does not select a real provider model.
+The fake returns `Echo: hello`. Its usage counts are synthetic and suitable only for tests.
 
-## Use an SDK
+## SDK clients
 
 ```python
 from openai import OpenAI
 from anthropic import Anthropic
 
-openai = OpenAI(base_url="http://127.0.0.1:8000/v1", api_key="local")
-answer = openai.chat.completions.create(
+openai = OpenAI(base_url="http://127.0.0.1:8000/v1", api_key="local", max_retries=0)
+reply = openai.chat.completions.create(
     model="fake-model", messages=[{"role": "user", "content": "hello"}]
 )
-print(answer.choices[0].message.content)
+print(reply.choices[0].message.content)
 
-anthropic = Anthropic(base_url="http://127.0.0.1:8000", api_key="local")
+anthropic = Anthropic(base_url="http://127.0.0.1:8000", api_key="local", max_retries=0)
 with anthropic.messages.stream(
     model="fake-model", max_tokens=128,
     messages=[{"role": "user", "content": "hello"}],
@@ -53,39 +75,94 @@ with anthropic.messages.stream(
         print(text, end="", flush=True)
 ```
 
-If shared-key authentication is enabled, use its value as the SDK's `api_key`.
-The fake requests the first tool offered unless tool choice disables it or the
-latest message supplies results. It emits `{}` as arguments by default.
-For schema-specific fixtures, inject `FakeBackend({"weather": {"city": "Boston"}})`
-through `create_app`. The gateway never executes tools.
+Use a CLI-issued secret instead of `local` in registry mode. Configure the public model
+name for live inference. SDK retries are disabled here because another HTTP request can
+start another paid generation. For OpenAI streaming usage, pass
+`stream_options={"include_usage": True}`.
 
-## Develop
+## Architecture
+
+```mermaid
+flowchart LR
+    O[OpenAI clients] --> H[HTTP authentication and protocol adapters]
+    A[Anthropic clients] --> H
+    H --> G[Generation service]
+    G --> F[Fake backend]
+    G --> L[Livepeer adapter / Builder Core]
+    H --> R[Gateway identity and retail ledger]
+    L --> N[Orchestrator and inference runner]
+    L --> W[Backend wholesale accounting]
+    W --> P[Reconciled reporting projections]
+    R --> Q[Authorized reporting APIs]
+    P --> Q
+```
+
+One gateway process owns a durable SQLite identity/retail database. Builder Core owns
+its separate job/payment database. Retail charges use configured price versions;
+wholesale costs retain backend evidence and uncertainty. Reconciliation never retries
+inference. See [architecture](ARCHITECTURE.md) and [accounting](docs/design-docs/accounting.md).
+
+## Configuration
+
+| Setting | Purpose |
+| --- | --- |
+| `GATEWAY_BACKEND` | `fake` locally; `livepeer` in deployment |
+| `GATEWAY_ACCOUNTING_DB` | Enables registry authentication and durable retail accounting |
+| `GATEWAY_API_KEY` | Optional legacy shared key; cannot be combined with registry mode |
+| `GATEWAY_MODEL_ROUTES` | Public model names mapped to backend applications/models |
+| `GATEWAY_TIMEOUT_SECONDS` | Generation deadline; defaults to 300 seconds |
+| `GATEWAY_APPROVED_ORCHESTRATORS` | Allowed discovery origins for Livepeer |
+| `LPB_*` | Builder Core configuration and upstream payment credentials |
+
+Registry mode fails closed until keys and prices are provisioned. For example:
+
+```sh
+export GATEWAY_ACCOUNTING_DB="$PWD/gateway.db"
+uv run gateway users create alice
+# Use the returned USER_ID. The following command prints the new secret once.
+uv run gateway keys create USER_ID --name development --scopes inference,reports
+uv run gateway prices set --model fake-model --version development-v1 \
+  --input-per-million 0 --output-per-million 0
+uv run python -m inference_gateway
+```
+
+The CLI also supports revocation, rotation, expiry, user disabling, adjustments and
+reconciliation redrive. See [operations](docs/OPERATIONS.md) and the
+[configuration/accounting reference](docs/design-docs/accounting.md).
+
+## Build and deployment
 
 ```sh
 make check
 uv build
+scripts/build-images.sh gateway
 ```
 
-Checks cover formatting, lint, strict source typing, SDK contracts, failure paths,
-real-socket streaming/disconnects, dependency boundaries, and documentation links.
-The lockfile fixes dependency versions for local development and CI.
+Two independent Compose deployments live under [deploy/livepeer](deploy/livepeer/README.md):
 
-Start with [architecture](ARCHITECTURE.md), the [documentation index](docs/index.md),
-or the [backend extension guide](docs/design-docs/backends.md).
+- **Gateway:** API service, embedded Builder Core, Clearinghouse and payment signer.
+- **Orchestrator:** `livepeer/node` and local vLLM, with explicit off-chain/on-chain configuration.
 
-## Deployment scaffold
+Each deployment has its own configuration, secrets and persistent volumes. No sibling
+application checkout is required. Livepeer dependencies build from pinned upstream commits;
+model weights, GPU drivers, operator credentials, RPC access and funding remain external
+prerequisites. A GPU is required for the supplied vLLM configuration. Neither funding nor
+image publication happens implicitly.
 
-The [deployment guide](deploy/README.md) describes the Compose setup copied from ChatLPT,
-including an overlay that reuses its existing payment stack. Compose defaults to Livepeer;
-local Python startup defaults to the fake. The [Livepeer guide](docs/design-docs/livepeer.md)
-covers model routing, actor identity, engine lifecycle, usage, and cancellation.
+## Development conventions
 
-With Livepeer selected, clients use `qwen3.8-27b` by default. Other names must be configured;
-unknown names fail before dispatch. Both public API formats route to the same Livepeer model.
-No Claude/OpenAI provider account is required. Payment services are never started implicitly
-by the gateway-only Compose command.
+Keep the core framework-independent. Inject dependencies explicitly, translate wire formats
+at adapters, preserve cancellation, and keep accounting retries separate from generation.
+Never log prompts, tool arguments, credentials or raw upstream error bodies. Add behavior
+and compatibility tests when contracts change; update the relevant documentation with them.
 
-Set `GATEWAY_ACCOUNTING_DB` to enable multiple users, CLI-issued API keys, versioned retail
-pricing and usage/cost reporting. Compose enables this mode by default. See the
-[accounting contract](docs/design-docs/accounting.md) and
-[deployment guide](deploy/README.md) for provisioning and repeatable black-box checks.
+`make check` runs lint, formatting, strict typing, offline tests and documentation checks.
+It includes a separate-process HTTP black-box suite. Paid acceptance is opt-in through
+`make test-live` and `make test-accounting-live`; see the deployment guide for credentials.
+Verification results and limits are recorded in [quality status](docs/QUALITY.md).
+
+## Contributing
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), follow the
+[Code of Conduct](CODE_OF_CONDUCT.md), and use the issue/PR templates. Security issues
+should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LICENSE).

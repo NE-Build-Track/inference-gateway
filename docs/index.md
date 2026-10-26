@@ -13,7 +13,7 @@ and tests together when behavior changes. Verification status is in [Quality](QU
 - [Technical debt](exec-plans/tech-debt-tracker.md): remaining work.
 - [References](references/index.md): checked upstream contracts and requested design sources.
 
-- [Deployment scaffold](../deploy/README.md): copied ChatLPT configuration and activation constraints.
+- [Deployment scaffold](../deploy/README.md): standalone Compose stacks and operator prerequisites.
 - [Livepeer backend](design-docs/livepeer.md): model routing, engine ownership, and paid stream semantics.
 
 - [Users and accounting](design-docs/accounting.md): keys, retail/wholesale and reporting.

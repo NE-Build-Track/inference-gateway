@@ -15,7 +15,7 @@ def test_cli_and_http_acceptance(tmp_path):
 
     def cli(*args):
         result = subprocess.run(
-            [sys.executable, "-m", "endpoint_gateway.cli", "--db", db, *args],
+            [sys.executable, "-m", "inference_gateway.cli", "--db", db, *args],
             capture_output=True,
             text=True,
             check=True,
@@ -56,7 +56,7 @@ def test_cli_and_http_acceptance(tmp_path):
     env = {**os.environ, "GATEWAY_ACCOUNTING_DB": db, "GATEWAY_BACKEND": "fake"}
     env.pop("GATEWAY_API_KEY", None)
     server = subprocess.Popen(
-        [sys.executable, "-m", "endpoint_gateway", "--port", str(port)],
+        [sys.executable, "-m", "inference_gateway", "--port", str(port)],
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -146,7 +146,7 @@ def test_cli_and_http_acceptance(tmp_path):
         server.terminate()
         server.wait(timeout=10)
         server = subprocess.Popen(
-            [sys.executable, "-m", "endpoint_gateway", "--port", str(port)],
+            [sys.executable, "-m", "inference_gateway", "--port", str(port)],
             env=env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

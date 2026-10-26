@@ -8,11 +8,11 @@ from pathlib import Path
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    source = root / "deploy/config/pinned-certs"
-    target = root / "deploy/config/runner-trust"
+    source = root / "deploy/livepeer/gateway/config/pinned-certs"
+    target = root / "deploy/livepeer/gateway/config/runner-trust"
     pins = sorted(source.glob("*.pem"))
     if not pins:
-        raise SystemExit("No existing certificate pins in deploy/config/pinned-certs")
+        raise SystemExit("No existing public certificate pins in the gateway config directory")
     # Validate all inputs before replacing generated files. Private keys never belong here.
     for pin in pins:
         pem = pin.read_text()

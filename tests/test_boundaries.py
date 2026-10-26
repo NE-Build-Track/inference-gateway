@@ -4,9 +4,9 @@ import json
 import httpx
 import pytest
 
-from endpoint_gateway.app import Settings, create_app
-from endpoint_gateway.core.backend import BackendError
-from endpoint_gateway.core.models import (
+from inference_gateway.app import Settings, create_app
+from inference_gateway.core.backend import BackendError
+from inference_gateway.core.models import (
     BlockEnd,
     BlockStart,
     Delta,
@@ -15,8 +15,8 @@ from endpoint_gateway.core.models import (
     Message,
     Text,
 )
-from endpoint_gateway.core.service import GenerationService
-from endpoint_gateway.testing import FakeBackend
+from inference_gateway.core.service import GenerationService
+from inference_gateway.testing import FakeBackend
 
 
 @pytest.fixture
@@ -183,7 +183,7 @@ async def test_fake_stream_matches_completion_and_length():
 
 class MixedBackend:
     async def stream(self, request):
-        from endpoint_gateway.core.models import ToolCall
+        from inference_gateway.core.models import ToolCall
 
         yield BlockStart(0)
         yield Delta(0, "Checking")
@@ -248,7 +248,7 @@ async def test_explicit_tool_named_none_is_distinct_from_disabling_tools(client)
 async def test_stream_resource_closed_when_sending_headers_fails():
     from starlette.requests import ClientDisconnect
 
-    from endpoint_gateway.adapters.http_stream import ManagedStreamingResponse
+    from inference_gateway.adapters.http_stream import ManagedStreamingResponse
 
     backend = BrokenBackend(after_start=True)
     events = GenerationService(backend).stream(Generate("fake", (Message("user", (Text("hi"),)),)))

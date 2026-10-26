@@ -5,8 +5,8 @@ import pytest
 from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 
-from endpoint_gateway.app import create_app
-from endpoint_gateway.testing import FakeBackend
+from inference_gateway.app import create_app
+from inference_gateway.testing import FakeBackend
 
 
 @pytest.fixture

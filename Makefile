@@ -2,7 +2,7 @@
 setup:
 	uv sync --locked
 run:
-	uv run python -m endpoint_gateway
+	uv run python -m inference_gateway
 check:
 	uv run ruff check src tests scripts
 	uv run ruff format --check src tests scripts

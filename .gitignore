@@ -12,12 +12,17 @@ dist/
 # Deployment credentials and local state
 .env.*
 !.env.example
-deploy/secrets/
-deploy/config/pinned-certs/
+deploy/livepeer/gateway/secrets/
+deploy/livepeer/gateway/config/pinned-certs/
 *.db
 *.db-*
 *.sqlite
 *.sqlite-*
-deploy/config/runner-trust/
+deploy/livepeer/gateway/config/runner-trust/
 
 **/*.db.lock
+
+**/secrets/
+**/config/pinned-certs/
+**/config/runner-trust/
+**/config/generated/

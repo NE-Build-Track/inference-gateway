@@ -11,3 +11,5 @@ Use a short task note for small edits.
 - [Livepeer backend](completed/livepeer-backend.md): embedded engine integration and verification record.
 
 - [Multi-user accounting](completed/multi-user-accounting.md): implementation and acceptance.
+
+- [Public deployment](completed/public-deployment.md): standalone Compose, package naming and publication.

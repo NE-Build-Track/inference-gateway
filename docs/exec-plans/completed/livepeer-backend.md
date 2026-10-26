@@ -10,7 +10,7 @@ configurable model routing initially targeting `blueclaw/chat/qwen3.8-27b`, and 
 application/actor identity. On disconnect, invoke the engine's disconnect handling and
 preserve its recorded outcome. No gateway retries of paid jobs. Retain FakeBackend.
 
-Reuse ChatLPT's copied deployment configuration and pin Builder Core to its revision
+Use the payment-stack deployment configuration and pin Builder Core to revision
 `629f1ab0ff84d1b350db7aea66c01989262d1325`. Secrets stay ignored and out of build contexts.
 No live paid calls, provisioning, or signer launch are part of verification.
 
@@ -50,7 +50,8 @@ No live paid calls, provisioning, or signer launch are part of verification.
 - `uv build`: wheel and source distribution built from the locked dependencies.
 - Docker image built; offline smoke checked both protocols in JSON and SSE modes with
   FakeBackend and with real Builder Core plus a scripted transport.
-- Base Compose, payment-stack profile and existing ChatLPT network overlay validate.
+- Base Compose and the payment-stack profile validated. The original external-network
+  overlay has since been removed in favor of the standalone deployment.
 - Copied private environment and credentials remain ignored; original source files are unchanged.
 - SDK tests verify HTTP retry suppression. Connection failures still require callers to
   disable SDK retries explicitly when repeating a paid request is unacceptable.

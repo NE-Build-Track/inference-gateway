@@ -6,11 +6,11 @@ from livepeer_builder import ActorContext
 from livepeer_builder.contracts import AttemptCost, Fees, JobCost
 from livepeer_builder.testing import FakeEngine, Reply, runner
 
-from endpoint_gateway.backends.livepeer import LivepeerBackend
-from endpoint_gateway.backends.livepeer_accounting import LivepeerAccounting
-from endpoint_gateway.config import LivepeerSettings, ModelRoute
-from endpoint_gateway.core.models import Finished, Generate, Message, Text
-from endpoint_gateway.core.service import GenerationService
+from inference_gateway.backends.livepeer import LivepeerBackend
+from inference_gateway.backends.livepeer_accounting import LivepeerAccounting
+from inference_gateway.config import LivepeerSettings, ModelRoute
+from inference_gateway.core.models import Finished, Generate, Message, Text
+from inference_gateway.core.service import GenerationService
 
 
 async def test_wholesale_adapter_preserves_pending_recovers_usage_and_classifies_cost():
@@ -126,8 +126,8 @@ async def test_cached_usage_roundtrips_through_anthropic_stream_sdk():
     import httpx
     from anthropic import AsyncAnthropic
 
-    from endpoint_gateway.app import create_app
-    from endpoint_gateway.core.models import BlockEnd, BlockStart, Delta
+    from inference_gateway.app import create_app
+    from inference_gateway.core.models import BlockEnd, BlockStart, Delta
 
     class MeasuredBackend:
         async def stream(self, request):

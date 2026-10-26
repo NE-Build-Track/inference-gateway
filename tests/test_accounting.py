@@ -8,12 +8,12 @@ import httpx
 import pytest
 from openai import AsyncOpenAI
 
-from endpoint_gateway.accounting import reconcile_once
-from endpoint_gateway.adapters.ledger import SQLiteLedger
-from endpoint_gateway.app import create_app
-from endpoint_gateway.config import Settings
-from endpoint_gateway.core.accounting import Observation, Price
-from endpoint_gateway.core.models import Finished
+from inference_gateway.accounting import reconcile_once
+from inference_gateway.adapters.ledger import SQLiteLedger
+from inference_gateway.app import create_app
+from inference_gateway.config import Settings
+from inference_gateway.core.accounting import Observation, Price
+from inference_gateway.core.models import Finished
 
 
 @pytest.fixture
@@ -271,7 +271,7 @@ def test_cache_pricing_and_currency_separation(book):
 
 
 def test_single_server_lock_and_schema_upgrade(tmp_path):
-    from endpoint_gateway.adapters.ledger import SCHEMA
+    from inference_gateway.adapters.ledger import SCHEMA
 
     path = str(tmp_path / "v1.db")
     with sqlite3.connect(path) as db:
@@ -327,8 +327,8 @@ async def test_wholesale_observations_are_admin_only_and_not_retail(book):
 
 
 async def test_cancelled_generation_keeps_pending_accounting(book):
-    from endpoint_gateway.accounting import MeteredBackend
-    from endpoint_gateway.core.models import BlockStart, Generate, Message, Text
+    from inference_gateway.accounting import MeteredBackend
+    from inference_gateway.core.models import BlockStart, Generate, Message, Text
 
     class Slow:
         async def stream(self, request):

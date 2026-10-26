@@ -6,8 +6,8 @@ remain unchanged when a generation backend changes.
 
 ```python
 from collections.abc import AsyncGenerator
-from endpoint_gateway.app import create_app
-from endpoint_gateway.core.models import (
+from inference_gateway.app import create_app
+from inference_gateway.core.models import (
     BlockStart, BlockEnd, Delta, Event, Finished, Generate,
 )
 

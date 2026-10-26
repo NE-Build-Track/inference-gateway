@@ -8,8 +8,8 @@ import httpx
 import pytest
 import uvicorn
 
-from endpoint_gateway.app import Settings, create_app
-from endpoint_gateway.core.models import BlockStart, Delta
+from inference_gateway.app import Settings, create_app
+from inference_gateway.core.models import BlockStart, Delta
 
 
 class PausedBackend:
@@ -73,8 +73,8 @@ async def test_livepeer_socket_disconnect_preserves_engine_outcome(protocol, mod
     from livepeer_builder import ActorContext, EngineSupply
     from livepeer_builder.testing import ScriptedStreamTransport, StreamScript, make_engine, runner
 
-    from endpoint_gateway.backends.livepeer import LivepeerBackend
-    from endpoint_gateway.config import LivepeerSettings, ModelRoute
+    from inference_gateway.backends.livepeer import LivepeerBackend
+    from inference_gateway.config import LivepeerSettings, ModelRoute
 
     app_name = "chat/socket-test"
     opened = asyncio.Event()

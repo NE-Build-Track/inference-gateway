@@ -1,6 +1,6 @@
 """Exercise the built application with a real engine and a paid-shaped offline transport.
 
-Run inside the image with --network none. This uses fixture credentials, not deploy/.env.
+Run inside the image with --network none. This uses fixture credentials, not deployment secrets.
 """
 
 import asyncio
@@ -12,8 +12,8 @@ import httpx
 from livepeer_builder import EngineSupply
 from livepeer_builder.testing import ScriptedStreamTransport, StreamScript, make_engine, runner
 
-from endpoint_gateway.app import Settings, create_app
-from endpoint_gateway.config import LivepeerSettings, ModelRoute
+from inference_gateway.app import Settings, create_app
+from inference_gateway.config import LivepeerSettings, ModelRoute
 
 
 def frames() -> list[bytes]:

@@ -5,8 +5,7 @@ OpenAI Chat Completions and Anthropic Messages into a runner's OpenAI chat contr
 Both interfaces therefore serve the configured Livepeer model; an Anthropic interface
 does not imply that the model is Claude.
 
-Builder Core is pinned to `629f1ab0ff84d1b350db7aea66c01989262d1325`, matching the inspected
-ChatLPT checkout. Its transitive Python gateway SDK pin is retained in `uv.lock`.
+Builder Core is pinned to `629f1ab0ff84d1b350db7aea66c01989262d1325`. Its transitive Python gateway SDK pin is retained in `uv.lock`.
 Only the backend and application composition import Livepeer packages.
 
 ## Configuration and ownership

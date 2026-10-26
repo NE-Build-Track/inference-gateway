@@ -19,11 +19,11 @@ from livepeer_builder.testing import (
 from openai import APIStatusError as OpenAIStatusError
 from openai import AsyncOpenAI
 
-from endpoint_gateway.app import create_app
-from endpoint_gateway.backends.livepeer import LivepeerBackend
-from endpoint_gateway.config import LivepeerSettings, ModelRoute
-from endpoint_gateway.core.backend import BackendDeadline, BackendError, UnknownModel
-from endpoint_gateway.core.models import (
+from inference_gateway.app import create_app
+from inference_gateway.backends.livepeer import LivepeerBackend
+from inference_gateway.config import LivepeerSettings, ModelRoute
+from inference_gateway.core.backend import BackendDeadline, BackendError, UnknownModel
+from inference_gateway.core.models import (
     BlockStart,
     Generate,
     Message,
@@ -33,7 +33,7 @@ from endpoint_gateway.core.models import (
     ToolCall,
     ToolResult,
 )
-from endpoint_gateway.core.service import GenerationService
+from inference_gateway.core.service import GenerationService
 
 APP = "blueclaw/chat/qwen3.8-27b"
 PATH = "/v1/chat/completions"

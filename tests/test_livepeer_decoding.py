@@ -2,10 +2,10 @@ import json
 
 import pytest
 
-from endpoint_gateway.backends.openai_events import CompletionDecoder
-from endpoint_gateway.backends.sse import SSEDecoder
-from endpoint_gateway.core.backend import BackendError
-from endpoint_gateway.core.models import BlockEnd, BlockStart, Delta, Finished
+from inference_gateway.backends.openai_events import CompletionDecoder
+from inference_gateway.backends.sse import SSEDecoder
+from inference_gateway.core.backend import BackendError
+from inference_gateway.core.models import BlockEnd, BlockStart, Delta, Finished
 
 
 def chunk(delta, finish=None):

@@ -1,6 +1,6 @@
 # Run and diagnose
 
-Run `uv sync --locked`, then `uv run python -m endpoint_gateway`. The process binds to
+Run `uv sync --locked`, then `uv run python -m inference_gateway`. The process binds to
 loopback by default. Set `--host` and `--port` explicitly when another listener is needed.
 Use a different port per worktree. Stop with Ctrl-C; requests and generator resources
 are closed by the server's shutdown and cancellation paths.
@@ -38,7 +38,7 @@ it does not check payment balance. Run one engine process per database.
 
 Use the [Livepeer guide](design-docs/livepeer.md) for backend selection and configuration,
 and the [deployment guide](../deploy/README.md) for Compose, certificate trust, and reusing
-ChatLPT's existing payment stack. The CLI does not implicitly load `deploy/.env`; Compose
+the standalone payment stack. The CLI does not implicitly load `deploy/livepeer/gateway/.env`; Compose
 loads it. For host execution, supply environment variables with signer/Batteries URLs that
 are reachable from the host.
 

@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "agent-compatible-endpoint-gateway"
+name = "inference-gateway"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

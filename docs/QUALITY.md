@@ -48,6 +48,19 @@ container builds succeeded.
 A live HTTP-only run made 14 requests through the registry-enabled gateway: both protocols'
 text, tool calls and follow-ups in JSON and SSE, plus a second key and a second user. Response
 usage matched request records and provider reports; retail arithmetic matched the configured
-ChatLPT price version. Wholesale observations resolved with job correlation. This tests
+immutable price version. Wholesale observations resolved with job correlation. This tests
 backend cost evidence, not ticket redemption settlement or the entire shared allocation.
 The test uses only public HTTP; key and price provisioning uses the CLI.
+
+Public deployment verification: 2026-10-26. The renamed `inference_gateway` package
+passed all 132 offline tests, strict typing, lint, formatting, documentation checks,
+and wheel/source builds. The rebuilt container passed readiness and both protocols
+in JSON and SSE modes. Gateway and orchestrator Compose configurations validate;
+renderer tests cover offchain and onchain configuration. Local vLLM GPU inference
+and the new onchain orchestrator have not been exercised on this machine.
+
+The standalone gateway cutover preserved all 14 live acceptance request records,
+including retail USD `0.001459000` and wholesale expected-value USD
+`0.001564182350730314`. Authenticated HTTP detail/report reads and rejection of
+unauthenticated reporting passed after the cutover. Existing payment identities and
+immutable historical price labels were retained. The old volumes remain backups.

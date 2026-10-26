@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_core_has_only_stdlib_and_core_dependencies():
-    for path in (ROOT / "src/endpoint_gateway/core").glob("*.py"):
+    for path in (ROOT / "src/inference_gateway/core").glob("*.py"):
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
             modules = []
@@ -18,22 +18,22 @@ def test_core_has_only_stdlib_and_core_dependencies():
                 modules = [node.module or ""]
             for module in modules:
                 assert module.split(".")[0] in sys.stdlib_module_names or module.startswith(
-                    "endpoint_gateway.core"
+                    "inference_gateway.core"
                 ), f"Core cannot depend on {module}; put translation in an adapter"
 
 
 def test_adapters_cannot_select_backend_or_import_composition_root():
     for path in [
-        *(ROOT / "src/endpoint_gateway/adapters").glob("*.py"),
-        *(ROOT / "src/endpoint_gateway/backends").glob("*.py"),
+        *(ROOT / "src/inference_gateway/adapters").glob("*.py"),
+        *(ROOT / "src/inference_gateway/backends").glob("*.py"),
     ]:
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 assert node.module not in {
-                    "endpoint_gateway.app",
-                    "endpoint_gateway.testing",
-                    "endpoint_gateway.runtime",
+                    "inference_gateway.app",
+                    "inference_gateway.testing",
+                    "inference_gateway.runtime",
                 }
 
 
@@ -45,10 +45,10 @@ def test_importing_core_does_not_import_framework_or_adapters():
             "\n".join(
                 [
                     "import sys",
-                    "import endpoint_gateway.core.service",
+                    "import inference_gateway.core.service",
                     "assert 'fastapi' not in sys.modules",
                     "assert 'pydantic' not in sys.modules",
-                    "assert 'endpoint_gateway.app' not in sys.modules",
+                    "assert 'inference_gateway.app' not in sys.modules",
                 ]
             ),
         ],
@@ -58,7 +58,7 @@ def test_importing_core_does_not_import_framework_or_adapters():
 
 def test_livepeer_imports_are_confined_to_integration_and_composition():
     allowed = {"runtime.py"}
-    for path in (ROOT / "src/endpoint_gateway").rglob("*.py"):
+    for path in (ROOT / "src/inference_gateway").rglob("*.py"):
         if "backends" in path.parts or path.name in allowed:
             continue
         for node in ast.walk(ast.parse(path.read_text())):

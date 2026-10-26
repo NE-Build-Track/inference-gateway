@@ -1,0 +1,61 @@
+name: inference-orchestrator
+services:
+  orchestrator:
+    image: inference-gateway/orchestrator:b887ad0
+    build:
+      context: https://github.com/NE-Build-Track/node.git#b887ad0354a8aeb239d7cd65a38cf8aa0246046a
+      dockerfile: docker/Dockerfile
+    # Bind-mounted operator secrets can be owner-only; host/container UID mapping is operator-owned.
+    user: "0:0"
+    command: [orchestrator, --config, /etc/livepeer/orchestrator.toml]
+    ports:
+      - "${ORCHESTRATOR_BIND:-127.0.0.1}:${ORCHESTRATOR_PORT:-8935}:8935"
+    volumes:
+      - ./config/generated/orchestrator.toml:/etc/livepeer/orchestrator.toml:ro
+      - ./config/generated/runners.toml:/etc/livepeer/runners.toml:ro
+      - ./secrets:/run/secrets:ro
+      - orchestrator-data:/data
+    depends_on:
+      vllm:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: &logging
+      driver: json-file
+      options: {max-size: "20m", max-file: "3"}
+  vllm:
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.11.0}
+    command:
+      - --model
+      - ${MODEL_ID:-Qwen/Qwen2.5-0.5B-Instruct}
+      - --served-model-name
+      - ${SERVED_MODEL_NAME:-gateway-model}
+      - --port
+      - "8000"
+      - --gpu-memory-utilization
+      - ${GPU_MEMORY_UTILIZATION:-0.8}
+      - --enable-auto-tool-choice
+      - --tool-call-parser
+      - ${TOOL_CALL_PARSER:-hermes}
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    shm_size: 2gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      start_period: 120s
+      interval: 10s
+      timeout: 5s
+      retries: 60
+    restart: unless-stopped
+    logging: *logging
+volumes:
+  orchestrator-data:
+  model-cache:

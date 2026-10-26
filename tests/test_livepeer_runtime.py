@@ -4,10 +4,10 @@ import httpx
 import pytest
 from livepeer_builder.testing import FakeEngine, runner
 
-from endpoint_gateway.app import Settings, create_app
-from endpoint_gateway.backends.discovery import FilteredDiscovery
-from endpoint_gateway.config import LivepeerSettings, ModelRoute
-from endpoint_gateway.runtime import build_engine, load_livepeer_settings, load_settings
+from inference_gateway.app import Settings, create_app
+from inference_gateway.backends.discovery import FilteredDiscovery
+from inference_gateway.config import LivepeerSettings, ModelRoute
+from inference_gateway.runtime import build_engine, load_livepeer_settings, load_settings
 
 
 async def test_lifespan_owns_engine_and_readiness():

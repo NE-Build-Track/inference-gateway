@@ -36,7 +36,7 @@ The repository is the source of truth; record durable decisions here.
 
 - `uv sync --locked`: install the reproducible environment.
 - `make run`: start on loopback port 8000.
-- `uv run python -m endpoint_gateway --port 8001`: isolate a worktree's server.
+- `uv run python -m inference_gateway --port 8001`: isolate a worktree's server.
 - `make check`: run the same checks as CI.
 - `make format`: apply lint fixes and formatting.
 - `uv build`: build wheel and source distribution.

@@ -10,11 +10,15 @@ dist
 **/.env
 **/.env.*
 **/secrets
-deploy/config/pinned-certs
+deploy/livepeer/gateway/config/pinned-certs
 **/*.db
 **/*.db-*
 **/*.sqlite
 **/*.sqlite-*
-deploy/config/runner-trust
+deploy/livepeer/gateway/config/runner-trust
 
 **/*.db.lock
+
+**/config/pinned-certs
+**/config/runner-trust
+**/config/generated
