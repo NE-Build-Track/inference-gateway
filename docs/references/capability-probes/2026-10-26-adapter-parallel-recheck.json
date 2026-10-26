@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-26T12:03:13.696116+00:00",
+  "model": "qwen3.8-27b",
+  "base_url": "http://127.0.0.1:8001",
+  "results": [
+    {
+      "protocol": "anthropic",
+      "feature": "parallel_tools",
+      "mode": "stream",
+      "request_id": "req_1ea54e233f344814a44c4b42fa2d3a85",
+      "signals": {
+        "tool_calls": 2,
+        "finish": "tool_use",
+        "input_tokens": 341,
+        "output_tokens": 33,
+        "reasoning_present": false,
+        "stop_sequence_observed": false
+      },
+      "status": "passed",
+      "input_tokens": 341,
+      "output_tokens": 33,
+      "finish": "tool_use",
+      "reasoning_present": false,
+      "tool_calls": 2,
+      "stop_sequence_observed": false
+    }
+  ]
+}

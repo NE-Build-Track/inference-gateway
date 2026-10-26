@@ -26,7 +26,7 @@ async def test_wholesale_adapter_preserves_pending_recovers_usage_and_classifies
 
     engine = FakeEngine(
         streaming=True,
-        runners=[runner(app)],
+        runners=[runner(app, metadata='{"model_name":"test"}')],
         replies={
             (app, "/v1/chat/completions"): Reply(
                 content_type="text/event-stream",
@@ -104,7 +104,7 @@ async def test_usage_reporting_retries_do_not_repeat_generation():
     )
     transport = ScriptedTransport(steps=[ScriptedTransport.ok()])
     async with make_engine(
-        runners=[runner(app)],
+        runners=[runner(app, metadata='{"model_name":"test"}')],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",

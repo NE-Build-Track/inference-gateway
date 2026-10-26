@@ -23,3 +23,13 @@ Their guidance is reflected in [design decisions](../design-docs/decisions.md). 
 skill files are authoring inputs, not runtime dependencies. The repository remains
 usable without those paths. This implementation is an application of their guidance,
 not an endorsement by the books' authors.
+
+Extended gateway contracts checked on 2026-10-26 against the installed OpenAI and Anthropic
+SDK request/response classes, including their streaming accumulators. See the
+[feature contract](../product-specs/extended-generation.md) and
+[dated Livepeer probe evidence](../exec-plans/livepeer-capability-gaps.md).
+
+- [Models/Responses candidate build](models-responses-build.json): local image identity and source hashes.
+- [OpenAI model catalog](https://developers.openai.com/api/reference/resources/models/methods/list).
+- [Responses request contract](https://developers.openai.com/api/reference/python/resources/responses/methods/create).
+- [Responses streaming events](https://developers.openai.com/api/reference/resources/responses/streaming-events).

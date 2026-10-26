@@ -134,3 +134,19 @@ def test_cache_usage_is_preserved_and_invalid_totals_rejected():
     )
     with pytest.raises(BackendError):
         decoder.feed("[DONE]")
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("audio", {"data": "AAAA"}),
+        ("annotations", [{"type": "url_citation"}]),
+        ("images", ["image"]),
+        ("reasoning_content", "secret thinking"),
+    ],
+)
+def test_extended_runner_outputs_are_never_silently_dropped(field, value):
+    from inference_gateway.core.backend import UnsupportedResponse
+
+    with pytest.raises(UnsupportedResponse):
+        CompletionDecoder(1000).feed(chunk({field: value}))

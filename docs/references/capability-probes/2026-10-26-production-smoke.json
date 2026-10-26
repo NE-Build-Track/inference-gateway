@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-26T12:06:28.239937+00:00",
+  "model": "qwen3.8-27b",
+  "base_url": "http://127.0.0.1:8000",
+  "results": [
+    {
+      "protocol": "openai",
+      "feature": "structured_output",
+      "mode": "json",
+      "request_id": "req_57a27b2ece01463c87350df3f8de603d",
+      "signals": {
+        "tool_calls": 0,
+        "finish": "stop",
+        "input_tokens": 18,
+        "output_tokens": 30,
+        "reasoning_present": false,
+        "stop_sequence_observed": false
+      },
+      "status": "passed",
+      "input_tokens": 18,
+      "output_tokens": 30,
+      "finish": "stop",
+      "reasoning_present": false,
+      "tool_calls": 0,
+      "stop_sequence_observed": false,
+      "ledger": {
+        "id": "req_57a27b2ece01463c87350df3f8de603d",
+        "outcome": "succeeded",
+        "input_tokens": 18,
+        "output_tokens": 30,
+        "billing_status": "charged",
+        "job_id": "b240a9ec-7160-46d0-a0f1-d444aea244db",
+        "wholesale_status": "observed",
+        "test_user_disabled": 1,
+        "test_key_revoked": 1,
+        "charges": 1
+      }
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "structured_output",
+      "mode": "json",
+      "request_id": "req_13612e29ece54878b4566bcf572266aa",
+      "signals": {
+        "tool_calls": 0,
+        "finish": "end_turn",
+        "input_tokens": 18,
+        "output_tokens": 33,
+        "reasoning_present": false,
+        "stop_sequence_observed": false
+      },
+      "status": "passed",
+      "input_tokens": 18,
+      "output_tokens": 33,
+      "finish": "end_turn",
+      "reasoning_present": false,
+      "tool_calls": 0,
+      "stop_sequence_observed": false,
+      "ledger": {
+        "id": "req_13612e29ece54878b4566bcf572266aa",
+        "outcome": "succeeded",
+        "input_tokens": 18,
+        "output_tokens": 33,
+        "billing_status": "charged",
+        "job_id": "f6796db4-04ea-46b6-9381-5901a1dc7cf7",
+        "wholesale_status": "observed",
+        "test_user_disabled": 1,
+        "test_key_revoked": 1,
+        "charges": 1
+      }
+    }
+  ]
+}

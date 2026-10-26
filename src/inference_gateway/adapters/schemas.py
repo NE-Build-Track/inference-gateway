@@ -3,18 +3,38 @@
 import json
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
+from inference_gateway.adapters.feature_schemas import (
+    Annotation,
+    AudioInput,
+    AudioOutput,
+    CharCitation,
+    DocumentBlock,
+    GatewayHistoryBlock,
+    GatewayOptions,
+    HostedSearch,
+    ImageBlock,
+    ImageURLBlock,
+    MediaOutputBlock,
+    OutputConfig,
+    ResponseFormat,
+    SearchResults,
+    ServerToolUse,
+    ThinkingBlock,
+    ThinkingDisabled,
+    ThinkingEnabled,
+    WebCitation,
+    WireModel,
+)
 from inference_gateway.core.models import JSON
-
-
-class WireModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+from inference_gateway.core.structured import reject_nonfinite
 
 
 class TextBlock(WireModel):
     type: Literal["text"] = "text"
     text: str
+    citations: list[CharCitation | WebCitation] | None = None
 
 
 def object_schema() -> dict[str, JSON]:
@@ -38,7 +58,7 @@ class CallFunction(WireModel):
 
     @model_validator(mode="after")
     def valid_json(self) -> Self:
-        if not isinstance(json.loads(self.arguments), dict):
+        if not isinstance(json.loads(self.arguments, parse_constant=reject_nonfinite), dict):
             raise ValueError("Tool arguments must encode a JSON object")
         return self
 
@@ -51,17 +71,39 @@ class OpenAICall(WireModel):
 
 class OpenAIMessage(WireModel):
     role: Literal["system", "developer", "user", "assistant", "tool"]
-    content: str | list[TextBlock] | None = None
+    content: str | list[TextBlock | ImageURLBlock | AudioInput] | None = None
     tool_calls: list[OpenAICall] = Field(default_factory=list)
     tool_call_id: str | None = None
+    reasoning_content: str | None = None
+    annotations: list[Annotation] | None = None
+    gateway_blocks: list[GatewayHistoryBlock] = Field(default_factory=list)
+    gateway_citations: list[CharCitation] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def valid_role(self) -> Self:
+        if (
+            self.reasoning_content is not None
+            or self.annotations
+            or self.gateway_blocks
+            or self.gateway_citations
+        ) and self.role != "assistant":
+            raise ValueError("Reasoning and annotations require assistant role")
+        if (
+            isinstance(self.content, list)
+            and any(not isinstance(p, TextBlock) for p in self.content)
+            and self.role != "user"
+        ):
+            raise ValueError("Media requires user role")
         if self.tool_calls and self.role != "assistant":
             raise ValueError("Only assistant messages may contain tool_calls")
         if (self.role == "tool") != (self.tool_call_id is not None):
             raise ValueError("tool_call_id is required only for tool messages")
-        if self.content is None and not self.tool_calls:
+        if self.annotations and not isinstance(self.content, str):
+            raise ValueError("Annotations require string content")
+        indices = [entry.index for entry in self.gateway_blocks]
+        if indices != sorted(set(indices)):
+            raise ValueError("Gateway block indices must be unique and ordered")
+        if self.content is None and not self.tool_calls and not self.gateway_blocks:
             raise ValueError("Message requires content or tool_calls")
         return self
 
@@ -90,6 +132,19 @@ class OpenAIRequest(WireModel):
     temperature: float | None = Field(default=None, ge=0, le=2)
     stream_options: StreamOptions | None = None
     n: Literal[1] = 1
+    top_p: float | None = Field(default=None, ge=0, le=1)
+    frequency_penalty: float | None = Field(default=None, ge=-2, le=2)
+    presence_penalty: float | None = Field(default=None, ge=-2, le=2)
+    seed: int | None = None
+    stop: str | list[str] | None = None
+    reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"] | None = (
+        None
+    )
+    response_format: ResponseFormat | None = None
+    parallel_tool_calls: bool = False
+    modalities: list[Literal["text", "audio"]] | None = None
+    audio: AudioOutput | None = None
+    gateway: GatewayOptions = Field(default_factory=GatewayOptions)
 
     @model_validator(mode="after")
     def token_limit(self) -> Self:
@@ -97,6 +152,12 @@ class OpenAIRequest(WireModel):
             raise ValueError("Specify one token limit")
         if self.stream_options is not None and not self.stream:
             raise ValueError("stream_options requires stream=true")
+        if (self.audio is not None) != (self.modalities is not None and "audio" in self.modalities):
+            raise ValueError("Audio options and audio modality must be specified together")
+        if self.modalities is not None and (
+            not self.modalities or len(set(self.modalities)) != len(self.modalities)
+        ):
+            raise ValueError("Invalid modalities")
         return self
 
 
@@ -116,7 +177,19 @@ class ResultBlock(WireModel):
     is_error: bool = False
 
 
-type AnthropicBlock = Annotated[TextBlock | ToolUse | ResultBlock, Field(discriminator="type")]
+type AnthropicBlock = Annotated[
+    TextBlock
+    | ToolUse
+    | ResultBlock
+    | ImageBlock
+    | AudioInput
+    | ThinkingBlock
+    | DocumentBlock
+    | ServerToolUse
+    | SearchResults
+    | MediaOutputBlock,
+    Field(discriminator="type"),
+]
 
 
 class AnthropicMessage(WireModel):
@@ -127,8 +200,19 @@ class AnthropicMessage(WireModel):
     def valid_role(self) -> Self:
         if isinstance(self.content, list):
             for block in self.content:
-                if isinstance(block, ToolUse) and self.role != "assistant":
+                if (
+                    isinstance(
+                        block,
+                        (ToolUse, ThinkingBlock, ServerToolUse, SearchResults, MediaOutputBlock),
+                    )
+                    and self.role != "assistant"
+                ):
                     raise ValueError("tool_use requires assistant role")
+                if (
+                    isinstance(block, (ImageBlock, AudioInput, DocumentBlock))
+                    and self.role != "user"
+                ):
+                    raise ValueError("Media and documents require user role")
                 if isinstance(block, ResultBlock) and self.role != "user":
                     raise ValueError("tool_result requires user role")
         return self
@@ -143,6 +227,7 @@ class AnthropicTool(WireModel):
 class AnthropicChoice(WireModel):
     type: Literal["auto", "none", "any", "tool"]
     name: str | None = None
+    disable_parallel_tool_use: bool = False
 
     @model_validator(mode="after")
     def named_tool(self) -> Self:
@@ -157,6 +242,26 @@ class AnthropicRequest(WireModel):
     max_tokens: int = Field(gt=0)
     system: str | list[TextBlock] | None = None
     stream: bool = False
-    tools: list[AnthropicTool] = Field(default_factory=list)
+    tools: list[AnthropicTool | HostedSearch] = Field(default_factory=list)
     tool_choice: AnthropicChoice | None = None
     temperature: float | None = Field(default=None, ge=0, le=1)
+
+    top_p: float | None = Field(default=None, ge=0, le=1)
+    top_k: int | None = Field(default=None, gt=0)
+    stop_sequences: list[str] = Field(default_factory=list)
+    thinking: Annotated[ThinkingEnabled | ThinkingDisabled, Field(discriminator="type")] | None = (
+        None
+    )
+    output_config: OutputConfig | None = None
+    gateway: GatewayOptions = Field(default_factory=GatewayOptions)
+
+    @model_validator(mode="after")
+    def thinking_budget(self) -> Self:
+        if (
+            isinstance(self.thinking, ThinkingEnabled)
+            and self.thinking.budget_tokens >= self.max_tokens
+        ):
+            raise ValueError("Thinking budget must be less than max_tokens")
+        if self.top_k is not None and self.gateway.top_k is not None:
+            raise ValueError("Specify top_k once")
+        return self

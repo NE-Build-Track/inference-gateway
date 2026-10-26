@@ -1,4 +1,4 @@
-"""Runner chunks → sequential gateway blocks, with bounded interleaved tool buffering."""
+"""Runner chunks to bounded reasoning, text and independently indexed tool blocks."""
 
 import json
 from dataclasses import dataclass, field
@@ -6,8 +6,17 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from inference_gateway.core.backend import BackendError
-from inference_gateway.core.models import BlockEnd, BlockStart, Delta, Event, Finished, ToolCall
+from inference_gateway.backends.stop_sequences import StopFilter
+from inference_gateway.core.backend import BackendError, UnsupportedResponse
+from inference_gateway.core.models import (
+    BlockEnd,
+    BlockStart,
+    Delta,
+    Event,
+    Finished,
+    Reasoning,
+    ToolCall,
+)
 
 
 def reject_constant(value: str) -> None:
@@ -36,12 +45,18 @@ class MessageDelta(Wire):
     tool_calls: list[CallDelta] | None = None
     reasoning: str | None = None
     reasoning_content: str | None = None
+    audio: Any = None
+    annotations: Any = None
+    images: Any = None
+    gateway_blocks: Any = None
+    refusal: str | None = None
 
 
 class Choice(Wire):
     index: Literal[0]
     delta: MessageDelta
     finish_reason: Literal["stop", "length", "tool_calls"] | None = None
+    stop_reason: str | int | None = None
 
 
 class PromptDetails(Wire):
@@ -67,10 +82,25 @@ class ToolParts:
     fragments: list[str] = field(default_factory=list)
     started: bool = False
     emitted: int = 0
+    block_index: int | None = None
 
 
 class CompletionDecoder:
-    def __init__(self, max_output_bytes: int) -> None:
+    def __init__(
+        self,
+        max_output_bytes: int,
+        *,
+        allow_reasoning: bool = False,
+        parallel_tools: bool = False,
+        stop_sequences: tuple[str, ...] = (),
+    ) -> None:
+        self._allow_reasoning = allow_reasoning
+        self._parallel = parallel_tools
+        self._reasoning_open = False
+        self._reasoning_seen = False
+        self._content_seen = False
+        self._stop_filter = StopFilter(stop_sequences)
+        self._reported_stop: str | None = None
         self._limit = max_output_bytes
         self._bytes = 0
         self._text_open = False
@@ -99,20 +129,67 @@ class CompletionDecoder:
             if self._finish is not None:
                 raise BackendError("Choice after runner finish")
             delta = choice.delta
-            if delta.reasoning or delta.reasoning_content:
-                raise BackendError("Runner emitted unsupported reasoning content")
+            if any(
+                v is not None
+                for v in (delta.audio, delta.annotations, delta.images, delta.gateway_blocks)
+            ):
+                raise UnsupportedResponse("Runner emitted unsupported output blocks")
+            if delta.refusal:
+                raise UnsupportedResponse("Runner refused the requested output")
+            if (
+                delta.reasoning
+                and delta.reasoning_content
+                and delta.reasoning != delta.reasoning_content
+            ):
+                raise UnsupportedResponse("Conflicting reasoning fields")
+            reasoning = delta.reasoning_content or delta.reasoning
+            if reasoning:
+                out.extend(self._reasoning(reasoning))
             if delta.content:
                 if self._tools:
-                    raise BackendError("Text after tool output is unsupported")
+                    raise UnsupportedResponse("Text after tool output is unsupported")
+                out.extend(self._close_reasoning())
+                self._content_seen = True
                 self._count(delta.content)
+                text = self._stop_filter.feed(delta.content)
                 if not self._text_open:
                     out.append(BlockStart(self._next_block))
                     self._text_open = True
-                out.append(Delta(self._next_block, delta.content))
+                if text:
+                    out.append(Delta(self._next_block, text))
             for fragment in delta.tool_calls or []:
                 out.extend(self._tool(fragment))
+            if choice.stop_reason is not None:
+                if isinstance(choice.stop_reason, str):
+                    if choice.stop_reason not in self._stop_filter.sequences:
+                        raise UnsupportedResponse("Runner reported an unrequested stop sequence")
+                    if (
+                        self._reported_stop is not None
+                        and self._reported_stop != choice.stop_reason
+                    ):
+                        raise UnsupportedResponse("Runner changed stop sequence")
+                    self._reported_stop = choice.stop_reason
             if choice.finish_reason is not None:
                 self._finish = choice.finish_reason
+        return out
+
+    def _reasoning(self, value: str) -> list[Event]:
+        if not self._allow_reasoning or self._content_seen or self._tools:
+            raise UnsupportedResponse("Reasoning is disabled or arrived after final output")
+        self._count(value)
+        out: list[Event] = []
+        if not self._reasoning_open:
+            out.append(BlockStart(self._next_block, block=Reasoning("")))
+            self._reasoning_open = self._reasoning_seen = True
+        out.append(Delta(self._next_block, value))
+        return out
+
+    def _close_reasoning(self) -> list[Event]:
+        if not self._reasoning_open:
+            return []
+        out: list[Event] = [BlockEnd(self._next_block)]
+        self._next_block += 1
+        self._reasoning_open = False
         return out
 
     def _count(self, value: str) -> None:
@@ -121,7 +198,9 @@ class CompletionDecoder:
             raise BackendError("Runner output exceeds configured limit")
 
     def _tool(self, fragment: CallDelta) -> list[Event]:
-        out: list[Event] = []
+        if self._stop_filter.sequences:
+            raise UnsupportedResponse("Tool output cannot be combined with stop controls")
+        out: list[Event] = self._close_reasoning()
         if self._text_open:
             out.append(BlockEnd(self._next_block))
             self._text_open = False
@@ -150,12 +229,23 @@ class CompletionDecoder:
             if function.arguments:
                 self._count(function.arguments)
                 parts.fragments.append(function.arguments)
-        if fragment.index == self._active_tool and parts.id and parts.name and parts.fragments:
+        if (
+            (self._parallel or fragment.index == self._active_tool)
+            and parts.id
+            and parts.name
+            and parts.fragments
+        ):
             if not parts.started:
-                out.append(BlockStart(self._next_block, ToolCall(parts.id, parts.name, "")))
+                parts.block_index = self._next_block
+                out.append(BlockStart(parts.block_index, ToolCall(parts.id, parts.name, "")))
+                if self._parallel:
+                    self._next_block += 1
                 parts.started = True
+            assert parts.block_index is not None
             # Arguments may precede identity fields in fragmented upstream chunks.
-            out.extend(Delta(self._next_block, value) for value in parts.fragments[parts.emitted :])
+            out.extend(
+                Delta(parts.block_index, value) for value in parts.fragments[parts.emitted :]
+            )
             parts.emitted = len(parts.fragments)
         return out
 
@@ -166,7 +256,23 @@ class CompletionDecoder:
             raise BackendError("Incomplete runner tool calls")
         if not self._tools and self._finish == "tool_calls":
             raise BackendError("Runner finished with no tool calls")
-        out: list[Event] = []
+        if (
+            self._reasoning_seen
+            and not self._content_seen
+            and not self._tools
+            and self._finish == "stop"
+        ):
+            raise UnsupportedResponse("Reasoning ended without final output")
+        if (
+            self._reported_stop
+            and self._stop_filter.matched
+            and self._reported_stop != self._stop_filter.matched
+        ):
+            raise UnsupportedResponse("Conflicting stop evidence")
+        matched = self._stop_filter.matched or self._reported_stop
+        if matched and self._finish != "stop":
+            raise UnsupportedResponse("Stop sequence contradicts runner finish")
+        out: list[Event] = self._close_reasoning()
         ids: set[str] = set()
         for parts in self._tools.values():
             if not parts.id or not parts.name or parts.id in ids:
@@ -179,13 +285,21 @@ class CompletionDecoder:
             if not isinstance(arguments, dict):
                 raise BackendError("Runner tool arguments must be an object")
             if not parts.started:
-                out.append(BlockStart(self._next_block, ToolCall(parts.id, parts.name, "")))
-                out.extend(Delta(self._next_block, part) for part in parts.fragments)
-            out.append(BlockEnd(self._next_block))
-            self._next_block += 1
+                parts.block_index = self._next_block
+                out.append(BlockStart(parts.block_index, ToolCall(parts.id, parts.name, "")))
+                out.extend(Delta(parts.block_index, part) for part in parts.fragments)
+                if self._parallel:
+                    self._next_block += 1
+            assert parts.block_index is not None
+            out.append(BlockEnd(parts.block_index))
+            if not self._parallel:
+                self._next_block += 1
         if self._text_open:
+            tail = self._stop_filter.finish()
+            if tail:
+                out.append(Delta(self._next_block, tail))
             out.append(BlockEnd(self._next_block))
-        if not self._tools and not self._text_open:
+        if not self._tools and not self._text_open and not self._reasoning_seen:
             out.extend([BlockStart(0), Delta(0, ""), BlockEnd(0)])
         reason = "tool_calls" if self._tools else self._finish
         cached = (
@@ -196,7 +310,9 @@ class CompletionDecoder:
         if cached > self._usage.prompt_tokens:
             raise BackendError("Invalid cached token count")
         out.append(
-            Finished(reason, self._usage.prompt_tokens, self._usage.completion_tokens, cached)
+            Finished(
+                reason, self._usage.prompt_tokens, self._usage.completion_tokens, cached, matched
+            )
         )
         self.done = True
         return out

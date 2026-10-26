@@ -17,3 +17,9 @@ and tests together when behavior changes. Verification status is in [Quality](QU
 - [Livepeer backend](design-docs/livepeer.md): model routing, engine ownership, and paid stream semantics.
 
 - [Users and accounting](design-docs/accounting.md): keys, retail/wholesale and reporting.
+
+- [Extended generation contracts](product-specs/extended-generation.md): reasoning, sampling,
+  structured output, citations, hosted search, interleaving and media.
+- [Livepeer capability gaps](exec-plans/livepeer-capability-gaps.md): probe evidence and adapter work.
+
+- [Models and Responses](product-specs/models-and-responses.md): metadata routing and stateless API contract.

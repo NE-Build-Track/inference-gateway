@@ -1,0 +1,254 @@
+{
+  "date": "2026-10-26",
+  "model": "qwen3.8-27b",
+  "app": "blueclaw/chat/qwen3.8-27b",
+  "evidence_source": "Sanitized probe stdout captured during this session; container was removed before report/database export",
+  "scope": "runner wire observations, not end-to-end certification",
+  "engine_version": "not retained",
+  "results": [
+    {
+      "feature": "top_p",
+      "operation_ref": "probe_4d9e88c065d74bd1990c34abe98fb3f6",
+      "job_id": "714a124f-cbf8-45ad-95d2-2b9b157edc9f",
+      "status": "inconclusive",
+      "detail": "Request accepted; semantic support not established",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "top_k",
+      "operation_ref": "probe_6b05a980afd2400b957f0eb343ac45f4",
+      "job_id": "d141fd2c-1cee-4357-afd3-f38d92defb17",
+      "status": "inconclusive",
+      "detail": "Request accepted; semantic support not established",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "seed",
+      "operation_ref": "probe_e698ba34c6a74b73ad8f5baa6c9ad11a",
+      "job_id": "f9a681e2-9c56-4f25-91bb-62cb3ebc53da",
+      "status": "inconclusive",
+      "detail": "Request accepted; semantic support not established",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "penalties",
+      "operation_ref": "probe_f5e39092b2ae48b08952e0a69acb6b74",
+      "job_id": "8a563ee5-d580-422f-8843-da636c59fe1b",
+      "status": "inconclusive",
+      "detail": "Request accepted; semantic support not established",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "stop",
+      "operation_ref": "probe_7906e63ad7284ef7b369db4cc9a62c03",
+      "job_id": "a3c63817-99e4-4088-ad63-4af390ef83e8",
+      "status": "observed",
+      "detail": "Controlled output stopped before marker",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "structured_output",
+      "operation_ref": "probe_394b68f699ad48939012760fdfe00f6d",
+      "job_id": "372797c0-c5be-4aa0-bb94-5128cf2b1e5e",
+      "status": "observed",
+      "detail": "Output matched probe schema",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "reasoning",
+      "operation_ref": "probe_511b6e4a37be47a5a86e1ec87a038a3e",
+      "job_id": "5ab1a9b3-ee76-4a82-a4b6-19c0b33e1d44",
+      "status": "observed",
+      "detail": "Separate reasoning and final text observed",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": true,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "parallel_tools",
+      "operation_ref": "probe_4a0b83f49c7b4a67a66b352466091c1f",
+      "job_id": "9742c88e-ea45-49f7-8d02-0b68f4db042b",
+      "status": "observed",
+      "detail": "Two tool indices observed; interleaving not established",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": false,
+        "reasoning": false,
+        "tool_calls": 2,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "citations",
+      "operation_ref": "probe_75ea7020ceec465bae01e257904d5ba2",
+      "job_id": "5a1ba149-a330-4ecd-8d8e-384aa0e94aa7",
+      "status": "Unsupported Response",
+      "detail": "Requested annotation field absent",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "hosted_tools",
+      "operation_ref": "probe_cb9c8603b2df48038d5c1ef2575f8d23",
+      "job_id": "20e918da-8fe1-40d7-9bc9-2eb0152a1e20",
+      "status": "inconclusive",
+      "detail": "Hosted execution requires provider execution evidence",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "image_input",
+      "operation_ref": "probe_caa0f1e15f6d40cfb413802234af8bc4",
+      "job_id": "353799e0-7b92-4bd1-80fc-00d1e0536bf4",
+      "status": "inconclusive",
+      "detail": "runner_rejected",
+      "failure_kind": "runner_rejected"
+    },
+    {
+      "feature": "audio_input",
+      "operation_ref": "probe_e13762638be24bcd9aeae80cd38378b2",
+      "job_id": "0e906abd-edb9-4eb4-8e2b-6415c5c02768",
+      "status": "inconclusive",
+      "detail": "runner_rejected",
+      "failure_kind": "runner_rejected"
+    },
+    {
+      "feature": "audio_output",
+      "operation_ref": "probe_d256cf97318740c0a583df0e31c7174a",
+      "job_id": "f3f6edc2-5999-499c-95e4-f698758412e8",
+      "status": "Unsupported Response",
+      "detail": "Requested audio field absent",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    },
+    {
+      "feature": "image_output",
+      "operation_ref": "probe_dfce9a0333a343db91e302d4b969bb61",
+      "job_id": "d58a4346-020d-4784-a1aa-e7ab1bfe3763",
+      "status": "Unsupported Response",
+      "detail": "Requested image field absent",
+      "http_status": 200,
+      "signals": {
+        "done": true,
+        "usage": true,
+        "finish": true,
+        "text": true,
+        "reasoning": false,
+        "tool_calls": 0,
+        "annotations": 0,
+        "audio": false,
+        "image": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-26T11:53:57.993091+00:00",
+  "model": "qwen3.8-27b",
+  "base_url": "http://127.0.0.1:8001",
+  "results": [
+    {
+      "protocol": "openai",
+      "feature": "structured_output",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_bb7b4a5fd81046aa88415059b08116cd"
+    },
+    {
+      "protocol": "openai",
+      "feature": "structured_output",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_8e9b9be9e8e9402ea9da13c675919078"
+    },
+    {
+      "protocol": "openai",
+      "feature": "reasoning",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_473edb1dbed3401f9a6e40e91ad34e8f"
+    },
+    {
+      "protocol": "openai",
+      "feature": "reasoning",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_060a2afb57b44135979d200586e084a6"
+    },
+    {
+      "protocol": "openai",
+      "feature": "stop",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_86d4bd06e40f4d238416a7baeefc3460"
+    },
+    {
+      "protocol": "openai",
+      "feature": "stop",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_0642b1f3e515463d8936228f0f1ecf6f"
+    },
+    {
+      "protocol": "openai",
+      "feature": "parallel_tools",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_5fffd797b0834a7bbb361d086f355b5e"
+    },
+    {
+      "protocol": "openai",
+      "feature": "parallel_tools",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_31c0ff7741cf4c67af3b0b4409cd9841"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "structured_output",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_b87fd30b4b8e4d52a5b1786838866f53"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "structured_output",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_9173bf8b78b7489bb78cb98414cf8ad2"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "reasoning",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_34ecf2453b6c4e52ab95c4148c9b3437"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "reasoning",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_ab1de155772947eeae62bbea22718886"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "stop",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_648e6d081f114657968ffcddc9a73832"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "stop",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_4ffe8175a2d841b98c57e5a31e20aaa3"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "parallel_tools",
+      "mode": "json",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_6fd1afafa869450aae85e0defcde7c7a"
+    },
+    {
+      "protocol": "anthropic",
+      "feature": "parallel_tools",
+      "mode": "stream",
+      "status": "failed",
+      "exception_type": "InternalServerError",
+      "http_status": 503,
+      "request_id": "req_39fa7e4c641c4f86b52c21c0f21971a2"
+    }
+  ]
+}

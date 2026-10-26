@@ -17,3 +17,10 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Library extraction | Separate distributions when an external consumer needs independent releases |
 | Documentation freshness | Add targeted semantic checks when drift occurs; current checks cover links and required files |
 | Slow-client deadlines | Generation waits are timed; a stalled socket send relies on server/proxy behavior |
+| Livepeer remaining capabilities | Four text capabilities have live acceptance; guarded sampling/effort/budget/media-input forwarding now has offline SDK coverage. Live probes still leave these unverified or rejected; citations, hosted execution and media output need runner integration; see [capability gaps](livepeer-capability-gaps.md) |
+| Extended protocol breadth | Current structured output uses an explicit schema subset; hosted tools cover one web search; media uses documented extensions/fixtures. Expand only with acceptance cases in [the contract](../product-specs/extended-generation.md) |
+| Live route availability and model variability | Two configured US-central origins failed TLS verification; excluded locally pending investigation. One parallel-call acceptance assertion failed before a successful follow-up; retain evidence and avoid deterministic tool-selection claims |
+
+Models/Responses: live Gemma acceptance remains pending runner access with `metadata.model_name`.
+Stored Responses, Anthropic model-list formatting, automatic cross-app retry and per-runner
+endpoint capability metadata are not implemented. See the [contract](../product-specs/models-and-responses.md).

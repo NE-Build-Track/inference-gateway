@@ -64,3 +64,63 @@ including retail USD `0.001459000` and wholesale expected-value USD
 `0.001564182350730314`. Authenticated HTTP detail/report reads and rejection of
 unauthenticated reporting passed after the cutover. Existing payment identities and
 immutable historical price labels were retained. The old volumes remain backups.
+
+
+Extended generation verification: 2026-10-26. `make check` passes with 197 offline tests,
+strict typing, lint/formatting and documentation checks. The added contracts cover reasoning,
+sampling/stop controls, the documented structured-output schema subset, source citations,
+simulated hosted search, interleaved client tools, and image/audio fixtures. Both SDKs consume
+JSON and SSE output; tests also cover history, invalid input/output, audio-only responses,
+unsupported-feature rejection before Livepeer dispatch, and interleaved generator cleanup.
+Probe tests distinguish observed output from inconclusive semantic support and verify cleanup.
+
+Sixteen paid Builder Core probe operations targeted the configured Qwen route: two baselines
+(one succeeded, one timed out) and fourteen feature cases. Reasoning, structured JSON, stop
+behavior and multiple call indices were observed. Citation annotations and image/audio output
+were absent; image/audio input was rejected. Accepted sampling settings and hosted execution
+remain inconclusive. See the [gap register](exec-plans/livepeer-capability-gaps.md) for evidence,
+limitations and work needed in the Livepeer adapter. A container replacement prevented exporting
+temporary probe databases; sanitized stdout and job IDs were retained instead. No production
+feature was enabled automatically, and the new gateway code was not deployed by this task.
+
+
+Livepeer adapter verification: 2026-10-26. `make check` passes with 252 offline tests. The added
+checks exercise per-route guards, actual runner request fields, reasoning/text/tool order,
+independent interleaving, stop markers across chunk boundaries, structured-output failures and
+truncation, both SDKs, and real-engine cancellation/deadlines for all four features. The live
+acceptance driver is itself exercised offline with both SDKs and modes.
+
+The live matrix passed 15/16 cases; a separate Anthropic parallel-stream follow-up passed. The
+initial assertion's specific cause was not retained, so both results remain in the
+[evidence register](exec-plans/livepeer-capability-gaps.md#adapter-acceptance-and-deployment).
+This establishes successful API/mode coverage with a documented variability caveat, not
+universal model behavior. Initial unpaid TLS connectivity failures were resolved for validation
+by restricting selection to existing trusted origins, without bypassing certificate verification.
+
+The accepted image is deployed locally on port 8000 with registry accounting and the four route
+capabilities enabled. Two production-mode structured-output smoke requests passed; usage and
+single charges match the ledger. Temporary test credentials are revoked/disabled and the isolated
+validation server is removed. Engine evidence, request IDs and source/image hashes are retained.
+Effort/budget controls, general sampling, citations, hosted execution and media remain unenabled.
+
+
+The remaining-controls pass added guarded sampling forwarding, per-route reasoning effort levels,
+vLLM thinking budgets and explicitly typed image/audio input. SDK JSON/SSE tests verify delivery
+through both public APIs, including zero-valued controls and route isolation. These paths remain
+disabled in production. The [new raw probe run](references/capability-probes/2026-10-26-remaining-features.json)
+and [engine evidence](references/capability-probes/2026-10-26-remaining-jobs.json) cover one baseline
+and thirteen feature attempts. They establish transport observations, not stochastic control,
+budget enforcement or hosted execution. Missing native citations/audio/images are recorded as
+Unsupported Response. Valid media inputs and high effort were rejected by the runner.
+
+
+Models and stateless Responses now have offline SDK/engine coverage described in the
+[contract](product-specs/models-and-responses.md). Live Gemma acceptance is pending its route and
+valid `model_name` metadata. Existing Qwen probe results predate strict metadata routing; they do
+not certify the new routing or native Responses transport.
+
+The completed Models/Responses implementation passed 326 tests and the full repository checks.
+The candidate Docker image passed isolated fake-backend HTTP smoke tests for Models, Responses
+JSON/SSE and a function-result follow-up. Its 34 Python files match the working tree; see the
+[build manifest](references/models-responses-build.json). Live verification is deferred at the
+user's request. No new image was published and no running service was changed.

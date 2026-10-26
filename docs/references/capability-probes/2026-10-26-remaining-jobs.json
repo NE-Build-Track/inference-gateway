@@ -1,0 +1,229 @@
+{
+  "engine_version": "0.1.1.dev64+g629f1ab",
+  "jobs": [
+    {
+      "feature": "baseline",
+      "id": "90aa620e-37a0-4df8-85b0-574b64f00687",
+      "operation_ref": "probe_b691b140dba742509acf377a466acae2",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "top_p",
+      "id": "e237af0e-56f8-4aa9-8b34-971a918c5e85",
+      "operation_ref": "probe_d2986e9c18674a26ac6bd987e69f51df",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "top_k",
+      "id": "cc7762fe-2a59-4650-86b7-378e66c05994",
+      "operation_ref": "probe_1e129730274a462eb2aeebf853d391d4",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "seed",
+      "id": "015fd0c7-cbe6-4aa7-990f-f8041ccc7a75",
+      "operation_ref": "probe_6beea43a85ed434b83fe2b1832f3a83e",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "penalties",
+      "id": "ac0d528e-72f1-49f7-8bcb-017cc1992e7f",
+      "operation_ref": "probe_356c5d919d5d4e26a42f2793a7cd8588",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "reasoning_effort_low",
+      "id": "063e99da-7253-4748-bbe3-b279287b6019",
+      "operation_ref": "probe_3bf945233b0542a3adc5a1e54f5b3ba6",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "reasoning_effort_high",
+      "id": "edd8b514-6b18-468a-afe6-7821620edbac",
+      "operation_ref": "probe_01f8a2670d874129b8b33abf40625230",
+      "state": "failed",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "http",
+          "status_code": 400
+        }
+      ]
+    },
+    {
+      "feature": "reasoning_budget",
+      "id": "16b6bb99-15f5-4e4c-a162-05ee90abe1f7",
+      "operation_ref": "probe_7ff82cd2069f426f80e866a120c234d0",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "image_input",
+      "id": "d8a6e447-4d3e-4435-8a34-36383e17ba55",
+      "operation_ref": "probe_efc80250fac94b899e94a5914a03a782",
+      "state": "failed",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "http",
+          "status_code": 400
+        }
+      ]
+    },
+    {
+      "feature": "audio_input",
+      "id": "ff696468-19ba-49a8-92b0-733940bece90",
+      "operation_ref": "probe_c5c69aef481747d8adb3fa252b0013c6",
+      "state": "failed",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "http",
+          "status_code": 400
+        }
+      ]
+    },
+    {
+      "feature": "citations",
+      "id": "ad580e66-4319-4513-8fab-5ab6bf7ac13a",
+      "operation_ref": "probe_172f5099d7564ddb9295d13d28cf62c8",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "hosted_tools",
+      "id": "7c0a2fb2-3ac0-4cfc-8049-ae32b06c7c81",
+      "operation_ref": "probe_fe67788ffda3455898af365f9aa4b449",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "audio_output",
+      "id": "2d05d275-3bd4-4ee8-9450-458b12a63423",
+      "operation_ref": "probe_5fbf45b44f744fafa9f0855f0b4a8b57",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "feature": "image_output",
+      "id": "ce1c4270-3664-46ea-8ae0-71939fb04dc9",
+      "operation_ref": "probe_e9e7648e691242f19f0b03186b8812ae",
+      "state": "succeeded",
+      "usage": null,
+      "attempts": [
+        {
+          "number": 1,
+          "orchestrator_url": "https://hky.eliteencoder.net:8936",
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    }
+  ]
+}

@@ -12,7 +12,9 @@ from inference_gateway.runtime import build_engine, load_livepeer_settings, load
 
 async def test_lifespan_owns_engine_and_readiness():
     app_name = "chat/test"
-    engine = FakeEngine(streaming=True, runners=[runner(app_name)])
+    engine = FakeEngine(
+        streaming=True, runners=[runner(app_name, metadata='{"model_name":"public"}')]
+    )
     options = LivepeerSettings(routes=(ModelRoute(name="public", app=app_name),))
 
     async def factory(settings):
@@ -82,7 +84,7 @@ def test_routes_and_limits_from_environment():
         "GATEWAY_TIMEOUT_SECONDS": "45",
         "GATEWAY_MODEL_ROUTES": json.dumps(
             [
-                {"name": "one", "app": "a", "upstream_model": "served"},
+                {"name": "one", "app": "a", "upstream_model": "one"},
                 {"name": "two", "app": "b", "disable_thinking": False},
             ]
         ),
@@ -94,7 +96,7 @@ def test_routes_and_limits_from_environment():
     config = load_livepeer_settings(settings, env)
     assert config.actor_id == "actor" and config.timeout_seconds == 45
     assert config.first_byte_timeout_seconds == 10
-    assert config.routes[0].upstream_model == "served"
+    assert config.routes[0].upstream_model == "one"
     assert not config.routes[1].disable_thinking
 
 
@@ -102,7 +104,7 @@ def test_routes_and_limits_from_environment():
     "values",
     [
         {"GATEWAY_MODEL_ROUTES": "{}"},
-        {"GATEWAY_MODEL_ROUTES": '[{"name":"a","app":"b"},{"name":"a","app":"c"}]'},
+        {"GATEWAY_MODEL_ROUTES": '[{"name":"a","app":"b"},{"name":"a","app":"b"}]'},
         {"GATEWAY_MODEL_ROUTES": '[{"name":"a","app":"b","typo":true}]'},
         {"GATEWAY_MAX_ATTEMPTS": "0"},
         {"GATEWAY_APPROVED_ORCHESTRATORS": "https://user:private-secret@host"},

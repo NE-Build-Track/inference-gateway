@@ -66,7 +66,7 @@ def ending(reason="stop"):
 def scripted(chunks):
     return FakeEngine(
         streaming=True,
-        runners=[runner(APP)],
+        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
         replies={(APP, PATH): Reply(content_type="text/event-stream", chunks=tuple(chunks))},
     )
 
@@ -226,9 +226,7 @@ async def test_unknown_model_never_dispatches():
 
 async def test_named_tool_and_upstream_model_are_preserved():
     options = LivepeerSettings(
-        routes=(
-            ModelRoute(name="qwen", app=APP, upstream_model="served-model", disable_thinking=False),
-        )
+        routes=(ModelRoute(name="qwen", app=APP, upstream_model="qwen", disable_thinking=False),)
     )
     engine = scripted(tool_frames())
     request = replace(
@@ -239,7 +237,7 @@ async def test_named_tool_and_upstream_model_are_preserved():
     )
     await GenerationService(LivepeerBackend(engine, options)).complete(request)
     sent = engine.jobs.requests[0][1].payload
-    assert sent["model"] == "served-model"
+    assert sent["model"] == "qwen"
     assert sent["tool_choice"] == {"type": "function", "function": {"name": "weather"}}
     assert sent["temperature"] == 0.2
     assert "chat_template_kwargs" not in sent
@@ -336,7 +334,7 @@ async def test_real_engine_records_completion_or_abandonment(disconnect):
     )
     transport = ScriptedStreamTransport(opens=[StreamScript(events=events)])
     async with make_engine(
-        runners=[runner(APP)],
+        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
@@ -369,7 +367,7 @@ async def test_real_engine_records_completion_or_abandonment(disconnect):
 async def test_real_engine_timeout_preserves_paid_uncertainty():
     transport = ScriptedStreamTransport(opens=[StreamScript(events=[10.0])])
     async with make_engine(
-        runners=[runner(APP)],
+        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
@@ -392,7 +390,7 @@ async def test_real_engine_timeout_preserves_paid_uncertainty():
 async def test_engine_failures_map_to_safe_http_errors(protocol, kind, status):
     engine = FakeEngine(
         streaming=True,
-        runners=[runner(APP)],
+        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
         replies={
             (APP, PATH): Fails(kind=kind, message="upstream private secret", payment_sent=True)
         },
@@ -420,7 +418,10 @@ async def test_no_capacity_failover_is_owned_by_engine_only():
         ]
     )
     async with make_engine(
-        runners=[runner(APP, url="https://runner-a"), runner(APP, url="https://runner-b")],
+        runners=[
+            runner(APP, metadata='{"model_name":"qwen"}', url="https://runner-a"),
+            runner(APP, metadata='{"model_name":"qwen"}', url="https://runner-b"),
+        ],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
@@ -439,7 +440,7 @@ async def test_no_capacity_failover_is_owned_by_engine_only():
 async def test_default_sdk_retries_do_not_repeat_paid_failure(protocol, kind):
     engine = FakeEngine(
         streaming=True,
-        runners=[runner(APP)],
+        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
         replies={(APP, PATH): Fails(kind=kind, payment_sent=True)},
     )
     app = create_app(LivepeerBackend(engine, OPTIONS))

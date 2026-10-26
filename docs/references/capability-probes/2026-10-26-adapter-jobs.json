@@ -1,0 +1,656 @@
+{
+  "date": "2026-10-26",
+  "database": "extended-acceptance.db",
+  "jobs": [
+    {
+      "id": "191a6bba-f339-4ca1-a229-d07e21c8e824",
+      "operation_ref": "req_bb7b4a5fd81046aa88415059b08116cd",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:53:58.448592",
+      "completed_at": "2026-10-26 11:53:58.630963",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "a0637d57-3ab5-47ac-bfbb-6e69da3f000a",
+      "operation_ref": "req_8e9b9be9e8e9402ea9da13c675919078",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:53:58.659800",
+      "completed_at": "2026-10-26 11:54:00.294900",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "957d0e09-f98a-4294-893d-f61f15bc9670",
+      "operation_ref": "req_473edb1dbed3401f9a6e40e91ad34e8f",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:00.345354",
+      "completed_at": "2026-10-26 11:54:00.508528",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "c51e5c0a-c525-4d6a-b08f-6c0a90e832d7",
+      "operation_ref": "req_060a2afb57b44135979d200586e084a6",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:00.520159",
+      "completed_at": "2026-10-26 11:54:00.688367",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "a015c720-3f12-4229-acd2-cd120a60b785",
+      "operation_ref": "req_86d4bd06e40f4d238416a7baeefc3460",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:00.712318",
+      "completed_at": "2026-10-26 11:54:00.851587",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "f2b43c9f-5d81-401d-be60-7a3a6a948483",
+      "operation_ref": "req_0642b1f3e515463d8936228f0f1ecf6f",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:00.878401",
+      "completed_at": "2026-10-26 11:54:00.999291",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "a736595a-72b3-49c9-a60c-75998f98659c",
+      "operation_ref": "req_5fffd797b0834a7bbb361d086f355b5e",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:01.026258",
+      "completed_at": "2026-10-26 11:54:01.185700",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "346eadae-0597-4c97-abba-2dcde9ea4a10",
+      "operation_ref": "req_31c0ff7741cf4c67af3b0b4409cd9841",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:01.211023",
+      "completed_at": "2026-10-26 11:54:01.349227",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "3db08e48-cf7b-4ff5-a478-91640526f814",
+      "operation_ref": "req_b87fd30b4b8e4d52a5b1786838866f53",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:01.381991",
+      "completed_at": "2026-10-26 11:54:01.512676",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "6dc940d4-5474-4d71-b30c-37e788cc4d79",
+      "operation_ref": "req_9173bf8b78b7489bb78cb98414cf8ad2",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:01.530422",
+      "completed_at": "2026-10-26 11:54:01.662172",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "ccd7f70c-f117-4ade-ac04-d245e22e8c85",
+      "operation_ref": "req_34ecf2453b6c4e52ab95c4148c9b3437",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:01.690075",
+      "completed_at": "2026-10-26 11:54:01.811274",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "bcbd926a-ab1f-415f-a15e-b756abfc8539",
+      "operation_ref": "req_ab1de155772947eeae62bbea22718886",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:01.832969",
+      "completed_at": "2026-10-26 11:54:01.976827",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "16a30919-80da-47f0-bf22-dd2390ee3c4d",
+      "operation_ref": "req_648e6d081f114657968ffcddc9a73832",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:02.000231",
+      "completed_at": "2026-10-26 11:54:02.131216",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "055cd216-e852-481e-be95-b413ad610ba6",
+      "operation_ref": "req_4ffe8175a2d841b98c57e5a31e20aaa3",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:02.157481",
+      "completed_at": "2026-10-26 11:54:02.290405",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "fcb0f92f-08ff-43ff-9af4-2b3d27aa827f",
+      "operation_ref": "req_6fd1afafa869450aae85e0defcde7c7a",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:02.309523",
+      "completed_at": "2026-10-26 11:54:02.429325",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "42a4631c-c7f4-4372-8a4e-fbbf03fa5cf4",
+      "operation_ref": "req_39fa7e4c641c4f86b52c21c0f21971a2",
+      "state": "failed",
+      "failure_kind": "unreachable",
+      "created_at": "2026-10-26 11:54:02.454676",
+      "completed_at": "2026-10-26 11:54:02.569827",
+      "usage": {},
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 0,
+          "outcome": "unreachable",
+          "status_code": null
+        }
+      ]
+    },
+    {
+      "id": "5b1c1129-501e-4680-93c2-fda87b6f4f1d",
+      "operation_ref": "req_071a38461ee141ddac20f8a2d67454a0",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 11:58:40.855451",
+      "completed_at": "2026-10-26 11:58:42.565680",
+      "usage": {
+        "prompt_tokens": 18,
+        "completion_tokens": 33,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "5af73d5e-57bb-4d37-b7f8-e058539ff7cf",
+      "operation_ref": "req_25f283554b8046aeb74e846abd94f50b",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:00:49.997634",
+      "completed_at": "2026-10-26 12:00:51.734770",
+      "usage": {
+        "prompt_tokens": 18,
+        "completion_tokens": 33,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "7e7a94ad-dac9-417d-9bc6-d5b9515d67d1",
+      "operation_ref": "req_48b99bc9f87a446b928c991f4c7d9773",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:00:51.772669",
+      "completed_at": "2026-10-26 12:00:53.552417",
+      "usage": {
+        "prompt_tokens": 18,
+        "completion_tokens": 36,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "602c7154-8e0a-45d2-ad9a-d111f1b9b77b",
+      "operation_ref": "req_7636b2be2c04470db558e9cb3dda7e71",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:00:53.585737",
+      "completed_at": "2026-10-26 12:00:55.587266",
+      "usage": {
+        "prompt_tokens": 70,
+        "completion_tokens": 85,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "45a3e0f3-1bf6-4dbf-ac34-870d8b5f0e9e",
+      "operation_ref": "req_f5ae7f24105749f38eec2fde369eb65d",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:00:55.605074",
+      "completed_at": "2026-10-26 12:00:57.480528",
+      "usage": {
+        "prompt_tokens": 70,
+        "completion_tokens": 69,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "b4b95d11-9f4d-4699-9334-62bf037604a6",
+      "operation_ref": "req_f16a0981e1f64829bb70c500c0011c68",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:00:57.496047",
+      "completed_at": "2026-10-26 12:00:58.404863",
+      "usage": {
+        "prompt_tokens": 20,
+        "completion_tokens": 3,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "284d93a0-2e5f-4b21-ab94-a5d21886c983",
+      "operation_ref": "req_711be026f7ca4863806379f4493cea83",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:00:58.419037",
+      "completed_at": "2026-10-26 12:00:59.359817",
+      "usage": {
+        "prompt_tokens": 20,
+        "completion_tokens": 3,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "d3998fa2-2d8e-4ee0-a144-42a7db29a4cb",
+      "operation_ref": "req_e5e7b758a93646a3bd8e50f3cff57004",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:00:59.375967",
+      "completed_at": "2026-10-26 12:01:00.964926",
+      "usage": {
+        "prompt_tokens": 341,
+        "completion_tokens": 60,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "5fdb3985-0640-44ab-8349-6d3e35a75203",
+      "operation_ref": "req_df05acd608234704a8bb672f597b4f12",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:00.980514",
+      "completed_at": "2026-10-26 12:01:02.426165",
+      "usage": {
+        "prompt_tokens": 341,
+        "completion_tokens": 33,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "d31e58cb-59c6-4b04-a6b3-86c0afcdd135",
+      "operation_ref": "req_6668ed74379d4ed493820955d08a8a4f",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:02.461363",
+      "completed_at": "2026-10-26 12:01:03.944155",
+      "usage": {
+        "prompt_tokens": 18,
+        "completion_tokens": 36,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "108c1adf-d738-4433-bce7-469cdd807892",
+      "operation_ref": "req_bdef36fef420418e85400f8308f2aa15",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:03.972679",
+      "completed_at": "2026-10-26 12:01:05.438609",
+      "usage": {
+        "prompt_tokens": 18,
+        "completion_tokens": 34,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "bac97487-db9a-474d-b9f9-6aadd259ad28",
+      "operation_ref": "req_aa0185c6c30249eb86e4a29535d211c7",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:05.453602",
+      "completed_at": "2026-10-26 12:01:07.401961",
+      "usage": {
+        "prompt_tokens": 70,
+        "completion_tokens": 77,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "fb3f684e-1a89-42e4-ae56-d1219e604536",
+      "operation_ref": "req_1ae102f656ad430b8127c64ee3b8efa2",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:07.417615",
+      "completed_at": "2026-10-26 12:01:14.088699",
+      "usage": {
+        "prompt_tokens": 70,
+        "completion_tokens": 123,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "1d1aba9e-4d17-480f-9962-0c01f7d2cf5d",
+      "operation_ref": "req_da2f2a6f8e87414a856e4cc64f8dd273",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:14.102986",
+      "completed_at": "2026-10-26 12:01:15.075301",
+      "usage": {
+        "prompt_tokens": 20,
+        "completion_tokens": 3,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "950d0404-debf-487d-b962-3467340f42c3",
+      "operation_ref": "req_96275badeaee412fbe441d57e851bc59",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:15.090345",
+      "completed_at": "2026-10-26 12:01:16.136457",
+      "usage": {
+        "prompt_tokens": 20,
+        "completion_tokens": 3,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "ac02ad21-b4a1-4f53-a5a2-03f3376faa3c",
+      "operation_ref": "req_1d5f6cad1cc74969832dcc4fc1802afa",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:16.154673",
+      "completed_at": "2026-10-26 12:01:17.450382",
+      "usage": {
+        "prompt_tokens": 341,
+        "completion_tokens": 33,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "2489de68-6a94-436c-8517-cfc98de4f742",
+      "operation_ref": "req_747dd47d6875414e8300b742b3b6756e",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:01:17.467171",
+      "completed_at": "2026-10-26 12:01:20.212718",
+      "usage": {
+        "prompt_tokens": 341,
+        "completion_tokens": 18,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    },
+    {
+      "id": "2de7b9f0-b927-440d-9fa5-ea6520a2b096",
+      "operation_ref": "req_1ea54e233f344814a44c4b42fa2d3a85",
+      "state": "succeeded",
+      "failure_kind": null,
+      "created_at": "2026-10-26 12:03:13.749281",
+      "completed_at": "2026-10-26 12:03:15.328242",
+      "usage": {
+        "prompt_tokens": 341,
+        "completion_tokens": 33,
+        "cached_prompt_tokens": 0
+      },
+      "attempts": [
+        {
+          "number": 1,
+          "payment_sent": 1,
+          "outcome": "succeeded",
+          "status_code": 200
+        }
+      ]
+    }
+  ]
+}
