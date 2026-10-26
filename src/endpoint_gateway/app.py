@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
-from contextlib import aclosing, asynccontextmanager
+from contextlib import aclosing, asynccontextmanager, nullcontext, suppress
 from dataclasses import replace
 from typing import Any
 from uuid import uuid4
@@ -15,7 +15,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 
+from endpoint_gateway.accounting import MeteredBackend, reconciliation_loop
 from endpoint_gateway.adapters.http_stream import ManagedStreamingResponse
+from endpoint_gateway.adapters.ledger import SQLiteLedger
+from endpoint_gateway.adapters.reports import attach_reports
 from endpoint_gateway.adapters.responses import (
     Protocol,
     ResponseIdentity,
@@ -26,7 +29,9 @@ from endpoint_gateway.adapters.responses import (
 )
 from endpoint_gateway.adapters.schemas import AnthropicRequest, OpenAIRequest
 from endpoint_gateway.adapters.translate import anthropic_request, openai_request
+from endpoint_gateway.backends.accounting import FakeAccounting, UnavailableAccounting
 from endpoint_gateway.config import LivepeerSettings, Settings
+from endpoint_gateway.core.accounting import AccountingSource
 from endpoint_gateway.core.backend import Backend, BackendError
 from endpoint_gateway.core.models import Event
 from endpoint_gateway.core.service import GenerationService
@@ -80,6 +85,7 @@ def failure(protocol: Protocol, message: str, status: int, request_id: str) -> J
     kinds = {
         400: "invalid_request_error",
         401: "authentication_error",
+        403: "permission_error",
         409: "invalid_request_error",
         499: "api_error",
         502: "api_error",
@@ -116,14 +122,20 @@ def create_app(
     *,
     livepeer_settings: LivepeerSettings | None = None,
     engine_factory: EngineFactory | None = None,
+    accounting_source: AccountingSource | None = None,
 ) -> FastAPI:
     """Borrow injected backends; own configured Builder Core through ASGI lifespan."""
     config = settings if settings is not None else load_settings()
     owns_engine = backend is None and config.backend == "livepeer"
-    service = (
-        None
-        if owns_engine
-        else GenerationService(backend if backend is not None else FakeBackend())
+    ledger = SQLiteLedger(config.accounting_db) if config.accounting_db else None
+    selected_backend = backend if backend is not None else FakeBackend()
+
+    def compose(selected: Backend) -> GenerationService:
+        return GenerationService(MeteredBackend(selected, ledger) if ledger else selected)
+
+    service = None if owns_engine else compose(selected_backend)
+    source: AccountingSource = accounting_source or (
+        FakeAccounting() if backend is None and not owns_engine else UnavailableAccounting()
     )
 
     def service_ready() -> bool:
@@ -133,22 +145,57 @@ def create_app(
     logger = logging.getLogger("endpoint_gateway")
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        nonlocal service, ready
+    async def resources(app: FastAPI) -> AsyncIterator[None]:
+        nonlocal service, ready, source
+        if ledger:
+            ledger.recover()
+
+        @asynccontextmanager
+        async def accounting_worker() -> AsyncIterator[None]:
+            worker = (
+                asyncio.create_task(reconciliation_loop(ledger, config.backend, source))
+                if ledger
+                else None
+            )
+            try:
+                yield
+            finally:
+                if worker:
+                    worker.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await worker
+
         if owns_engine:
             options = livepeer_settings or load_livepeer_settings(config)
-            async with livepeer_backend(options, engine_factory or build_engine) as live:
-                service = GenerationService(live)
+            async with livepeer_backend(
+                options,
+                engine_factory or build_engine,
+                ledger.record_usage if ledger else None,
+                ledger.bind_job if ledger else None,
+            ) as live:
+                service = compose(live)
+                source = accounting_source or live.accounting
                 ready = live.ready
                 try:
-                    yield
+                    async with accounting_worker():
+                        yield
                 finally:
                     service = None
                     ready = service_ready
         else:
-            yield
+            async with accounting_worker():
+                yield
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        with ledger.server_lock() if ledger else nullcontext():
+            async with resources(app):
+                yield
 
     app = FastAPI(title="Agent-compatible endpoint gateway", version="0.1.0", lifespan=lifespan)
+
+    if ledger:
+        attach_reports(app, ledger)
 
     @app.get("/readyz")
     async def readiness() -> JSONResponse:
@@ -170,6 +217,11 @@ def create_app(
             if protocol == "openai"
             else request.headers.get("x-api-key", "")
         )
+        principal = ledger.authenticate(key) if ledger else None
+        if ledger and principal is None:
+            return failure(protocol, "Invalid API key", 401, request_id)
+        if principal and not principal.permits("inference"):
+            return failure(protocol, "Insufficient inference permission", 403, request_id)
         if config.api_key is not None and not hmac.compare_digest(
             key.encode(), config.api_key.encode()
         ):
@@ -196,6 +248,11 @@ def create_app(
         command = replace(command, request_id=request_id)
         if service is None:
             return failure(protocol, "Generation backend unavailable", 503, request_id)
+        if ledger and principal:
+            try:
+                ledger.begin(request_id, principal, command.model, config.backend, protocol)
+            except ValueError:
+                return failure(protocol, "Model has no configured retail price", 400, request_id)
         identity = ResponseIdentity(
             ("chatcmpl_" if protocol == "openai" else "msg_") + uuid4().hex,
             command.model,

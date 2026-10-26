@@ -13,6 +13,7 @@ from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSetting
 from endpoint_gateway.backends.discovery import FilteredDiscovery, origin
 from endpoint_gateway.backends.livepeer import LivepeerBackend
 from endpoint_gateway.config import LivepeerSettings, ModelRoute, Settings
+from endpoint_gateway.core.models import Finished
 
 EngineFactory = Callable[[LivepeerSettings], Awaitable[ActorApi]]
 
@@ -22,6 +23,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     backend = values.get("GATEWAY_BACKEND", "fake")
     return Settings(
         api_key=values.get("GATEWAY_API_KEY"),
+        accounting_db=values.get("GATEWAY_ACCOUNTING_DB") or None,
         timeout_seconds=float(values.get("GATEWAY_TIMEOUT_SECONDS", "300")),
         backend=cast(Literal["fake", "livepeer"], backend),
     )
@@ -115,11 +117,14 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
 
 @asynccontextmanager
 async def livepeer_backend(
-    settings: LivepeerSettings, factory: EngineFactory
+    settings: LivepeerSettings,
+    factory: EngineFactory,
+    usage_recorder: Callable[[str, Finished], None] | None = None,
+    job_recorder: Callable[[str, str], None] | None = None,
 ) -> AsyncIterator[LivepeerBackend]:
     engine = await factory(settings)
     try:
-        backend = LivepeerBackend(engine, settings)
+        backend = LivepeerBackend(engine, settings, usage_recorder, job_recorder)
         await engine.start()
         yield backend
     finally:

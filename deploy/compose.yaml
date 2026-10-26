@@ -57,6 +57,7 @@ services:
       LPB_HTTP_HOST: 127.0.0.1
       # The embedded engine owns discovery, paid jobs, and its persistent records.
       GATEWAY_BACKEND: ${GATEWAY_BACKEND:-livepeer}
+      GATEWAY_ACCOUNTING_DB: ${GATEWAY_ACCOUNTING_DB:-/data/gateway.db}
       GATEWAY_APPLICATION_ID: ${GATEWAY_APPLICATION_ID:-endpoint-gateway}
       GATEWAY_ACTOR_ID: ${GATEWAY_ACTOR_ID:-shared-application}
       GATEWAY_CHAT_APP: ${GATEWAY_CHAT_APP:-${CHATLPT_CHAT_APP:-blueclaw/chat/qwen3.8-27b}}

@@ -9,3 +9,5 @@ Use a short task note for small edits.
 - [Technical debt](tech-debt-tracker.md): work left outside the accepted initial slice.
 
 - [Livepeer backend](completed/livepeer-backend.md): embedded engine integration and verification record.
+
+- [Multi-user accounting](completed/multi-user-accounting.md): implementation and acceptance.

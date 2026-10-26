@@ -40,3 +40,5 @@ The repository is the source of truth; record durable decisions here.
 - `make check`: run the same checks as CI.
 - `make format`: apply lint fixes and formatting.
 - `uv build`: build wheel and source distribution.
+
+- [Users and accounting](docs/design-docs/accounting.md): keys, retail/wholesale and reporting.

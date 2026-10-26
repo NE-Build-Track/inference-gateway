@@ -80,8 +80,8 @@ The gateway never automatically retries a failed or partial generation.
 
 Images/audio, reasoning blocks, citations, structured output, provider-hosted tools,
 parallel interleaved tool blocks, sampling controls beyond temperature, model discovery,
-Responses, embeddings, stored conversations, persistence, and billing are outside this
-slice. The server's generated OpenAPI page lists routes but does not yet describe the
+Responses, embeddings, stored conversations, and customer payment collection are outside
+this slice. Registry mode provides persistent usage and retail/wholesale accounting. The server's generated OpenAPI page lists routes but does not yet describe the
 manually parsed request bodies; this document and request models define the contract.
 
 ## Livepeer backend
@@ -96,3 +96,6 @@ reasoning content, or text after tools fail explicitly. No token counts are fabr
 Engine capacity/payment failures map to 503, operation conflicts to 409, and deadlines to
 504 before headers. Public errors omit upstream details. See the [Livepeer contract](../design-docs/livepeer.md)
 for cancellation, tool-result translation, request correlation, and engine-owned accounting.
+
+See [accounting and reporting](../design-docs/accounting.md) for API-key permissions,
+provider-shaped reporting endpoints and their supported subsets.

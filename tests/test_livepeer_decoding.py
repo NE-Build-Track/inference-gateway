@@ -100,3 +100,37 @@ def test_normalization_does_not_accept_truncated_tools(reason, arguments):
     decoder.feed(call(0, arguments, id="call_1", name="weather"))
     with pytest.raises(BackendError):
         end(decoder, reason)
+
+
+def test_cache_usage_is_preserved_and_invalid_totals_rejected():
+    decoder = CompletionDecoder(1000)
+    decoder.feed(chunk({"content": "hello"}, "stop"))
+    decoder.feed(
+        json.dumps(
+            {
+                "choices": [],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 2,
+                    "prompt_tokens_details": {"cached_tokens": 8},
+                },
+            }
+        )
+    )
+    assert decoder.feed("[DONE]")[-1] == Finished("stop", 10, 2, 8)
+    decoder = CompletionDecoder(1000)
+    decoder.feed(chunk({"content": "hello"}, "stop"))
+    decoder.feed(
+        json.dumps(
+            {
+                "choices": [],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 2,
+                    "prompt_tokens_details": {"cached_tokens": 11},
+                },
+            }
+        )
+    )
+    with pytest.raises(BackendError):
+        decoder.feed("[DONE]")

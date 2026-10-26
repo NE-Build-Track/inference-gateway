@@ -27,7 +27,7 @@ process per database and keep the database volume across restarts.
 | --- | --- | --- |
 | `GATEWAY_BACKEND` | `fake` locally; `livepeer` in Compose | Explicit backend selection; no silent fallback |
 | `GATEWAY_APPLICATION_ID` | `endpoint-gateway` | Server-controlled engine application identity |
-| `GATEWAY_ACTOR_ID` | `shared-application` | One server-controlled actor for this initial shared-key gateway |
+| `GATEWAY_ACTOR_ID` | `shared-application` | One server-controlled backend actor; gateway users are attributed in its own ledger |
 | `GATEWAY_MODEL_NAME` | `qwen3.8-27b` | Model name clients send |
 | `GATEWAY_CHAT_APP` | `blueclaw/chat/qwen3.8-27b` | Runner app selected by discovery |
 | `GATEWAY_UPSTREAM_MODEL` | Omitted | Optional model name sent in the runner payload |
@@ -101,11 +101,11 @@ or partial job. Pre-header errors map to 400 for unknown models, 409 for operati
 failures. After headers commit, an error frame ends the response without a success terminator.
 Underlying messages and response bodies are not copied into public errors.
 
-After completion, the gateway reports prompt and completion token counts to the engine once.
-A report failure preserves the completed reply and emits a correlated warning with quantities
-for operator reconciliation; automatic durable report retry is deferred. Network cost remains
-in Builder Core, can arrive later, and is never substituted for token usage or copied into a
-new gateway ledger. Retail pricing and billing are outside this integration.
+After completion, the gateway reports prompt, cached-input and completion counts to the engine.
+A report failure preserves the completed reply and emits a correlated warning. Registry mode
+persists measured usage and retries accounting reports durably. Network costs remain authoritative
+in Builder Core; the gateway keeps dated reporting projections separately from its retail ledger.
+See [accounting](accounting.md) for the distinct retail and wholesale contracts.
 
 ## Verification
 
@@ -124,3 +124,7 @@ Request IDs provide correlation, not cross-request idempotency or result replay.
 Live runner compatibility: a completed tool call may arrive with `finish_reason: stop`.
 After validating its identity and JSON-object arguments, the adapter maps it to the core
 `tool_calls` outcome. A `length` finish or malformed arguments still fails validation.
+
+Registry mode persists measured usage before settlement/reporting awaits and retries failed
+accounting reports through the [accounting workflow](accounting.md). It still uses one upstream
+application allocation. No accounting retry dispatches a new job.

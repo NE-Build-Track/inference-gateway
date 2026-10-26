@@ -58,7 +58,7 @@ def frame(delta=None, finish=None, usage=None):
 def ending(reason="stop"):
     return (
         frame({}, reason),
-        frame(usage={"prompt_tokens": 7, "completion_tokens": 3}),
+        frame(usage={"prompt_tokens": 7, "completion_tokens": 3, "cached_prompt_tokens": 0}),
         b"data: [DONE]\r\n\r\n",
     )
 
@@ -126,7 +126,11 @@ async def test_livepeer_sdk_text(protocol, streaming):
     assert sent.app == APP and sent.operation_ref.startswith("req_")
     assert sent.payload["stream_options"] == {"include_usage": True}
     assert sent.payload["chat_template_kwargs"] == {"enable_thinking": False}
-    assert engine.jobs.usage_reports[0][1] == {"prompt_tokens": 7, "completion_tokens": 3}
+    assert engine.jobs.usage_reports[0][1] == {
+        "prompt_tokens": 7,
+        "completion_tokens": 3,
+        "cached_prompt_tokens": 0,
+    }
     job = (await engine.jobs.list_jobs(actor))[0]
     assert job.state == "succeeded"
 
@@ -352,7 +356,11 @@ async def test_real_engine_records_completion_or_abandonment(disconnect):
         assert job.attempts[-1].outcome == ("abandoned" if disconnect else "succeeded")
         assert job.attempts[-1].allocation_id == "fixture-allocation"
         if not disconnect:
-            assert job.usage.quantities == {"prompt_tokens": 7, "completion_tokens": 3}
+            assert job.usage.quantities == {
+                "prompt_tokens": 7,
+                "completion_tokens": 3,
+                "cached_prompt_tokens": 0,
+            }
         assert transport.streams[0].closed
         assert engine.health().running_jobs == 0
         assert len(transport.calls) == 1

@@ -70,9 +70,8 @@ port 8937 and management port 8081. It creates neither payment service. Do not e
 The source stack must already be running; readiness stays unavailable if discovery is stale
 or a configured app has no candidates. Readiness does not guarantee sufficient allowance.
 
-The listener defaults to `127.0.0.1:8000`; change `GATEWAY_PORT` if needed. Set
-`GATEWAY_API_KEY` for shared-key authentication. This is one application actor/allocation;
-per-user identity, tenant isolation, and retail billing are not implemented.
+The listener defaults to `127.0.0.1:8000`; change `GATEWAY_PORT` if needed. Registry mode requires CLI-issued keys; see multi-user setup below. Users have separate
+identity and retail accounting while sharing one upstream application allocation.
 
 ## Run offline
 
@@ -107,8 +106,8 @@ implementation. Starting two signers with the copied payer is not a migration st
 
 The `gateway-data` volume stores the embedded engine database. Engine migrations run on
 startup; retain and back up this volume. Do not share it between gateway processes. Shutdown
-lets Builder Core finalize its active jobs before closing its store. The gateway itself does
-not save conversation history, replies, or a duplicate cost ledger.
+lets Builder Core finalize its active jobs before closing its store. The gateway stores its own identity and retail ledger in `gateway.db`, plus dated wholesale
+projections. It does not save conversation history or replies.
 
 `/healthz` checks process liveness. `/readyz` checks configured backend readiness and is used
 by Compose. Offline tests and builds do not verify network availability, the allocation balance,
@@ -139,3 +138,89 @@ A failed tool-call case skips its dependent follow-up. Error output includes the
 class and HTTP status, without response bodies or credentials. These paid tests are opt-in:
 `make check` does not run them. The assertions target the configured chat model's behavior;
 a different model must still support forced tools and disabling further calls on follow-up.
+
+## Multi-user setup and key administration
+
+Compose now enables registry authentication by default with
+`GATEWAY_ACCOUNTING_DB=/data/gateway.db`. Keep `GATEWAY_API_KEY` unset. Starting the gateway
+creates/migrates the database but issues no keys and sets no prices. A running but empty
+registry rejects inference until an operator provisions access and pricing.
+
+Use the CLI inside the gateway container so it operates on the same volume:
+
+```sh
+docker compose -f deploy/compose.yaml exec gateway gateway users create alice
+# Substitute the returned user_id below. The secret is printed once.
+docker compose -f deploy/compose.yaml exec gateway gateway keys create USER_ID \
+  --name development --scopes inference,reports
+
+docker compose -f deploy/compose.yaml exec gateway gateway users create operator
+docker compose -f deploy/compose.yaml exec gateway gateway keys create OPERATOR_ID \
+  --name reporting-admin --scopes admin
+```
+
+Retain secrets in your credential store. The gateway only retains their hashes. Do not put
+keys in command-line URLs or commit them. Local development uses the same CLI with
+`uv run gateway --db PATH ...` or `GATEWAY_ACCOUNTING_DB=PATH uv run gateway ...`.
+
+Configure rates before inference. These example rates reproduce ChatLPT's checked-in
+2026-10-19 Qwen configuration; they are our retail configuration, not a live price quote:
+
+```sh
+docker compose -f deploy/compose.yaml exec gateway gateway prices set \
+  --model qwen3.8-27b --version chatlpt-2026-10-19 --currency usd \
+  --input-per-million 0.5 --cached-input-per-million 0.1 --output-per-million 3
+```
+
+Use a new version identifier when changing rates. CLI operations include:
+
+```text
+gateway users list
+gateway users disable USER_ID
+gateway keys list --user-id USER_ID
+gateway keys revoke KEY_ID
+gateway keys rotate KEY_ID
+gateway keys create USER_ID --name expiring --scopes inference --expires UNIX_SECONDS
+gateway prices list
+gateway adjust --request-id REQUEST_ID --amount -0.001 --reason credit --operation-id UNIQUE_ID
+gateway accounting retry REQUEST_ID
+```
+
+`accounting retry` clears the reconciliation failure counter and makes the existing request
+due again; it cannot run inference. Key rotation revokes the old key immediately. CLI
+administration requires filesystem access to the database and has no separate login.
+
+Read [Users, usage and accounting](../docs/design-docs/accounting.md) for billing rules,
+reporting endpoints, scopes, recovery and backup expectations. Registry-free development
+requires explicitly setting `GATEWAY_ACCOUNTING_DB` to an empty value in the container;
+normal local Python startup still leaves it unset unless configured.
+
+## Black-box accounting acceptance
+
+`make test-accounting-live` calls only public HTTP endpoints. Supply these environment
+variables from your credential store; do not paste secrets into shell history:
+
+```text
+GATEWAY_TEST_URL              gateway base URL
+GATEWAY_MODEL_NAME            configured public model
+GATEWAY_TEST_KEY_A            user A: inference,reports
+GATEWAY_TEST_KEY_A2           another key belonging to user A: inference,reports
+GATEWAY_TEST_KEY_B            user B: inference,reports
+GATEWAY_TEST_KEY_ADMIN        administrative reporting key
+GATEWAY_TEST_INPUT_RATE       expected input rate per million
+GATEWAY_TEST_OUTPUT_RATE      expected output rate per million
+GATEWAY_TEST_CACHED_RATE      expected cached-input rate per million
+GATEWAY_TEST_RECONCILE_TIMEOUT optional seconds; default 180
+GATEWAY_TEST_EXPECT_PAID       set to 1 to require positive observed wholesale costs
+```
+
+Use dedicated test users/keys and a USD price version. The suite sends 14 inference requests,
+validates both protocols' text/tools/streaming, compares response usage with request records,
+checks retail arithmetic and provider report totals, enforces cross-user and wholesale
+isolation, and waits for wholesale observations. Live calls consume the configured allocation.
+It verifies backend-reported cost evidence, not final ticket redemption or the full balance
+of an allocation shared with other applications.
+
+The ordinary `make check` suite also runs this HTTP-only acceptance script against a separate
+fake-backed process. Its harness provisions through the CLI, tests revocation/rotation,
+changes prices, and restarts the process to verify persistence. It makes no paid calls.

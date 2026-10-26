@@ -16,3 +16,7 @@ format:
 .PHONY: test-live
 test-live:
 	uv run python scripts/test-live-provider.py
+
+.PHONY: test-accounting-live
+test-accounting-live:
+	uv run python scripts/test-accounting-http.py

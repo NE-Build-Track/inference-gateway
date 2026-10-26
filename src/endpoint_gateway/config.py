@@ -12,10 +12,13 @@ class Settings:
     api_key: str | None = field(default=None, repr=False)
     timeout_seconds: float = 300
     backend: Literal["fake", "livepeer"] = "fake"
+    accounting_db: str | None = None
 
     def __post_init__(self) -> None:
         if not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive and finite")
+        if self.accounting_db and self.api_key:
+            raise ValueError("Registry mode cannot also use a legacy shared key")
         if self.api_key == "":
             raise ValueError("api_key cannot be empty")
         if self.backend not in {"fake", "livepeer"}:

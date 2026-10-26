@@ -15,3 +15,5 @@ and tests together when behavior changes. Verification status is in [Quality](QU
 
 - [Deployment scaffold](../deploy/README.md): copied ChatLPT configuration and activation constraints.
 - [Livepeer backend](design-docs/livepeer.md): model routing, engine ownership, and paid stream semantics.
+
+- [Users and accounting](design-docs/accounting.md): keys, retail/wholesale and reporting.

@@ -84,3 +84,8 @@ With Livepeer selected, clients use `qwen3.8-27b` by default. Other names must b
 unknown names fail before dispatch. Both public API formats route to the same Livepeer model.
 No Claude/OpenAI provider account is required. Payment services are never started implicitly
 by the gateway-only Compose command.
+
+Set `GATEWAY_ACCOUNTING_DB` to enable multiple users, CLI-issued API keys, versioned retail
+pricing and usage/cost reporting. Compose enables this mode by default. See the
+[accounting contract](docs/design-docs/accounting.md) and
+[deployment guide](deploy/README.md) for provisioning and repeatable black-box checks.

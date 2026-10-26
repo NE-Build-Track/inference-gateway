@@ -16,3 +16,5 @@ deploy/config/pinned-certs
 **/*.sqlite
 **/*.sqlite-*
 deploy/config/runner-trust
+
+**/*.db.lock

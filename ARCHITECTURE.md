@@ -12,12 +12,17 @@ Anthropic clients â”˜                                                          â
 
 The generation context is the project's core capability. Protocol translation is
 supporting code. HTTP serving is generic infrastructure. These are modules in one
-application; there is no requirement for separate services or persistent aggregates.
+application. Identity and retail accounting have durable state in a separate gateway database.
 
 | Module | Responsibility | Allowed dependencies |
 | --- | --- | --- |
 | `core/models.py` | Messages, tools, generation commands, output events | Standard library |
 | `core/backend.py` | Replaceable backend port | Core models |
+| `core/accounting.py` | Principal, immutable prices, wholesale observation port | Core, standard library |
+| `accounting.py` | Meter validated generation and reconcile accounting | Core, ledger adapter |
+| `adapters/ledger.py` | SQLite identity, retail ledger and dated wholesale projections | Core, standard library |
+| `adapters/reports.py` | Authorized provider and gateway report formats | Core, ledger adapter, FastAPI |
+| `cli.py` | Local user/key/price/adjustment administration | Core, ledger adapter |
 | `core/service.py` | Enforce event order; assemble nonstream responses | Core only |
 | `adapters/schemas.py` | Supported external request shapes | Pydantic, core JSON type |
 | `adapters/translate.py` | Convert requests and validate tool-result references | Schemas, core |
@@ -30,13 +35,16 @@ application; there is no requirement for separate services or persistent aggrega
 | `__main__.py` | Process entry point and logging setup | Uvicorn |
 
 Dependency tests enforce the core boundary and prevent adapters from selecting the
-backend. Constructors do no I/O. The application uses explicit constructor calls;
+backend. The composition root opens the ledger and owns backend/worker lifetimes.
+Domain constructors do no I/O. The application uses explicit constructor calls;
 a DI container would add a dependency without simplifying this graph.
 
 One ordered event stream feeds both response modes. Streaming encodes events as they
 arrive; nonstreaming accumulates them into a completion. Events are transient output
 fragments, not persisted domain events. Request and response IDs provide correlation,
-not durable deduplication. The gateway adds no retry, replay, cache, database, or message broker. In Livepeer mode,
+not durable deduplication. Registry mode persists request attribution, measured usage and retail charges. Its
+reconciliation worker retries accounting reads/writes, never generation. There is no
+response replay cache or message broker. In Livepeer mode,
 Builder Core owns its durable job/payment/cost records and eligible prepayment failover.
 Gateway request IDs become engine operation references for correlation. Client disconnects
 stop reading and preserve the engine's outcome; no application reply is saved.
@@ -50,3 +58,5 @@ See [decisions](docs/design-docs/decisions.md), [backend ownership](docs/design-
 and the [compatibility contract](docs/product-specs/compatibility.md).
 
 See [the Livepeer design](docs/design-docs/livepeer.md) for paid stream lifecycle and bounded tool buffering.
+
+See [accounting](docs/design-docs/accounting.md) for identity, price versions, reporting and recovery.

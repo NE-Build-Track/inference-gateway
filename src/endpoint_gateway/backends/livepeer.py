@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from uuid import uuid4
 
 import anyio
@@ -20,6 +20,7 @@ from livepeer_builder import (
     ProviderUnavailable,
 )
 
+from endpoint_gateway.backends.livepeer_accounting import LivepeerAccounting
 from endpoint_gateway.backends.livepeer_request import runner_payload
 from endpoint_gateway.backends.openai_events import CompletionDecoder
 from endpoint_gateway.backends.sse import SSEDecoder
@@ -35,7 +36,15 @@ from endpoint_gateway.core.models import Event, Finished, Generate
 
 
 class LivepeerBackend:
-    def __init__(self, engine: ActorApi, settings: LivepeerSettings) -> None:
+    def __init__(
+        self,
+        engine: ActorApi,
+        settings: LivepeerSettings,
+        usage_recorder: Callable[[str, Finished], None] | None = None,
+        job_recorder: Callable[[str, str], None] | None = None,
+    ) -> None:
+        self._usage_recorder = usage_recorder
+        self._job_recorder = job_recorder
         streaming = engine.jobs.streaming
         if streaming is None:
             raise ValueError("Builder Core must provide streaming capability")
@@ -48,6 +57,7 @@ class LivepeerBackend:
             application_id=settings.application_id,
             permissions=frozenset({"discover", "jobs.run", "jobs.read", "costs.read"}),
         )
+        self.accounting = LivepeerAccounting(engine, self._actor)
         self._logger = logging.getLogger("endpoint_gateway.livepeer")
 
     def ready(self) -> bool:
@@ -90,6 +100,8 @@ class LivepeerBackend:
             )
             iterator = stream.__aiter__()
             try:
+                if self._job_recorder:
+                    self._job_recorder(operation_ref, str(stream.job.id))
                 if stream.status_code != 200 or not stream.content_type.startswith(
                     "text/event-stream"
                 ):
@@ -104,8 +116,11 @@ class LivepeerBackend:
                     if decoder.done:
                         sse.finish()
                         # A valid model terminal marker, not a client disconnect, ends delivery.
-                        await stream.complete()
                         finish = next(e for e in output if isinstance(e, Finished))
+                        # Persist measured usage before any cancellable settlement/reporting await.
+                        if self._usage_recorder:
+                            self._usage_recorder(operation_ref, finish)
+                        await stream.complete()
                         try:
                             await asyncio.wait_for(
                                 self._engine.jobs.report_usage(
@@ -114,6 +129,7 @@ class LivepeerBackend:
                                     {
                                         "prompt_tokens": finish.input_tokens,
                                         "completion_tokens": finish.output_tokens,
+                                        "cached_prompt_tokens": finish.cached_input_tokens,
                                     },
                                 ),
                                 timeout=5,

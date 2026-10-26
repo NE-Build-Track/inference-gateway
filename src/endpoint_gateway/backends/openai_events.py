@@ -44,9 +44,14 @@ class Choice(Wire):
     finish_reason: Literal["stop", "length", "tool_calls"] | None = None
 
 
+class PromptDetails(Wire):
+    cached_tokens: int = Field(default=0, ge=0)
+
+
 class Usage(Wire):
     prompt_tokens: int = Field(ge=0)
     completion_tokens: int = Field(ge=0)
+    prompt_tokens_details: PromptDetails | None = None
 
 
 class Chunk(Wire):
@@ -183,6 +188,15 @@ class CompletionDecoder:
         if not self._tools and not self._text_open:
             out.extend([BlockStart(0), Delta(0, ""), BlockEnd(0)])
         reason = "tool_calls" if self._tools else self._finish
-        out.append(Finished(reason, self._usage.prompt_tokens, self._usage.completion_tokens))
+        cached = (
+            self._usage.prompt_tokens_details.cached_tokens
+            if self._usage.prompt_tokens_details
+            else 0
+        )
+        if cached > self._usage.prompt_tokens:
+            raise BackendError("Invalid cached token count")
+        out.append(
+            Finished(reason, self._usage.prompt_tokens, self._usage.completion_tokens, cached)
+        )
         self.done = True
         return out

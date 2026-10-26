@@ -27,11 +27,24 @@ class ResponseIdentity:
 
 def usage(finish: Finished, protocol: Protocol) -> Payload:
     if protocol == "anthropic":
-        return {"input_tokens": finish.input_tokens, "output_tokens": finish.output_tokens}
+        return {
+            "input_tokens": finish.input_tokens - finish.cached_input_tokens,
+            "output_tokens": finish.output_tokens,
+            **(
+                {"cache_read_input_tokens": finish.cached_input_tokens}
+                if finish.cached_input_tokens
+                else {}
+            ),
+        }
     return {
         "prompt_tokens": finish.input_tokens,
         "completion_tokens": finish.output_tokens,
         "total_tokens": finish.input_tokens + finish.output_tokens,
+        **(
+            {"prompt_tokens_details": {"cached_tokens": finish.cached_input_tokens}}
+            if finish.cached_input_tokens
+            else {}
+        ),
     }
 
 

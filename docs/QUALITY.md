@@ -37,3 +37,17 @@ The first live run exposed a runner returning `stop` for complete forced tool ca
 adapter now normalizes that outcome after validating the call; regression tests retain
 rejection of truncated or malformed calls. The final live run passed after rebuilding the
 image. Availability and model behavior can change; this is a dated acceptance result.
+
+Multi-user accounting verification: 2026-10-26. The expanded offline suite passed 129 tests,
+including CLI-driven HTTP black-box checks against a separate process, user/key isolation,
+rotation and expiry, immutable price versions, exact cached-input pricing, currency grouping,
+append-only adjustments, concurrent duplicate writes, migration and restart recovery.
+Strict source type checks, formatting, lint and documentation checks passed. Package and
+container builds succeeded.
+
+A live HTTP-only run made 14 requests through the registry-enabled gateway: both protocols'
+text, tool calls and follow-ups in JSON and SSE, plus a second key and a second user. Response
+usage matched request records and provider reports; retail arithmetic matched the configured
+ChatLPT price version. Wholesale observations resolved with job correlation. This tests
+backend cost evidence, not ticket redemption settlement or the entire shared allocation.
+The test uses only public HTTP; key and price provisioning uses the CLI.
