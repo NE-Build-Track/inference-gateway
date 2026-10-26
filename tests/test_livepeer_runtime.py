@@ -137,3 +137,30 @@ async def test_discovery_filters_app_and_origin_without_owning_source():
     source = FilteredDiscovery(Source(), frozenset({"yes"}), ("https://orch.example:443",))
     found = await source.fetch()
     assert len(found) == 1 and found[0].orchestrator_url == "https://orch.example"
+
+
+def full_payment_environment(monkeypatch, tmp_path) -> None:
+    for name, value in {
+        "LPB_DATABASE_URL": f"sqlite+aiosqlite:///{tmp_path}/engine.db",
+        "LPB_ALLOCATION_MODE": "per_application",
+        "LPB_SIGNER_URL": "http://signer.test:8937",
+        "LPB_BATTERIES_URL": "http://batteries.test:8081",
+        "LPB_BATTERIES_TOKEN": "token",
+        "LPB_SHARED_PAYMENT_KEY": "lpg_private",
+        "LPB_SHARED_ALLOCATION_ID": "alloc_1",
+        "LPB_SECRET_KEY": "Dt3m1VSNbbL7ZkdLCw3x3OoZsKvZo6tyAwC4D0aqyqA=",
+        "LPB_LOG_JSON": "false",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+
+async def test_the_engine_needs_a_discovery_url(monkeypatch, tmp_path):
+    # builder-core D43: runners come from the discovery service, never the signer
+    full_payment_environment(monkeypatch, tmp_path)
+    monkeypatch.delenv("LPB_DISCOVERY_URL", raising=False)
+    with pytest.raises(ValueError) as exc:
+        await build_engine(LivepeerSettings())
+    assert "lpg_private" not in str(exc.value)
+    monkeypatch.setenv("LPB_DISCOVERY_URL", "http://discovery.test:8939/discovery")
+    engine = await build_engine(LivepeerSettings())
+    await engine.stop()

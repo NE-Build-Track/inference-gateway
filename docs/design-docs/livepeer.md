@@ -15,8 +15,9 @@ loads settings at startup, creates the engine, validates streaming capability, s
 it, and closes it through FastAPI lifespan. Startup failure also closes acquired resources.
 An explicitly injected backend is borrowed; its creator remains responsible for its engine.
 
-The deployed engine requires `LPB_ALLOCATION_MODE=per_application`, `LPB_SIGNER_URL`,
-`LPB_BATTERIES_URL`, `LPB_BATTERIES_TOKEN`, `LPB_SHARED_PAYMENT_KEY`,
+The deployed engine requires `LPB_ALLOCATION_MODE=per_application`, `LPB_SIGNER_URL` (payments only),
+`LPB_DISCOVERY_URL` (runners, from builder-core's discovery service; the signer is not a discovery
+source, builder-core D43), `LPB_BATTERIES_URL`, `LPB_BATTERIES_TOKEN`, `LPB_SHARED_PAYMENT_KEY`,
 `LPB_SHARED_ALLOCATION_ID`, and `LPB_SECRET_KEY`. Settings errors omit secret values.
 The engine database must be durable; in-memory database URLs are rejected by the live
 composition root. Engine initialization applies its migrations by default. Run one engine

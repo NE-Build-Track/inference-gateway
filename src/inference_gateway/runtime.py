@@ -87,7 +87,8 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
         if engine_settings.allocation_mode != "per_application":
             raise ValueError("Shared application allocation required")
         required = (
-            engine_settings.signer_url,
+            engine_settings.signer_url,  # pays; it is not a discovery source (builder-core D43)
+            engine_settings.discovery_url,  # runners: builder-core's discovery service
             engine_settings.batteries_url,
             engine_settings.batteries_token,
             engine_settings.shared_payment_key,
@@ -95,7 +96,7 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
             engine_settings.secret_key,
         )
         if not all(required):
-            raise ValueError("Missing payment configuration")
+            raise ValueError("Missing payment or discovery configuration")
     except ValueError:
         # Pydantic error strings can contain input values; never expose configuration secrets.
         raise ValueError(

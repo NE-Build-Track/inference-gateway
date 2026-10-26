@@ -1,0 +1,10 @@
+# Approved orchestrator origins for builder-core's discovery service (LPD_ORCHESTRATORS), one per line.
+# Replace these and GATEWAY_APPROVED_ORCHESTRATORS together. The discovery service trusts the same
+# certificates as the gateway (system roots plus config/runner-trust), so an orchestrator with an
+# untrusted certificate is left out; pin one with config/pin-orchestrator-certs.py and
+# scripts/prepare-runner-trust.py to keep it.
+https://orch-us-central.xodeapp.xyz:18935
+https://us-central-metrics.speedybird.xyz:28935
+https://orch-eu-central.open-pool.com:443
+https://hky.eliteencoder.net:8936
+https://ai1.eliteencoder.net:8936

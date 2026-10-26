@@ -31,7 +31,7 @@ Fernet secret in `.env`, along with the allocation settings. Keep all generated 
 docker compose -f deploy/livepeer/gateway/compose.yaml --profile payment-stack up -d clearinghouse signer
 # Only for a NEW allocation: explicitly choose the funding amount.
 deploy/livepeer/gateway/first-run.sh AMOUNT_USD
-docker compose -f deploy/livepeer/gateway/compose.yaml up -d gateway
+docker compose -f deploy/livepeer/gateway/compose.yaml up -d discovery gateway
 ```
 
 The first-run script creates a grant/allocation and refuses to replace an existing allocation
@@ -40,17 +40,22 @@ actions. Never run two signers using the same payer/state. To use independently 
 payment services, omit the profile and set their reachable `LPB_SIGNER_URL` and
 `LPB_BATTERIES_URL` instead. No external Docker network is required by the manifests.
 
-The committed signer configuration contains example public orchestrator origins. Replace
-those and `GATEWAY_APPROVED_ORCHESTRATORS` together for your deployment. For private
-orchestrators, configure the signer's destination grants explicitly. Do not bypass TLS
-verification: public certificates use system trust; intentionally pinned certificates can
-be placed in `gateway/config/pinned-certs` and processed with:
+Runners come from builder-core's discovery service (the `discovery` service, `lpb discovery`):
+it probes the orchestrators in `gateway/config/orchestrators.txt` and the gateway's engine reads
+it through `LPB_DISCOVERY_URL`. The signer only signs (builder-core D43). The committed list
+contains example public orchestrator origins; replace it and `GATEWAY_APPROVED_ORCHESTRATORS`
+together for your deployment. Do not bypass TLS verification: public certificates use system
+trust; intentionally pinned certificates (`gateway/config/pin-orchestrator-certs.py` fetches
+them for the listed orchestrators) can be placed in `gateway/config/pinned-certs` and
+processed with:
 
 ```sh
 uv run python scripts/prepare-runner-trust.py
 ```
 
-The generated `gateway/config/runner-trust` directory is mounted alongside system roots.
+The generated `gateway/config/runner-trust` directory is mounted alongside system roots in both
+the gateway and the discovery service, so a pinned orchestrator is discoverable and callable, and
+one that neither trusts is left out.
 Create an empty directory there if using system trust only. Expanded Compose output contains
 secret values; validate with `docker compose -f deploy/livepeer/gateway/compose.yaml config --quiet`.
 
