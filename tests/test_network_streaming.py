@@ -95,7 +95,7 @@ async def test_livepeer_socket_disconnect_preserves_engine_outcome(protocol, mod
         permissions=frozenset({"jobs.read"}),
     )
     async with make_engine(
-        runners=[runner(app_name)],
+        runners=[runner(app_name, metadata='{"model_name":"qwen"}')],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",

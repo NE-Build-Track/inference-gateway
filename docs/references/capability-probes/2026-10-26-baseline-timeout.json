@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-26",
+  "model": "qwen3.8-27b",
+  "app": "blueclaw/chat/qwen3.8-27b",
+  "evidence_source": "Sanitized probe stdout captured during this session; container was removed before report/database export",
+  "scope": "runner wire observations, not end-to-end certification",
+  "engine_version": "not retained",
+  "results": [
+    {
+      "feature": "baseline",
+      "operation_ref": "probe_4f3b5302cefd4605ad37aa872e8e82d0",
+      "job_id": "663ba19b-1a73-4acc-94a5-03c80334316d",
+      "status": "inconclusive",
+      "detail": "Engine job failed",
+      "failure_kind": "timeout"
+    }
+  ],
+  "note": "The initial harness classified engine timeouts as inconclusive; this is an availability failure, not a capability verdict. Remaining features were not dispatched in this run."
+}

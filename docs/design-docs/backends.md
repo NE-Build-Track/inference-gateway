@@ -24,10 +24,16 @@ app = create_app(backend=GreetingBackend())
 ## Event contract
 
 Start each block with its consecutive zero-based index. Emit deltas for that index,
-then close the block. Only one block may be open at a time. A text block has no call.
+then close the block. Client tool blocks may overlap; all other blocks are sequential.
+A plain text block has no call. Extended `BlockStart.block` metadata represents cited text,
+reasoning, atomic media or hosted results. Text/reasoning values start empty and arrive as
+indexed deltas. Hosted tool starts use `ToolCall(hosted=True)` and require a matching
+`HostedResult` after the call closes.
 A tool block starts with `ToolCall(id, name, arguments="")`; its deltas must concatenate
 to a JSON object. End with exactly one `Finished` and return. The service checks order,
-block closure, argument JSON, and stream termination. It does not check argument schemas.
+block closure, argument JSON, and stream termination. It does not check tool argument schemas. It validates structured final text against the requested
+schema before a successful finish. Output is bounded to 128 blocks and 8 MiB. See the
+[extended contract](../product-specs/extended-generation.md).
 
 `Finished` carries `stop`, `length`, or `tool_calls`, plus usage. Avoid blocking I/O in
 an async generator. Raise `BackendError` for expected upstream failures. Exception details

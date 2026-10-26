@@ -13,3 +13,12 @@ Use a short task note for small edits.
 - [Multi-user accounting](completed/multi-user-accounting.md): implementation and acceptance.
 
 - [Public deployment](completed/public-deployment.md): standalone Compose, package naming and publication.
+
+- [Extended generation](completed/extended-generation.md): gateway/fake contracts and live probes.
+- [Livepeer capability gaps](livepeer-capability-gaps.md): route-specific evidence and follow-up work.
+
+- [Livepeer extended adapter](completed/livepeer-extended-adapter.md): per-route controls and live acceptance.
+
+- [Remaining Livepeer features](active/remaining-livepeer-features.md): guarded adapter paths, current probes and external prerequisites.
+
+- [Models and Responses](completed/models-and-responses.md): implementation and verification.

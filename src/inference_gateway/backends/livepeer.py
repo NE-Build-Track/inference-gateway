@@ -20,17 +20,21 @@ from livepeer_builder import (
     ProviderUnavailable,
 )
 
+from inference_gateway.backends.discovery import model_name, origin
 from inference_gateway.backends.livepeer_accounting import LivepeerAccounting
 from inference_gateway.backends.livepeer_request import runner_payload
+from inference_gateway.backends.native_responses import ResponsesDecoder
+from inference_gateway.backends.native_responses import payload as responses_payload
 from inference_gateway.backends.openai_events import CompletionDecoder
 from inference_gateway.backends.sse import SSEDecoder
-from inference_gateway.config import LivepeerSettings
+from inference_gateway.config import LivepeerSettings, ModelRoute
 from inference_gateway.core.backend import (
     BackendConflict,
     BackendDeadline,
     BackendError,
     BackendUnavailable,
     UnknownModel,
+    UnsupportedFeature,
 )
 from inference_gateway.core.models import Event, Finished, Generate
 
@@ -51,7 +55,7 @@ class LivepeerBackend:
         self._engine = engine
         self._streaming = streaming
         self._settings = settings
-        self._routes = {route.name: route for route in settings.routes}
+        self._routes = settings.routes
         self._actor = ActorContext(
             actor_id=settings.actor_id,
             application_id=settings.application_id,
@@ -60,25 +64,59 @@ class LivepeerBackend:
         self.accounting = LivepeerAccounting(engine, self._actor)
         self._logger = logging.getLogger("inference_gateway.livepeer")
 
-    def ready(self) -> bool:
+    def models(self) -> tuple[str, ...]:
         health = self._engine.health()
-        return (
-            health.ready
-            and health.discovery_fresh
-            and all(self._engine.discovery.candidates(route.app) for route in self._routes.values())
-        )
+        if not health.ready or not health.discovery_fresh:
+            return ()
+        return tuple(sorted({r.name for r in self._routes if self._eligible(r)}))
+
+    def _eligible(self, route: ModelRoute) -> list[int]:
+        approved = {origin(url) for url in self._settings.approved_orchestrators}
+        available = []
+        for runner in self._engine.discovery.candidates(route.app):
+            if model_name(runner) != route.name:
+                continue
+            if approved:
+                try:
+                    if origin(runner.orchestrator_url or "") not in approved:
+                        continue
+                except ValueError:
+                    continue
+            if runner.capacity_available is None or runner.capacity_available > 0:
+                available.append(runner.capacity_available or 1)
+        return available
+
+    def ready(self) -> bool:
+        return bool(self.models())
 
     async def stream(self, request: Generate) -> AsyncGenerator[Event, None]:
-        route = self._routes.get(request.model)
-        if route is None:
+        routes = [r for r in self._routes if r.name == request.model]
+        if not routes:
             raise UnknownModel("Unknown configured model")
+        compatible: list[tuple[ModelRoute, dict[str, object]]] = []
+        for candidate in routes:
+            try:
+                encoded = (
+                    responses_payload(request, candidate)
+                    if candidate.upstream_api == "responses"
+                    else runner_payload(request, candidate)
+                )
+            except UnsupportedFeature:
+                continue
+            compatible.append((candidate, encoded))
+        if not compatible:
+            raise UnsupportedFeature("No eligible route supports the requested features")
+        compatible = [(r, p) for r, p in compatible if self._eligible(r)]
+        if request.model not in self.models() or not compatible:
+            raise BackendUnavailable("No fresh model offering")
+        route, encoded = max(compatible, key=lambda pair: max(self._eligible(pair[0]), default=-1))
         operation_ref = request.request_id or "req_" + uuid4().hex
         job_request = JobRequest(
             app=route.app,
-            path="/v1/chat/completions",
+            path="/v1/responses" if route.upstream_api == "responses" else "/v1/chat/completions",
             method="POST",
             model=request.model,
-            payload=runner_payload(request, route),
+            payload=encoded,
             operation_ref=operation_ref,
             max_attempts=self._settings.max_attempts,
             timeout_s=self._settings.timeout_seconds,
@@ -107,7 +145,21 @@ class LivepeerBackend:
                 ):
                     raise BackendError("Runner did not return an SSE completion")
                 sse = SSEDecoder(self._settings.max_event_bytes)
-                decoder = CompletionDecoder(self._settings.max_output_bytes)
+                decoder = (
+                    ResponsesDecoder(self._settings.max_output_bytes)
+                    if route.upstream_api == "responses"
+                    else CompletionDecoder(
+                        self._settings.max_output_bytes,
+                        allow_reasoning="reasoning" in route.capabilities
+                        and (
+                            request.reasoning
+                            or request.reasoning_effort not in (None, "none")
+                            or (not route.disable_thinking and request.reasoning_effort != "none")
+                        ),
+                        parallel_tools=request.parallel_tools,
+                        stop_sequences=request.sampling.stop,
+                    )
+                )
                 async for raw in iterator:
                     frames = sse.feed(raw)
                     output: list[Event] = []

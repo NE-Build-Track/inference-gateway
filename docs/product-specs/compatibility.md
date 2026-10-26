@@ -10,6 +10,8 @@ It does not mean every provider feature or every agent application is supported.
 | --- | --- | --- |
 | OpenAI Chat Completions | `POST /v1/chat/completions` | Bearer key when local authentication is enabled |
 | Anthropic Messages | `POST /v1/messages` | Requires `anthropic-version: 2023-06-01`; uses `x-api-key` when enabled |
+| OpenAI Models | `GET /v1/models` | Bearer authentication; available approved model catalog |
+| OpenAI Responses | `POST /v1/responses` | Stateless text/image/function subset; Bearer authentication |
 | Liveness | `GET /healthz` | Unauthenticated; returns `{"status":"ok"}` |
 | Readiness | `GET /readyz` | Backend/discovery readiness; 503 when unavailable |
 
@@ -22,7 +24,7 @@ The fake makes no upstream calls. Livepeer mode dispatches paid jobs through Bui
 Both accept a nonempty model name and message list, `stream`, tool definitions,
 tool choice, and temperature. OpenAI permits system/developer/user/assistant/tool
 roles; Anthropic uses user/assistant roles and a top-level `system` value.
-Text can be a string or a list of text blocks. Tool history includes assistant calls
+Text can be a string or a list of text blocks; extended media and reasoning shapes are described below. Tool history includes assistant calls
 and client-supplied results referencing their IDs. IDs must be unique within history;
 each result must refer to an outstanding call. All calls need results before another
 generation. This scaffold validates references, not every provider-specific history rule.
@@ -37,8 +39,9 @@ generation. This scaffold validates references, not every provider-specific hist
 | Stream usage | `stream_options.include_usage` | Final message usage |
 | Multiple completions | Only `n: 1` | One message |
 
-Tool schemas pass to the backend unchanged; the gateway does not validate them as
-JSON Schema or validate generated arguments against them. The fake emits `{}` unless
+Tool schemas pass to the backend unchanged; the gateway does not validate tool schemas as
+JSON Schema or validate generated tool arguments against them. Structured final output has a separate
+validated schema subset. The fake emits `{}` unless
 configured with argument fixtures. Set fixtures to match the supplied schema.
 Nullable SDK fields `caller` and `toolset_name` are accepted on historical Anthropic
 tool-use blocks only when null; their non-null features are unsupported.
@@ -55,7 +58,7 @@ usage. OpenAI streams completion chunks with content or indexed tool-call deltas
 a finish chunk, optional usage chunk, then `[DONE]`. Anthropic streams message start,
 content block start/delta/stop, message delta, and message stop events. Tool JSON may
 span several fragments. Backends may emit sequential text and multiple tool blocks;
-the fake selects one tool per generation.
+the fake selects one tool unless parallel calls are explicitly enabled.
 
 Prestream failures return HTTP 502; generation deadline expiry before response
 commit returns 504. After headers commit, failures emit an error frame and close
@@ -76,21 +79,25 @@ The gateway never automatically retries a failed or partial generation.
 - Tool arguments are not truncated; temperature, descriptions, and schemas do not
   influence fake generation. They remain available to replacement backends.
 
-## Deferred
+## Extended generation and deferred endpoints
 
-Images/audio, reasoning blocks, citations, structured output, provider-hosted tools,
-parallel interleaved tool blocks, sampling controls beyond temperature, model discovery,
-Responses, embeddings, stored conversations, and customer payment collection are outside
-this slice. Registry mode provides persistent usage and retail/wholesale accounting. The server's generated OpenAPI page lists routes but does not yet describe the
+Reasoning, sampling controls, structured output, citations, hosted search, interleaved client
+tools, and image/audio contracts are implemented in the gateway and deterministic fake.
+See the [extended generation contract](extended-generation.md) for exact fields, limits,
+examples and gateway extensions. Livepeer routes can opt into structured output, reasoning on/off,
+stop controls and parallel tools. Other extended requests/history still fail before paid dispatch.
+
+See [Models and Responses](models-and-responses.md) for their separate stateless contract.
+Embeddings, stored conversations, and customer payment collection remain outside this slice. Registry mode provides persistent usage and retail/wholesale accounting. The server's generated OpenAPI page lists routes but does not yet describe the
 manually parsed request bodies; this document and request models define the contract.
 
 ## Livepeer backend
 
 Livepeer mode requires a configured model route; the default public name is `qwen3.8-27b`.
 It preserves the interfaces above but uses real runner output and usage. It supports one
-choice and a runner that streams OpenAI chat chunks with usage and `[DONE]`. The first tool
-streams immediately; later interleaved calls buffer within a configured limit and emit in
-sequential blocks. Missing usage, malformed/truncated output, unsupported finish reasons,
+choice and a runner that streams OpenAI chat chunks with usage and `[DONE]`. Explicit parallel
+requests on enabled routes stream independently indexed calls; other requests preserve sequential
+normalization. Missing usage, malformed/truncated output, unsupported finish reasons, unenabled
 reasoning content, or text after tools fail explicitly. No token counts are fabricated.
 
 Engine capacity/payment failures map to 503, operation conflicts to 409, and deadlines to

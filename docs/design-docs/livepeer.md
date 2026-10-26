@@ -29,7 +29,7 @@ process per database and keep the database volume across restarts.
 | `GATEWAY_ACTOR_ID` | `shared-application` | One server-controlled backend actor; gateway users are attributed in its own ledger |
 | `GATEWAY_MODEL_NAME` | `qwen3.8-27b` | Model name clients send |
 | `GATEWAY_CHAT_APP` | `blueclaw/chat/qwen3.8-27b` | Runner app selected by discovery |
-| `GATEWAY_UPSTREAM_MODEL` | Omitted | Optional model name sent in the runner payload |
+| `GATEWAY_UPSTREAM_MODEL` | Omitted | Legacy explicit name; must equal route name and metadata `model_name` |
 | `GATEWAY_MODEL_ROUTES` | Unset | JSON route array overriding the single-model settings |
 | `GATEWAY_APPROVED_ORCHESTRATORS` | Empty | Comma-separated HTTP(S) origins; empty trusts the configured discovery source |
 | `GATEWAY_TIMEOUT_SECONDS` | `300` | Total generation limit; live backend maximum 3600 seconds |
@@ -42,10 +42,12 @@ process per database and keep the database volume across restarts.
 For multiple routes, configure:
 
 ```sh
-GATEWAY_MODEL_ROUTES='[{"name":"qwen","app":"blueclaw/chat/qwen3.8-27b","disable_thinking":true},{"name":"another","app":"team/other-chat","upstream_model":"served-name","disable_thinking":false}]'
+GATEWAY_MODEL_ROUTES='[{"name":"qwen3.8-27b","app":"blueclaw/chat/qwen3.8-27b","disable_thinking":true},{"name":"served-name","app":"team/other-chat","upstream_model":"served-name","disable_thinking":false}]'
 ```
 
-Unknown model names fail with 400 before engine dispatch. Routes must have unique names.
+Unknown model names fail with 400 before engine dispatch. Routes must have unique model/app pairs, and names must match JSON metadata `model_name`.
+Missing metadata excludes runners. See [model routing and Responses](../product-specs/models-and-responses.md)
+for capacity selection, the injected selection policy, and native Responses transport.
 Discovery is filtered to configured apps and, when supplied, approved origins including
 scheme and port. The default Qwen route sends `chat_template_kwargs.enable_thinking=false`.
 Routes for other runners can omit that extension with `disable_thinking=false`.
@@ -64,15 +66,16 @@ matching boolean field. Tool execution remains with the caller.
 
 The backend always requests SSE and token usage, including for nonstream clients. It
 parses fragmented UTF-8, CR/LF variants, multiline SSE data, content, and function arguments.
-The first tool call streams its arguments as they arrive. Later interleaved calls buffer
-within the output limit and emit sequentially when the upstream terminates. At most 128
+The first tool call streams its arguments as they arrive. On explicitly enabled/requested
+parallel routes, every identified call streams independently. Otherwise later interleaved calls
+buffer within the output limit and emit sequentially when the upstream terminates. At most 128
 tool calls are accepted. Text arriving after tool output is currently rejected.
 
 A successful response requires a supported finish reason, usage, a valid `[DONE]` marker,
 and complete JSON-object tool arguments. It calls `JobStream.complete()` at the terminal
 marker, so a server that holds its HTTP connection open cannot keep the paid stream alive.
 It does not drain arbitrary trailing traffic after that marker. Unexpected JSON responses,
-malformed chunks, missing usage/termination, reasoning content, invalid arguments, and
+malformed chunks, missing usage/termination, unenabled or out-of-order reasoning content, invalid arguments, and
 limit breaches fail explicitly. The adapter does not invent token counts or repair tool JSON.
 
 The engine records successful byte delivery independently from gateway protocol validation.
@@ -127,3 +130,28 @@ After validating its identity and JSON-object arguments, the adapter maps it to 
 Registry mode persists measured usage before settlement/reporting awaits and retries failed
 accounting reports through the [accounting workflow](accounting.md). It still uses one upstream
 application allocation. No accounting retry dispatches a new job.
+
+
+## Extended capability status
+
+Routes may opt into `structured_output`, `reasoning`, `stop`, and `parallel_tools` using their
+`capabilities` array. It defaults to empty. The [extended contract](../product-specs/extended-generation.md#livepeer-route-capabilities)
+defines the precise supported controls, signatures, stop evidence, and streaming behavior.
+Requirements are checked against the selected route before paid dispatch, including history.
+Other extended features remain guarded. Unexpected/invalid output returns `unsupported_response`
+with the public message `Unsupported Response`; operational failures retain their classifications.
+
+Reasoning on/off uses the Qwen/vLLM chat-template switch; effort and token budgets are not enabled.
+The adapter accepts both reasoning delta names, emits empty Anthropic signatures, and forwards
+unsigned reasoning history. Stop handling requests the marker, strips it across chunk boundaries,
+and preserves actual runner usage. Structured output is independently checked by the core service
+before a success finish. Parallel calls preserve identity while allowing incremental arguments.
+
+[Route-specific evidence](../exec-plans/livepeer-capability-gaps.md) separates observed runner
+support, adapter checks and live acceptance. Enable only the verified subset for the intended
+runner. Public API behavior is tested through both SDKs; this does not claim native Claude semantics.
+
+The request-field mappings follow vLLM's
+[reasoning documentation](https://docs.vllm.ai/en/stable/features/reasoning_outputs/) and
+[Chat Completions protocol](https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/chat_completion/protocol.py).
+Documentation describes possible runner features; the configured runner still needs acceptance tests.

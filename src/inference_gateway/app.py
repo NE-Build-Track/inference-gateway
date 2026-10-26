@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 
 from inference_gateway.accounting import MeteredBackend, reconciliation_loop
+from inference_gateway.adapters import response_api
 from inference_gateway.adapters.http_stream import ManagedStreamingResponse
 from inference_gateway.adapters.ledger import SQLiteLedger
 from inference_gateway.adapters.reports import attach_reports
@@ -30,6 +31,7 @@ from inference_gateway.adapters.responses import (
 from inference_gateway.adapters.schemas import AnthropicRequest, OpenAIRequest
 from inference_gateway.adapters.translate import anthropic_request, openai_request
 from inference_gateway.backends.accounting import FakeAccounting, UnavailableAccounting
+from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.config import LivepeerSettings, Settings
 from inference_gateway.core.accounting import AccountingSource
 from inference_gateway.core.backend import Backend, BackendError
@@ -74,14 +76,20 @@ async def while_connected[T](request: Request, work: Awaitable[T]) -> T:
         await asyncio.gather(task, watcher, return_exceptions=True)
 
 
-def error_payload(protocol: Protocol, message: str, kind: str) -> dict[str, Any]:
+def error_payload(
+    protocol: Protocol, message: str, kind: str, code: str | None = None
+) -> dict[str, Any]:
     error = {"message": message, "type": kind}
+    if code is not None:
+        error["code"] = code
     if protocol == "anthropic":
         return {"type": "error", "error": error}
-    return {"error": {**error, "param": None, "code": kind}}
+    return {"error": {**error, "param": None, "code": code or kind}}
 
 
-def failure(protocol: Protocol, message: str, status: int, request_id: str) -> JSONResponse:
+def failure(
+    protocol: Protocol, message: str, status: int, request_id: str, code: str | None = None
+) -> JSONResponse:
     kinds = {
         400: "invalid_request_error",
         401: "authentication_error",
@@ -93,7 +101,7 @@ def failure(protocol: Protocol, message: str, status: int, request_id: str) -> J
         504: "timeout_error",
     }
     return JSONResponse(
-        error_payload(protocol, message, kinds[status]),
+        error_payload(protocol, message, kinds[status], code),
         status_code=status,
         headers={
             "x-request-id": request_id,
@@ -134,6 +142,11 @@ def create_app(
         return GenerationService(MeteredBackend(selected, ledger) if ledger else selected)
 
     service = None if owns_engine else compose(selected_backend)
+    catalog: Callable[[], tuple[str, ...]] = (
+        selected_backend.models
+        if isinstance(selected_backend, LivepeerBackend)
+        else lambda: ("fake-model",)
+    )
     source: AccountingSource = accounting_source or (
         FakeAccounting() if backend is None and not owns_engine else UnavailableAccounting()
     )
@@ -146,7 +159,7 @@ def create_app(
 
     @asynccontextmanager
     async def resources(app: FastAPI) -> AsyncIterator[None]:
-        nonlocal service, ready, source
+        nonlocal service, ready, source, catalog
         if ledger:
             ledger.recover()
 
@@ -176,12 +189,14 @@ def create_app(
                 service = compose(live)
                 source = accounting_source or live.accounting
                 ready = live.ready
+                catalog = live.models
                 try:
                     async with accounting_worker():
                         yield
                 finally:
                     service = None
                     ready = service_ready
+                    catalog = tuple
         else:
             async with accounting_worker():
                 yield
@@ -208,7 +223,9 @@ def create_app(
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    async def generate(request: Request, protocol: Protocol) -> JSONResponse | StreamingResponse:
+    async def generate(
+        request: Request, protocol: Protocol, *, responses_api: bool = False
+    ) -> JSONResponse | StreamingResponse:
         request_id = "req_" + uuid4().hex
         started = time.monotonic()
         headers = {"x-request-id": request_id, "request-id": request_id}
@@ -231,7 +248,10 @@ def create_app(
         try:
             data = await request.json()
             include_usage = False
-            if protocol == "openai":
+            if responses_api:
+                response_body = response_api.ResponsesRequest.model_validate(data)
+                command, streaming = response_api.command(response_body), response_body.stream
+            elif protocol == "openai":
                 body = OpenAIRequest.model_validate(data)
                 command, streaming = openai_request(body), body.stream
                 include_usage = (
@@ -240,7 +260,7 @@ def create_app(
             else:
                 anthropic_body = AnthropicRequest.model_validate(data)
                 command, streaming = anthropic_request(anthropic_body), anthropic_body.stream
-        except (ValueError, ValidationError):
+        except (ValueError, ValidationError, KeyError, TypeError):
             # Do not reflect potentially sensitive prompt/tool values in errors.
             return failure(
                 protocol, "Invalid or unsupported request; see compatibility docs", 400, request_id
@@ -254,7 +274,8 @@ def create_app(
             except ValueError:
                 return failure(protocol, "Model has no configured retail price", 400, request_id)
         identity = ResponseIdentity(
-            ("chatcmpl_" if protocol == "openai" else "msg_") + uuid4().hex,
+            ("resp_" if responses_api else "chatcmpl_" if protocol == "openai" else "msg_")
+            + uuid4().hex,
             command.model,
             int(time.time()),
         )
@@ -273,7 +294,12 @@ def create_app(
                         }
                     )
                 )
-                return JSONResponse(response(result, identity, protocol), headers=headers)
+                return JSONResponse(
+                    response_api.response(result, identity)
+                    if responses_api
+                    else response(result, identity, protocol),
+                    headers=headers,
+                )
             deadline = asyncio.get_running_loop().time() + config.timeout_seconds
             events = deadline_stream(service.stream(command), deadline)
             # Fail before committing HTTP 200 if the backend cannot start.
@@ -281,7 +307,9 @@ def create_app(
         except ClientDisconnected:
             return failure(protocol, "Client disconnected", 499, request_id)
         except BackendError as exc:
-            return failure(protocol, exc.public_message, exc.status_code, request_id)
+            return failure(
+                protocol, exc.public_message, exc.status_code, request_id, exc.error_code
+            )
         except TimeoutError:
             return failure(protocol, "Generation deadline exceeded", 504, request_id)
         except Exception:
@@ -296,20 +324,42 @@ def create_app(
 
         async def render() -> AsyncGenerator[str, None]:
             wire = (
-                openai_stream(replay(), identity, include_usage)
+                response_api.stream(replay(), identity)
+                if responses_api
+                else openai_stream(replay(), identity, include_usage)
                 if protocol == "openai"
                 else anthropic_stream(replay(), identity)
             )
             outcome = "cancelled"
+            wire_sequence = 0
             try:
                 async with aclosing(wire):
                     async for frame in wire:
+                        wire_sequence += 1
                         yield frame
                 outcome = "finished"
-            except Exception:
+            except Exception as exc:
                 outcome = "failed"
-                payload = error_payload(protocol, "Backend stream failed", "api_error")
-                yield sse(payload, "error" if protocol == "anthropic" else None)
+                payload = error_payload(
+                    protocol,
+                    exc.public_message
+                    if isinstance(exc, BackendError)
+                    else "Backend stream failed",
+                    "api_error",
+                    exc.error_code if isinstance(exc, BackendError) else None,
+                )
+                yield sse(
+                    {
+                        "type": "error",
+                        "sequence_number": wire_sequence,
+                        "code": payload["error"].get("code", "api_error"),
+                        "message": payload["error"]["message"],
+                        "param": None,
+                    }
+                    if responses_api
+                    else payload,
+                    "error" if responses_api or protocol == "anthropic" else None,
+                )
             finally:
                 await events.aclose()
                 logger.info(
@@ -328,6 +378,42 @@ def create_app(
             events.aclose,
             headers={**headers, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
+
+    @app.get("/v1/models")
+    async def models(request: Request) -> JSONResponse:
+        request_id = "req_" + uuid4().hex
+        key = request.headers.get("authorization", "").removeprefix("Bearer ")
+        principal = ledger.authenticate(key) if ledger else None
+        if (ledger and principal is None) or (
+            config.api_key is not None
+            and not hmac.compare_digest(key.encode(), config.api_key.encode())
+        ):
+            return failure("openai", "Invalid API key", 401, request_id)
+        if principal and not principal.permits("inference"):
+            return failure("openai", "Insufficient inference permission", 403, request_id)
+        names = catalog() if service is not None else ()
+        if ledger:
+            priced = {p["model"] for p in ledger.prices() if p["active"]}
+            names = tuple(n for n in names if n in priced)
+        return JSONResponse(
+            {
+                "object": "list",
+                "data": [
+                    {
+                        "id": name,
+                        "object": "model",
+                        "created": 0,
+                        "owned_by": "livepeer" if config.backend == "livepeer" else "gateway",
+                    }
+                    for name in names
+                ],
+            },
+            headers={"x-request-id": request_id},
+        )
+
+    @app.post("/v1/responses", response_model=None)
+    async def responses(request: Request) -> JSONResponse | StreamingResponse:
+        return await generate(request, "openai", responses_api=True)
 
     @app.post("/v1/chat/completions", response_model=None)
     async def chat_completions(request: Request) -> JSONResponse | StreamingResponse:

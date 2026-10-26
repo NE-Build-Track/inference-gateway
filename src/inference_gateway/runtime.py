@@ -10,7 +10,7 @@ from typing import Literal, cast
 import anyio
 from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings
 
-from inference_gateway.backends.discovery import FilteredDiscovery, origin
+from inference_gateway.backends.discovery import FilteredDiscovery, ModelSelection, origin
 from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.models import Finished
@@ -105,6 +105,7 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
     def decorate(parts: EngineParts) -> EngineParts:
         return replace(
             parts,
+            selection=ModelSelection(parts.selection),
             discovery_source=FilteredDiscovery(
                 parts.discovery_source,
                 frozenset(route.app for route in settings.routes),

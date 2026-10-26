@@ -26,8 +26,16 @@ both interfaces use the configured backend and model route.
 - Backend wholesale evidence, correlated jobs and durable accounting reconciliation.
 - Provider-shaped usage/cost reports with user isolation and administrative reporting.
 
-This is a documented compatibility subset. Images, audio, reasoning blocks, provider-hosted
-tools and the Responses API are not implemented. The gateway does not execute tools,
+This is a documented compatibility subset. The gateway and deterministic fake also support
+reasoning, additional sampling controls, structured output, citations, simulated hosted search,
+interleaved tool calls and image/audio fixtures. See the [extended feature contract](docs/product-specs/extended-generation.md)
+for native fields and gateway extensions. Livepeer routes can explicitly enable structured output,
+reasoning on/off, stop controls and parallel tools. Additional guarded adapter paths cover sampling,
+reasoning effort/budgets and media input; they remain unverified and disabled locally. Citations,
+hosted search and media output have fake contracts only.
+A [stateless Responses subset and model catalog](docs/product-specs/models-and-responses.md) are
+also implemented. Livepeer model routing now requires runner metadata `model_name`.
+The gateway does not execute tools,
 collect customer payments or replay generated responses. See the
 [compatibility contract](docs/product-specs/compatibility.md).
 

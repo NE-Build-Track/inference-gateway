@@ -1,9 +1,10 @@
 """Constrain the engine's discovered supply to configured apps and approved origins."""
 
+from collections.abc import Sequence
 from urllib.parse import urlsplit
 
-from livepeer_builder import Runner
-from livepeer_builder.protocols import DiscoverySource
+from livepeer_builder import JobRequest, NoCapacity, Runner
+from livepeer_builder.protocols import DiscoverySource, SelectionPolicy
 
 
 def origin(url: str) -> tuple[str, str, int]:
@@ -47,3 +48,35 @@ class FilteredDiscovery:
                     continue
             selected.append(runner)
         return tuple(selected)
+
+
+def model_name(runner: Runner) -> str | None:
+    """Metadata is untrusted; app names and opaque text are never model identities."""
+    import json
+
+    try:
+        metadata = json.loads(runner.metadata or "")
+    except (ValueError, TypeError):
+        return None
+    value = metadata.get("model_name") if isinstance(metadata, dict) else None
+    return value if isinstance(value, str) and value and value == value.strip() else None
+
+
+class ModelSelection:
+    """Filter before the engine ranks/retries; never cross the requested app boundary."""
+
+    def __init__(self, inner: "SelectionPolicy") -> None:
+        self._inner = inner
+
+    def order(self, candidates: "Sequence[Runner]", request: "JobRequest") -> "Sequence[Runner]":
+        selected = [
+            r
+            for r in candidates
+            if r.app == request.app
+            and model_name(r) == request.model
+            and (r.capacity_available is None or r.capacity_available > 0)
+        ]
+        ordered = self._inner.order(selected, request)
+        if not ordered:
+            raise NoCapacity("No eligible model runner")
+        return ordered

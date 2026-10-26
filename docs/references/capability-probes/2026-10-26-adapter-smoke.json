@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-26T11:58:40.430244+00:00",
+  "model": "qwen3.8-27b",
+  "base_url": "http://127.0.0.1:8001",
+  "results": [
+    {
+      "protocol": "openai",
+      "feature": "structured_output",
+      "mode": "json",
+      "request_id": "req_071a38461ee141ddac20f8a2d67454a0",
+      "status": "passed",
+      "input_tokens": 18,
+      "output_tokens": 33,
+      "finish": "stop",
+      "reasoning_present": false,
+      "tool_calls": 0,
+      "stop_sequence_observed": false
+    }
+  ]
+}

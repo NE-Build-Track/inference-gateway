@@ -30,8 +30,37 @@ class ModelRoute(BaseModel):
     name: str = Field(min_length=1)
     app: str = Field(min_length=1)
     upstream_model: str | None = Field(default=None, min_length=1)
+    upstream_api: Literal["chat_completions", "responses"] = "chat_completions"
     # The initial Qwen runner supports this vLLM extension. Other routes can omit it.
     disable_thinking: bool = True
+    capabilities: frozenset[
+        Literal[
+            "structured_output",
+            "reasoning",
+            "stop",
+            "parallel_tools",
+            "sampling",
+            "reasoning_budget",
+            "media_input",
+        ]
+    ] = frozenset()
+
+    reasoning_efforts: frozenset[Literal["minimal", "low", "medium", "high", "xhigh", "max"]] = (
+        frozenset()
+    )
+    input_media: frozenset[Literal["image", "audio"]] = frozenset()
+
+    @model_validator(mode="after")
+    def coherent_capabilities(self) -> "ModelRoute":
+        if self.upstream_model is not None and self.upstream_model != self.name:
+            raise ValueError("Model name must match metadata and upstream identity")
+        if (self.reasoning_efforts or "reasoning_budget" in self.capabilities) and (
+            "reasoning" not in self.capabilities
+        ):
+            raise ValueError("Reasoning controls require the reasoning capability")
+        if bool(self.input_media) != ("media_input" in self.capabilities):
+            raise ValueError("Media input requires explicit supported media kinds")
+        return self
 
 
 class LivepeerSettings(BaseModel):
@@ -51,6 +80,6 @@ class LivepeerSettings(BaseModel):
 
     @model_validator(mode="after")
     def unique_routes(self) -> "LivepeerSettings":
-        if not self.routes or len({r.name for r in self.routes}) != len(self.routes):
-            raise ValueError("Configure at least one route with unique names")
+        if not self.routes or len({(r.name, r.app) for r in self.routes}) != len(self.routes):
+            raise ValueError("Configure at least one route with unique model/app pairs")
         return self
