@@ -22,3 +22,5 @@ Use a short task note for small edits.
 - [Remaining Livepeer features](active/remaining-livepeer-features.md): guarded adapter paths, current probes and external prerequisites.
 
 - [Models and Responses](completed/models-and-responses.md): implementation and verification.
+
+- [Strict function tools](completed/strict-function-tools.md): schema enforcement and combined structured text.

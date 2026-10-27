@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import Protocol
 
-from inference_gateway.core.models import Event, Generate
+from inference_gateway.core.models import Event, Finished, Generate
 
 
 class BackendError(Exception):
@@ -21,6 +21,10 @@ class UnsupportedFeature(BackendError):
 class UnsupportedResponse(BackendError):
     error_code = "unsupported_response"
     public_message = "Unsupported Response"
+
+    def __init__(self, message: str, *, usage: Finished | None = None) -> None:
+        super().__init__(message)
+        self.usage = usage
 
 
 class UnknownModel(BackendError):

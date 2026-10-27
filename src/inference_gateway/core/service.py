@@ -19,6 +19,7 @@ from inference_gateway.core.models import (
     Output,
     Reasoning,
     Text,
+    ToolCall,
 )
 from inference_gateway.core.structured import reject_nonfinite, validate_value
 
@@ -42,6 +43,9 @@ class GenerationService:
         next_index = 0
         done = False
         size = 0
+        invalid_strict = False
+        tools = {t.name: t for t in request.tools}
+        has_strict = any(t.strict for t in request.tools)
         calls: set[str] = set()
         hosted_pending: set[str] = set()
         async with aclosing(self._backend.stream(request)) as events:
@@ -112,6 +116,15 @@ class GenerationService:
                                 raise BackendError("Invalid tool JSON") from exc
                             if not isinstance(parsed, dict):
                                 raise BackendError("Tool arguments must be an object")
+                            if not start.call.hosted:
+                                tool = tools.get(start.call.name)
+                                if tool is None and has_strict:
+                                    invalid_strict = True
+                                elif tool is not None and tool.strict:
+                                    try:
+                                        validate_value(parsed, tool.schema)
+                                    except (ValueError, TypeError):
+                                        invalid_strict = True
                         part = assemble(start, text)
                         if isinstance(part, Text):
                             documents = [
@@ -141,7 +154,21 @@ class GenerationService:
                             or event.cached_input_tokens > event.input_tokens
                         ):
                             raise BackendError("Invalid usage")
-                        if request.output_format is not None and event.reason != "length":
+                        if invalid_strict:
+                            raise UnsupportedResponse(
+                                "Invalid strict function arguments", usage=event
+                            )
+                        final_text = "".join(
+                            p.text for _, p in sorted(completed.items()) if isinstance(p, Text)
+                        )
+                        tool_only = not final_text and any(
+                            isinstance(p, ToolCall) for p in completed.values()
+                        )
+                        if (
+                            request.output_format is not None
+                            and event.reason != "length"
+                            and not tool_only
+                        ):
                             try:
                                 text = "".join(
                                     p.text
@@ -154,11 +181,14 @@ class GenerationService:
                                 if request.output_format.schema is not None:
                                     validate_value(value, request.output_format.schema)
                             except (ValueError, TypeError) as exc:
-                                raise UnsupportedResponse("Invalid structured output") from exc
+                                raise UnsupportedResponse(
+                                    "Invalid structured output", usage=event
+                                ) from exc
                         done = True
                 if size > 8 * 1024 * 1024:
                     raise BackendError("Output exceeds gateway limit")
-                yield event
+                if not invalid_strict:
+                    yield event
         if not done:
             raise BackendError("Backend ended without Finished")
 

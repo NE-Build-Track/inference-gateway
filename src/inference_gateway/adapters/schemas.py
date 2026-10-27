@@ -45,6 +45,7 @@ class Function(WireModel):
     name: str = Field(min_length=1)
     description: str = ""
     parameters: dict[str, JSON] = Field(default_factory=object_schema)
+    strict: bool = False
 
 
 class OpenAITool(WireModel):

@@ -43,18 +43,20 @@ excluded from text; Anthropic receives `stop_reason: stop_sequence` and the matc
 
 The supported schema subset is deliberately explicit:
 
-- Each node has one `type`: object, array, string, integer, number, boolean, or null.
+- Types are object, array, string, integer, number, boolean or null. A type may also be
+  a two-member nullable union such as `["string","null"]`. Nested `anyOf` supports up to 16 branches.
 - Objects accept `properties`, `required`, and boolean `additionalProperties`.
 - Arrays require an `items` schema. Nodes may include `enum`, `title`, and `description`.
-- Root schemas must be objects. Nesting is limited to 16 levels. References, unions,
+- Root schemas must be objects. Nesting is limited to 16 levels. References, other unions,
   patterns, numerical bounds and other keywords fail explicitly rather than being ignored.
 - Chat Completions schema mode accepts `strict: true`; false is not implemented.
 
 The fake builds a deterministic example or uses an injected `structured_output` fixture.
 The service independently validates complete output before emitting a success finish.
 A truncated response has `length`/`max_tokens` and may contain incomplete JSON; it is never
-advertised as schema-valid. Structured output cannot combine with tools, cited sources,
-media output or stop sequences in this subset. Reasoning may precede structured final text.
+advertised as schema-valid. Structured output can combine with client tools: tool-only turns
+validate arguments separately, and final text validates against the output schema. Cited sources,
+hosted tools, media output and stop sequences remain excluded. Reasoning may precede final text.
 
 ```json
 {

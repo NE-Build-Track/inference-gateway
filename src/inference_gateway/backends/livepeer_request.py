@@ -144,7 +144,12 @@ def runner_payload(request: Generate, route: ModelRoute) -> dict[str, Any]:
         payload["tools"] = [
             {
                 "type": "function",
-                "function": {"name": t.name, "description": t.description, "parameters": t.schema},
+                "function": {
+                    "name": t.name,
+                    "description": t.description,
+                    "parameters": t.schema,
+                    "strict": t.strict,
+                },
             }
             for t in request.tools
         ]

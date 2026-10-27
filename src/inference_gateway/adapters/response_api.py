@@ -115,12 +115,10 @@ def command(body: ResponsesRequest) -> Generate:
             "strict",
         }:
             raise ValueError("Unsupported tool")
-        if tool.get("strict"):
-            raise ValueError("Strict function argument validation is unsupported")
         tools.append(
             {
                 "type": "function",
-                "function": {k: v for k, v in tool.items() if k not in {"type", "strict"}},
+                "function": {k: v for k, v in tool.items() if k != "type"},
             }
         )
     choice = body.tool_choice
