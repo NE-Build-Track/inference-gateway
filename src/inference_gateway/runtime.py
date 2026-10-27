@@ -10,8 +10,15 @@ from typing import Literal, cast
 import anyio
 from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings
 
-from inference_gateway.backends.discovery import FilteredDiscovery, ModelSelection, origin
+from inference_gateway.backends.discovery import (
+    FilteredDiscovery,
+    ModelSelection,
+    ProtocolSelection,
+    origin,
+)
 from inference_gateway.backends.livepeer import LivepeerBackend
+from inference_gateway.backends.native_livepeer import LivepeerNativeBackend
+from inference_gateway.backends.native_selection import Admission, NativeSelection
 from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.models import Finished
 
@@ -48,6 +55,7 @@ def load_livepeer_settings(
         )
         options: dict[str, object] = {
             "routes": routes,
+            "native_approvals": json.loads(values.get("GATEWAY_NATIVE_APPROVALS", "[]")),
             "timeout_seconds": config.timeout_seconds,
             "approved_orchestrators": tuple(
                 x.strip()
@@ -67,6 +75,8 @@ def load_livepeer_settings(
             if (raw := values.get("GATEWAY_" + field.upper())) is not None:
                 options[field] = raw
         settings = LivepeerSettings.model_validate(options)
+        for approval in settings.native_approvals:
+            origin(approval.orchestrator)
         for url in settings.approved_orchestrators:
             origin(url)
         return settings
@@ -105,7 +115,13 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
     def decorate(parts: EngineParts) -> EngineParts:
         return replace(
             parts,
-            selection=ModelSelection(parts.selection),
+            selection=ProtocolSelection(
+                ModelSelection(parts.selection),
+                NativeSelection(
+                    parts.selection,
+                    lambda: tuple(Admission(**a.model_dump()) for a in settings.native_approvals),
+                ),
+            ),
             discovery_source=FilteredDiscovery(
                 parts.discovery_source,
                 frozenset(route.app for route in settings.routes),
@@ -125,7 +141,14 @@ async def livepeer_backend(
 ) -> AsyncIterator[LivepeerBackend]:
     engine = await factory(settings)
     try:
-        backend = LivepeerBackend(engine, settings, usage_recorder, job_recorder)
+        native = LivepeerNativeBackend(
+            engine,
+            settings,
+            lambda: tuple(Admission(**a.model_dump()) for a in settings.native_approvals),
+        )
+        backend = LivepeerBackend(
+            engine, settings, usage_recorder, job_recorder, native_backend=native
+        )
         await engine.start()
         yield backend
     finally:

@@ -109,3 +109,11 @@ for cancellation, tool-result translation, request correlation, and engine-owned
 
 See [accounting and reporting](../design-docs/accounting.md) for API-key permissions,
 provider-shaped reporting endpoints and their supported subsets.
+
+## Native forwarding status
+
+Native forwarding is an explicit per-model route mode, tested offline. Validated routes
+retain the compatibility guarantees above. In native mode the backend owns tools, schemas
+and generation controls; the gateway owns auth, admission, transport and usage accounting.
+See the [native contract](native-inference.md) for configuration, constraints and remaining
+live acceptance. Dependencies currently pin NE-Build-Track review revisions.

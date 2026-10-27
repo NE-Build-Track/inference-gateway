@@ -26,3 +26,7 @@ deploy/livepeer/gateway/config/runner-trust/
 **/config/pinned-certs/
 **/config/runner-trust/
 **/config/generated/
+
+# Operator-specific runner manifests and generated deployments
+live-runner/generated/
+live-runner/local/

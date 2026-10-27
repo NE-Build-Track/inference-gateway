@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "EndpointProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "usage": {
+          "title": "Usage",
+          "type": "string"
+        },
+        "stream_usage": {
+          "enum": [
+            "include_usage_required",
+            "terminal"
+          ],
+          "title": "Stream Usage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "profile",
+        "usage",
+        "stream_usage"
+      ],
+      "title": "EndpointProfile",
+      "type": "object"
+    },
+    "Limits": {
+      "additionalProperties": false,
+      "properties": {
+        "context_tokens": {
+          "maximum": 2097152,
+          "minimum": 128,
+          "title": "Context Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "context_tokens"
+      ],
+      "title": "Limits",
+      "type": "object"
+    },
+    "RuntimeIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "vllm",
+            "ollama",
+            "sglang"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "image": {
+          "pattern": "^[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}$",
+          "title": "Image",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "image"
+      ],
+      "title": "RuntimeIdentity",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "inference_contract": {
+      "const": 1,
+      "title": "Inference Contract",
+      "type": "integer"
+    },
+    "model_name": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeIdentity"
+    },
+    "deployment_revision": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Deployment Revision",
+      "type": "string"
+    },
+    "endpoints": {
+      "additionalProperties": {
+        "$ref": "#/$defs/EndpointProfile"
+      },
+      "minProperties": 1,
+      "title": "Endpoints",
+      "type": "object"
+    },
+    "limits": {
+      "$ref": "#/$defs/Limits"
+    },
+    "admission": {
+      "const": "candidate",
+      "title": "Admission",
+      "type": "string"
+    }
+  },
+  "required": [
+    "inference_contract",
+    "model_name",
+    "runtime",
+    "deployment_revision",
+    "endpoints",
+    "limits",
+    "admission"
+  ],
+  "title": "RunnerMetadata",
+  "type": "object"
+}

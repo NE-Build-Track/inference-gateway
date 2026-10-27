@@ -22,5 +22,10 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Live route availability and model variability | Two configured US-central origins failed TLS verification; excluded locally pending investigation. One parallel-call acceptance assertion failed before a successful follow-up; retain evidence and avoid deterministic tool-selection claims |
 
 Models/Responses: live Gemma acceptance remains pending runner access with `metadata.model_name`.
-Stored Responses, Anthropic model-list formatting, automatic cross-app retry and per-runner
-endpoint capability metadata are not implemented. See the [contract](../product-specs/models-and-responses.md).
+Stored Responses, Anthropic model-list formatting and automatic cross-app retry are not
+implemented. Native routes now use endpoint capability metadata with independent approval. See the [contract](../product-specs/models-and-responses.md).
+
+Native forwarding is opt-in and verified offline. Dependency PR review, exact runtime/GPU
+acceptance and paid deployment acceptance remain. Approval automation/hot revocation,
+shared-capacity multi-model layouts, compressed payload observation and stateful APIs need
+separate work; see the [native plan](active/native-inference-forwarding.md).

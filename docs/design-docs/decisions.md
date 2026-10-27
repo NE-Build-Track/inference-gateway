@@ -111,3 +111,19 @@ than treated as ordinary generation. Native output is validated before successfu
 uses the same usage recording/settlement path. Revisit with an explicit storage/lifecycle contract
 if a client needs stored Responses, or with structured capability metadata if runners sharing a
 model/app pair have different endpoint support.
+
+
+## Native protocol forwarding as the preferred direction
+
+Accepted 2026-10-27. Support vLLM, Ollama and SGLang as the LLM runtime families,
+qualified by exact deployment and endpoint evidence. Prefer native forwarding over
+normalizing every supported backend request through `Generate`. Keep auth, model/endpoint
+selection, transport limits, payment and bounded usage observation in the gateway; let the
+backend own generation schemas and extensions. Translation and gateway-enforced validation
+remain explicit modes. Current runtime behavior is unchanged until the new mode is built.
+
+Versioned metadata describes identity and protocol/usage profiles, not arbitrary executable
+routing logic or self-certified trust. Keep livepeer-node inference-agnostic. The
+[native inference design](native-inference-routing.md) supersedes the assumption that all
+future inference must pass through the normalized generation contract, but does not remove
+existing compatibility guarantees or authorize silent accounting/storage changes.

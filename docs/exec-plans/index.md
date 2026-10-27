@@ -26,3 +26,7 @@ Use a short task note for small edits.
 - [Strict function tools](completed/strict-function-tools.md): schema enforcement and combined structured text.
 
 - [Local schema references](completed/local-schema-references.md): bounded resolution for strict tools and structured output.
+
+- [Native inference forwarding](active/native-inference-forwarding.md): native HTTP, admission and accounting verified offline; deployment acceptance pending.
+
+- [Live-runner scaffold](completed/live-runner-scaffold.md): implementation and offline verification.

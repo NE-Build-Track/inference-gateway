@@ -124,3 +124,15 @@ The candidate Docker image passed isolated fake-backend HTTP smoke tests for Mod
 JSON/SSE and a function-result follow-up. Its 34 Python files match the working tree; see the
 [build manifest](references/models-responses-build.json). Live verification is deferred at the
 user's request. No new image was published and no running service was changed.
+
+Native boundary slice: `make check` passes 446 tests, lint, formatting, typing and docs.
+Tests cover raw bytes, expiring admission, real-engine selection, fragmented usage in all
+three protocols, cached tokens, errors, cancellation, deadline and pre-body cleanup. These
+are offline components; they do not certify the paid raw transport or enable native HTTP
+routes. See the [integration boundary](design-docs/native-transport-integration.md).
+
+Native HTTP integration now passes `make check` with 465 tests, including original-body
+forwarding for all three endpoints, registry accounting/job correlation, wholesale usage
+reporting, HTTP errors, failed/incomplete Responses, expiry, auth, deadline and ASGI
+disconnect cleanup. Runtime/GPU and live paid acceptance remain deferred. Builder Core
+PR #55 CI passes, including PostgreSQL and container checks; SDK PR #6 is in the NE fork.

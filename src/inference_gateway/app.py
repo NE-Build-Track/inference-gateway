@@ -12,13 +12,15 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 
 from inference_gateway.accounting import MeteredBackend, reconciliation_loop
 from inference_gateway.adapters import response_api
 from inference_gateway.adapters.http_stream import ManagedStreamingResponse
 from inference_gateway.adapters.ledger import SQLiteLedger
+from inference_gateway.adapters.native_http import NativeHTTPResponse
+from inference_gateway.adapters.native_request import envelope
 from inference_gateway.adapters.reports import attach_reports
 from inference_gateway.adapters.responses import (
     Protocol,
@@ -36,6 +38,7 @@ from inference_gateway.config import LivepeerSettings, Settings
 from inference_gateway.core.accounting import AccountingSource
 from inference_gateway.core.backend import Backend, BackendError
 from inference_gateway.core.models import Event
+from inference_gateway.core.native import NativeBackend
 from inference_gateway.core.service import GenerationService
 from inference_gateway.runtime import (
     EngineFactory,
@@ -131,11 +134,13 @@ def create_app(
     livepeer_settings: LivepeerSettings | None = None,
     engine_factory: EngineFactory | None = None,
     accounting_source: AccountingSource | None = None,
+    native_backend: NativeBackend | None = None,
 ) -> FastAPI:
     """Borrow injected backends; own configured Builder Core through ASGI lifespan."""
     config = settings if settings is not None else load_settings()
     owns_engine = backend is None and config.backend == "livepeer"
     ledger = SQLiteLedger(config.accounting_db) if config.accounting_db else None
+    native = native_backend
     selected_backend = backend if backend is not None else FakeBackend()
 
     def compose(selected: Backend) -> GenerationService:
@@ -159,7 +164,7 @@ def create_app(
 
     @asynccontextmanager
     async def resources(app: FastAPI) -> AsyncIterator[None]:
-        nonlocal service, ready, source, catalog
+        nonlocal service, ready, source, catalog, native
         if ledger:
             ledger.recover()
 
@@ -187,6 +192,7 @@ def create_app(
                 ledger.bind_job if ledger else None,
             ) as live:
                 service = compose(live)
+                native = live.native_backend
                 source = accounting_source or live.accounting
                 ready = live.ready
                 catalog = live.models
@@ -194,6 +200,7 @@ def create_app(
                     async with accounting_worker():
                         yield
                 finally:
+                    native = None
                     service = None
                     ready = service_ready
                     catalog = tuple
@@ -225,7 +232,7 @@ def create_app(
 
     async def generate(
         request: Request, protocol: Protocol, *, responses_api: bool = False
-    ) -> JSONResponse | StreamingResponse:
+    ) -> Response:
         request_id = "req_" + uuid4().hex
         started = time.monotonic()
         headers = {"x-request-id": request_id, "request-id": request_id}
@@ -243,10 +250,31 @@ def create_app(
             key.encode(), config.api_key.encode()
         ):
             return failure(protocol, "Invalid API key", 401, request_id)
-        if protocol == "anthropic" and request.headers.get("anthropic-version") != "2023-06-01":
-            return failure(protocol, "Use anthropic-version: 2023-06-01", 400, request_id)
         try:
             data = await request.json()
+            if (
+                native is not None
+                and isinstance(data, dict)
+                and native.accepts(data.get("model", ""))
+            ):
+                raw = envelope(
+                    await request.body(),
+                    path=request.url.path,
+                    request_id=request_id,
+                    headers=request.headers.items(),
+                    query=request.scope.get("query_string", b""),
+                )
+                if ledger and principal:
+                    ledger.begin(request_id, principal, raw.model, config.backend, protocol)
+                return NativeHTTPResponse(
+                    native,
+                    raw,
+                    ledger=ledger,
+                    deadline_seconds=config.timeout_seconds,
+                    failure=lambda message, status: failure(protocol, message, status, request_id),
+                )
+            if protocol == "anthropic" and request.headers.get("anthropic-version") != "2023-06-01":
+                return failure(protocol, "Use anthropic-version: 2023-06-01", 400, request_id)
             include_usage = False
             if responses_api:
                 response_body = response_api.ResponsesRequest.model_validate(data)
@@ -391,7 +419,11 @@ def create_app(
             return failure("openai", "Invalid API key", 401, request_id)
         if principal and not principal.permits("inference"):
             return failure("openai", "Insufficient inference permission", 403, request_id)
-        names = catalog() if service is not None else ()
+        names = (
+            tuple(sorted(set(catalog()) | set(native.models() if native else ())))
+            if service is not None
+            else ()
+        )
         if ledger:
             priced = {p["model"] for p in ledger.prices() if p["active"]}
             names = tuple(n for n in names if n in priced)
@@ -412,15 +444,15 @@ def create_app(
         )
 
     @app.post("/v1/responses", response_model=None)
-    async def responses(request: Request) -> JSONResponse | StreamingResponse:
+    async def responses(request: Request) -> Response:
         return await generate(request, "openai", responses_api=True)
 
     @app.post("/v1/chat/completions", response_model=None)
-    async def chat_completions(request: Request) -> JSONResponse | StreamingResponse:
+    async def chat_completions(request: Request) -> Response:
         return await generate(request, "openai")
 
     @app.post("/v1/messages", response_model=None)
-    async def messages(request: Request) -> JSONResponse | StreamingResponse:
+    async def messages(request: Request) -> Response:
         return await generate(request, "anthropic")
 
     return app

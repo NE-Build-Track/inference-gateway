@@ -39,6 +39,17 @@ The gateway does not execute tools,
 collect customer payments or replay generated responses. See the
 [compatibility contract](docs/product-specs/compatibility.md).
 
+## Native backend direction
+
+Native routes support **vLLM, Ollama and SGLang** through original-body forwarding,
+metadata-aware admission and read-only usage accounting. Enable them explicitly per model;
+existing routes default to validated generation. Native strictness belongs to the backend.
+
+The [native contract](docs/product-specs/native-inference.md) describes configuration and
+limits. The [live-runner bundle](live-runner/README.md) supplies candidate manifests,
+pinned images and readiness checks. The implementation has offline acceptance; runtime/GPU
+and paid-path acceptance remain deferred. Dependencies pin NE-Build-Track review revisions.
+
 ## Quick start
 
 Install Python 3.12+ and [uv](https://docs.astral.sh/uv/), then:

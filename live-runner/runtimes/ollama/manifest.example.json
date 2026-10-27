@@ -1,0 +1,22 @@
+{
+  "contract_version": 1,
+  "runner_id": "ollama-llm",
+  "app": "inference/ollama",
+  "runtime": {
+    "name": "ollama",
+    "tool_parser": null,
+    "reasoning_parser": null
+  },
+  "model": {
+    "name": "qwen2.5:0.5b",
+    "source": "qwen2.5:0.5b",
+    "revision": "REPLACE_WITH_INSTALLED_MODEL_SHA256",
+    "context_tokens": 4096
+  },
+  "endpoints": [
+    "chat_completions"
+  ],
+  "capacity": 1,
+  "public_url": "http://127.0.0.1:8935",
+  "admission": "candidate"
+}

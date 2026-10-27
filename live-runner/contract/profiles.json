@@ -1,0 +1,20 @@
+{
+  "chat_completions": {
+    "path": "/v1/chat/completions",
+    "profile": "openai.chat.v1",
+    "usage": "chat.final.v1",
+    "stream_usage": "include_usage_required"
+  },
+  "responses": {
+    "path": "/v1/responses",
+    "profile": "openai.responses.stateless.v1",
+    "usage": "responses.final.v1",
+    "stream_usage": "terminal"
+  },
+  "messages": {
+    "path": "/v1/messages",
+    "profile": "anthropic.messages.v1",
+    "usage": "messages.events.v1",
+    "stream_usage": "terminal"
+  }
+}

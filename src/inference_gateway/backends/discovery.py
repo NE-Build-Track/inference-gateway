@@ -80,3 +80,12 @@ class ModelSelection:
         if not ordered:
             raise NoCapacity("No eligible model runner")
         return ordered
+
+
+class ProtocolSelection:
+    def __init__(self, validated: SelectionPolicy, native: SelectionPolicy) -> None:
+        self.validated, self.native = validated, native
+
+    def order(self, candidates: Sequence[Runner], request: JobRequest) -> Sequence[Runner]:
+        policy = self.native if request.capability == "native.http.v1" else self.validated
+        return policy.order(candidates, request)
