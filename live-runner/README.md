@@ -5,8 +5,8 @@ It contains exact integration code and digest-pinned upstream images, not copies
 those engines. One manifest generates runtime settings, readiness configuration and
 Livepeer node registration, including `metadata.model_name`.
 
-**Status:** offline-tested candidate scaffold. Native gateway forwarding is implemented with offline acceptance; complete
-runtime/endpoint conformance, GPU acceptance and paid-path acceptance remain pending.
+**Status:** candidate bundle with Qwen3.8 GPU acceptance and paid accounting evidence.
+Complete runtime conformance, chain finality and production admission remain pending.
 No image here is certified merely because its registry digest resolved. Generated
 runners are deliberately `idle`, and metadata says `admission: candidate`; they do not
 enter discovery as usable supply. Existing gateway traffic is unchanged.
@@ -73,8 +73,8 @@ bytes for legacy compatibility. Metadata schema shape is checked by the shared P
 contract; semantic endpoint mappings are also checked by that contract.
 
 Registry tags were resolved on 2026-10-27 into the checked-in lock. Generated Compose
-never uses `latest`. Runtime semantic versions and GPU behavior have not been measured;
-the image digest is the authoritative pin. Lock updates require a new release identity
+never uses `latest`. Measured runtime versions and GPU behavior are recorded in the remote GPU report;
+the image digest remains the authoritative pin. Lock updates require a new release identity
 and acceptance evidence, not an automatic pull on service restart.
 
 Do not edit generated files and keep the old evidence. Regenerate from the manifest.
@@ -93,4 +93,14 @@ acceptance and explicit promotion; metadata alone never grants native admission.
 
 No automatic production promotion or approval-writing command is provided. Readiness is
 not endpoint certification. The current integration pins NE-Build-Track review revisions;
-GPU and paid-path acceptance remain deferred.
+Chain finality and production admission remain pending.
+
+## Remote GPU evidence
+
+The [27 October offchain run](tests/gpu-acceptance-2026-10-27.md) tested these runtime
+images with a remote GPU and local node/gateway. The subsequent
+[Qwen3.8 follow-up](tests/qwen38-followup-2026-10-27.md) tests the corrected Docker images,
+now published as NE candidates; the lock pins that tested node artifact. It also records
+four paid calls, persistent volumes, exact configurations and runtime feature gaps.
+Generated deployments still require their own explicit approval; these tests do not
+automatically promote deployments or certify every backend feature.

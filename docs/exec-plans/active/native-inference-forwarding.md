@@ -1,8 +1,10 @@
 # Native inference forwarding
 
-Status: implementation verified offline; deployment acceptance and review remain open.
-Supported backend families are vLLM, Ollama and SGLang. Live verification remains deferred
-at the user's request. The development stack stays stopped. Publish only to NE-Build-Track
+Status: offline checks and limited offchain GPU acceptance verified; release-artifact
+acceptance, paid-path acceptance and review remain open.
+Supported backend families are vLLM, Ollama and SGLang. The user has authorized isolated
+GPU acceptance on a remote RTX 5090, with the runner/node and gateway local. Paid-path
+acceptance remains deferred. The existing development stack stays stopped. Publish only to NE-Build-Track
 forks; do not push branches or create PRs in upstream Livepeer repositories.
 
 ## Acceptance and implementation
@@ -16,7 +18,18 @@ forks; do not push branches or create PRs in upstream Livepeer repositories.
 - [x] Errors, incomplete/failed responses, deadline, cancellation and generator cleanup.
 - [x] Existing validated routes retain their default behavior.
 - [ ] Review/merge NE dependency and gateway PRs; repin accepted revisions as needed.
-- [ ] Exact runtime/GPU/node and paid-path acceptance, explicitly deferred.
+- [x] Limited offchain GPU matrix for three runtime families, using a patched local node.
+- [ ] Publish/repin the node discovery fix and verify the complete released runner bundle.
+- [ ] Paid-path acceptance, still deferred.
+
+GPU acceptance compares direct runtime calls with calls through the local node, real
+Builder Core/SDK transport and gateway. It checks catalog identity, unary/SSE usage,
+strict schemas, local references, tools combined with structured output, and retail/job
+accounting. Backend rejections are recorded as Unsupported Response, not translated into
+successful responses. Split-host test artifacts have their own deployment identity and
+temporary test approvals; they do not promote the standard candidate bundle.
+See the [GPU report](../../../live-runner/tests/gpu-acceptance-2026-10-27.md) for runtime
+limitations, persistent caches and the exact scope. Gateway checks now pass 472 tests.
 
 The [native contract](../../product-specs/native-inference.md) defines current behavior.
 The [design](../../design-docs/native-inference-routing.md) records the direction and wider
@@ -51,3 +64,7 @@ pins Core `0d0b532`; Core pins SDK `cd6ed5e`.
   validated mode. Native incomplete/failed provider payloads remain visible and retain usage.
 - Reject encoded responses pending a decoding/observation profile. Shared physical capacity,
   automatic evidence refresh and stateful APIs need separate work.
+
+The [GPU follow-up](native-gpu-followup.md) records the later 472-test check, three-engine
+Qwen3.8 matrix, four paid calls and published NE candidate images. The node lock now
+includes the discovery identity fix. Chain finality and production admission remain open.

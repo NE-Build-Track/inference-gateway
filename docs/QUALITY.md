@@ -134,5 +134,15 @@ routes. See the [integration boundary](design-docs/native-transport-integration.
 Native HTTP integration now passes `make check` with 465 tests, including original-body
 forwarding for all three endpoints, registry accounting/job correlation, wholesale usage
 reporting, HTTP errors, failed/incomplete Responses, expiry, auth, deadline and ASGI
-disconnect cleanup. Runtime/GPU and live paid acceptance remain deferred. Builder Core
+disconnect cleanup. Subsequent GPU/paid evidence is recorded below. Builder Core
 PR #55 CI passes, including PostgreSQL and container checks; SDK PR #6 is in the NE fork.
+
+The [27 October GPU run](../live-runner/tests/gpu-acceptance-2026-10-27.md) exercises real
+vLLM, SGLang and Ollama through an offchain local node and the native gateway. It found
+and fixed optional-null usage details, final Messages input/cache usage updates, and
+missing node discovery identity. Runtime-specific strict-tool/combined-output limitations
+remain documented. The [Qwen3.8 follow-up](../live-runner/tests/qwen38-followup-2026-10-27.md)
+records 180 protocol probes, failure/recovery checks and four paid requests with observed
+wholesale costs. Corrected images are published as NE candidates and the node lock is
+updated. Chain finality, production load and feature-specific admission remain pending.
+Gateway checks pass 472 tests after the usage regressions.

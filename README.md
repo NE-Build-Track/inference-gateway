@@ -47,8 +47,9 @@ existing routes default to validated generation. Native strictness belongs to th
 
 The [native contract](docs/product-specs/native-inference.md) describes configuration and
 limits. The [live-runner bundle](live-runner/README.md) supplies candidate manifests,
-pinned images and readiness checks. The implementation has offline acceptance; runtime/GPU
-and paid-path acceptance remain deferred. Dependencies pin NE-Build-Track review revisions.
+pinned images and readiness checks. The [Qwen3.8 acceptance report](live-runner/tests/qwen38-followup-2026-10-27.md)
+records GPU tests on all three engines and four paid calls with reconciled wholesale costs.
+Chain finality and production admission remain pending. Dependencies pin NE-Build-Track review revisions.
 
 ## Quick start
 

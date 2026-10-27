@@ -11,6 +11,9 @@ explicit optional fields; choose parsers appropriate to the selected model and t
 The small example model is a configuration illustration, not a strict-tools benchmark.
 
 The image is locked in [images.lock.json](../../images.lock.json). Registry resolution is
-verified; runtime startup, GPU compatibility and advertised endpoint behavior remain
-unverified. Chat is the only default endpoint declaration. Responses and Messages may be
+verified. The [remote GPU report](../../tests/gpu-acceptance-2026-10-27.md) records
+limited startup/endpoint acceptance and backend-specific gaps. Chat is the only default endpoint declaration. Responses and Messages may be
 added as acceptance targets, not as automatic claims based on the runtime family name.
+
+The renderer enables `--enable-cache-report` to expose cached input tokens in usage.
+Streaming callers must still explicitly request usage under the chat endpoint profile.

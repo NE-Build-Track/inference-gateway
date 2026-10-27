@@ -51,6 +51,10 @@ def render(deployment: Deployment, output: Path) -> dict:
             "--max-model-len" if name == "vllm" else "--context-length",
             str(model.context_tokens),
         ]
+        if name == "vllm":
+            command += ["--enable-prompt-tokens-details"]
+        else:
+            command += ["--enable-cache-report"]
         if deployment.runtime.tool_parser:
             if name == "vllm":
                 command += ["--enable-auto-tool-choice"]

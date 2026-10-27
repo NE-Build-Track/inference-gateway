@@ -13,6 +13,6 @@ are rejected because Ollama owns its model-specific parsing. The configured cont
 setting applies through `OLLAMA_CONTEXT_LENGTH`; verify actual model behavior live.
 
 The image is locked in [images.lock.json](../../images.lock.json). Registry resolution is
-verified; runtime startup, GPU compatibility and advertised endpoint behavior remain
-unverified. Chat is the only default endpoint declaration. Responses and Messages may be
+verified. The [remote GPU report](../../tests/gpu-acceptance-2026-10-27.md) records
+limited startup/endpoint acceptance and backend-specific gaps. Chat is the only default endpoint declaration. Responses and Messages may be
 added as acceptance targets, not as automatic claims based on the runtime family name.

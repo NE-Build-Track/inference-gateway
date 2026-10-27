@@ -14,3 +14,12 @@ usage; native payload/header/status preservation through gateway and node; cance
 timeouts, malformed output, paid failures and accounting; verified stateless retention.
 Record sanitized results by deployment revision. No evidence file should claim these
 checks passed merely because the renderer or readiness observer succeeded.
+
+The [27 October remote GPU run](gpu-acceptance-2026-10-27.md) records real offchain
+acceptance for the three pinned runtime families, fixes found, backend gaps, persistent
+model storage and the remaining node-image release dependency. It does not certify paid
+settlement, all models or every provider feature.
+
+The [Qwen3.8 follow-up](qwen38-followup-2026-10-27.md) adds adversarial schemas, combined
+output/tool choices, tool-result follow-ups, deadlines/recovery, published candidate
+images and four paid calls. Chain finality remains separate from observed costs.

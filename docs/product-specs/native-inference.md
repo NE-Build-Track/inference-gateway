@@ -44,6 +44,11 @@ SSE observations have bounded frame storage. No wildcard management API is expos
 ## Accounting and lifecycle
 
 The native path binds the gateway request to the Builder Core job before consuming bytes.
+Optional null token-detail objects are treated as absent, with zero reported cached tokens.
+Messages streams use final cumulative input/cache counts from `message_delta` when
+present, retaining `message_start` fields only when not updated. Malformed detail objects
+or token counts still fail usage validation. Runner configuration
+enables cache reporting where supported; the gateway does not infer unreported savings.
 Read-only observers extract unary or streamed usage for all three protocols, including cached
 input. Measured retail usage is recorded once, and completed transport usage is reported to
 Builder Core. Wholesale reconciliation remains separate and does not rerun inference.

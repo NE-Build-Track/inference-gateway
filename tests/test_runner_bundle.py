@@ -54,6 +54,10 @@ def test_bundle_identity_config_and_health_are_aligned(tmp_path, family):
         args = runtime["command"]
         assert args[args.index("--revision") + 1] == deployment.model.revision
         assert args[args.index("--served-model-name") + 1] == deployment.model.name
+    if family == "vllm":
+        assert "--enable-prompt-tokens-details" in runtime["command"]
+    if family == "sglang":
+        assert "--enable-cache-report" in runtime["command"]
     assert advertised["endpoints"]["chat_completions"] == PROFILES["chat_completions"]
 
 

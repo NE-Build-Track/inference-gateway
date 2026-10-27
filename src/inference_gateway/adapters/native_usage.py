@@ -14,14 +14,22 @@ def _count(value: Any) -> int:
     return value
 
 
+def _cached(details: Any) -> int:
+    if details is None:
+        return 0
+    if not isinstance(details, dict):
+        raise BackendError("Invalid native usage details")
+    return _count(details.get("cached_tokens", 0))
+
+
 def usage(endpoint: str, data: dict[str, Any]) -> Finished:
     u = data["usage"]
     if endpoint == "chat_completions":
         i, o = _count(u["prompt_tokens"]), _count(u["completion_tokens"])
-        cached = _count(u.get("prompt_tokens_details", {}).get("cached_tokens", 0))
+        cached = _cached(u.get("prompt_tokens_details"))
     elif endpoint == "responses":
         i, o = _count(u["input_tokens"]), _count(u["output_tokens"])
-        cached = _count(u.get("input_tokens_details", {}).get("cached_tokens", 0))
+        cached = _cached(u.get("input_tokens_details"))
     else:
         cached = _count(u.get("cache_read_input_tokens", 0))
         i = _count(u["input_tokens"]) + cached + _count(u.get("cache_creation_input_tokens", 0))
@@ -92,13 +100,15 @@ class UsageObserver:
             elif kind == "message_delta" and data.get("usage") is not None:
                 if self.initial is None or self.message_delta:
                     raise BackendError("Invalid message usage sequence")
-                # Input evidence is from message_start; output count is cumulative.
+                # Counts are cumulative. Some runtimes finalize input/cache counts
+                # in message_delta; retain start fields only when not updated.
                 self._measure(
                     usage(
                         "messages",
                         {
                             "usage": {
                                 **self.initial,
+                                **data["usage"],
                                 "output_tokens": data["usage"]["output_tokens"],
                             }
                         },

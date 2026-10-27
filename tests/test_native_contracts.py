@@ -181,6 +181,25 @@ def test_usage_handles_every_byte_boundary_without_rewriting(endpoint, raw):
     assert (value.input_tokens, value.output_tokens, value.cached_input_tokens) == (5, 3, 2)
 
 
+def test_messages_final_usage_replaces_preliminary_input_counts():
+    raw = (
+        sse(
+            {"type": "message_start", "message": {"usage": {"input_tokens": 7, "output_tokens": 0}}}
+        )
+        + sse(
+            {
+                "type": "message_delta",
+                "usage": {"input_tokens": 11, "cache_read_input_tokens": 24, "output_tokens": 10},
+            }
+        )
+        + sse({"type": "message_stop"})
+    )
+    observer = UsageObserver("messages", True)
+    assert b"".join(observer.feed(bytes([byte])) for byte in raw) == raw
+    value = observer.finish()
+    assert (value.input_tokens, value.output_tokens, value.cached_input_tokens) == (35, 10, 24)
+
+
 @pytest.mark.parametrize(
     "raw",
     [
@@ -381,6 +400,17 @@ def test_usage_observation_limits_and_failed_terminal_preserve_measurement():
     "endpoint,raw",
     [
         ("chat_completions", {"usage": {"prompt_tokens": 5, "completion_tokens": 3}}),
+        (
+            "chat_completions",
+            {"usage": {"prompt_tokens": 5, "completion_tokens": 3, "prompt_tokens_details": None}},
+        ),
+        (
+            "responses",
+            {
+                "status": "completed",
+                "usage": {"input_tokens": 5, "output_tokens": 3, "input_tokens_details": None},
+            },
+        ),
         ("responses", {"status": "completed", "usage": {"input_tokens": 5, "output_tokens": 3}}),
         ("messages", {"usage": {"input_tokens": 5, "output_tokens": 3}}),
     ],
@@ -390,6 +420,24 @@ def test_unary_usage_keeps_payload_bytes(endpoint, raw):
     observer = UsageObserver(endpoint, False)
     assert observer.feed(body) is body
     assert observer.finish().output_tokens == 3
+
+
+@pytest.mark.parametrize("details", [False, [], "", {"cached_tokens": None}])
+def test_optional_usage_details_still_reject_malformed_values(details):
+    observer = UsageObserver("chat_completions", False)
+    observer.feed(
+        json.dumps(
+            {
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 3,
+                    "prompt_tokens_details": details,
+                }
+            }
+        ).encode()
+    )
+    with pytest.raises(BackendError):
+        observer.finish()
 
 
 async def test_native_selection_embeds_in_real_engine_before_transport():

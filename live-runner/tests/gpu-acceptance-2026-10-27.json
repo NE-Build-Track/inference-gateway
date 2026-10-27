@@ -1,0 +1,2004 @@
+{
+  "date": "2026-10-27",
+  "scope": "offchain remote GPU; local node and real Core/SDK/gateway; not paid settlement",
+  "gateway_base_commit": "0031a07dcab488b4d7313e79b71e47a5f982a788",
+  "node_base_commit": "dfcf03370cab1f8a08c82914fd874e437f22268c",
+  "gateway_usage_sha256": "c542297797dc33af38869ce8833df3323e9a91cfd6121463927d058379450f1a",
+  "runtimes": {
+    "vllm": {
+      "artifact": {
+        "image": "vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+        "image_config_digest": "sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+        "entrypoint": [
+          "vllm",
+          "serve"
+        ],
+        "command": [
+          "--model",
+          "Qwen/Qwen2.5-0.5B-Instruct",
+          "--revision",
+          "7ae557604adf67be50417f59c2c2f167def9a775",
+          "--served-model-name",
+          "Qwen/Qwen2.5-0.5B-Instruct",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8000",
+          "--max-model-len",
+          "4096",
+          "--enable-auto-tool-choice",
+          "--tool-call-parser",
+          "hermes",
+          "--enable-prompt-tokens-details"
+        ],
+        "environment": [],
+        "ports": {
+          "8000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "18100"
+            }
+          ]
+        },
+        "shm_size": 2147483648,
+        "device_requests": [
+          {
+            "Driver": "",
+            "Count": -1,
+            "DeviceIDs": null,
+            "Capabilities": [
+              [
+                "gpu"
+              ]
+            ],
+            "Options": {}
+          }
+        ],
+        "volumes": [
+          {
+            "name": "ne-gpu-acceptance-hf",
+            "destination": "/root/.cache/huggingface"
+          },
+          {
+            "name": "ne-gpu-acceptance-vllm-compile",
+            "destination": "/root/.cache/vllm"
+          }
+        ],
+        "test_metadata": {
+          "admission": "candidate",
+          "deployment_revision": "sha256:cdecfa4eac1e658a4e15d651691458d0ea9dc7b04245091b6bff5a52e8d70d0c",
+          "endpoints": {
+            "chat_completions": {
+              "path": "/v1/chat/completions",
+              "profile": "openai.chat.v1",
+              "stream_usage": "include_usage_required",
+              "usage": "chat.final.v1"
+            },
+            "messages": {
+              "path": "/v1/messages",
+              "profile": "anthropic.messages.v1",
+              "stream_usage": "terminal",
+              "usage": "messages.events.v1"
+            },
+            "responses": {
+              "path": "/v1/responses",
+              "profile": "openai.responses.stateless.v1",
+              "stream_usage": "terminal",
+              "usage": "responses.final.v1"
+            }
+          },
+          "inference_contract": 1,
+          "limits": {
+            "context_tokens": 4096
+          },
+          "model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+          "runtime": {
+            "image": "vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+            "name": "vllm"
+          }
+        },
+        "node_binary_sha256": "1daa12e7525aa4b7e238d27c804ed9c926dbfbf2f46dad8e49963826aee43a60",
+        "execution_artifact_hash": "sha256:946f8188aa39f6a6fe3c777d21654af6d6b667d99f721205a99d12512087766e"
+      },
+      "manifest": {
+        "contract_version": 1,
+        "runner_id": "vllm-llm",
+        "app": "inference/vllm",
+        "runtime": {
+          "name": "vllm",
+          "tool_parser": "hermes",
+          "reasoning_parser": null
+        },
+        "model": {
+          "name": "Qwen/Qwen2.5-0.5B-Instruct",
+          "source": "Qwen/Qwen2.5-0.5B-Instruct",
+          "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+          "context_tokens": 4096
+        },
+        "endpoints": [
+          "chat_completions",
+          "responses",
+          "messages"
+        ],
+        "capacity": 1,
+        "public_url": "http://127.0.0.1:18935",
+        "admission": "candidate"
+      },
+      "probes": [
+        {
+          "endpoint": "chat_completions",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.026,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 16
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.088,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.029,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.058,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.024,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.064,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.078,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.067,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.027,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.102,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.023,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.103,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.027,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 16
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.067,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "local_ref_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.024,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "local_ref_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.067,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.043,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 64
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.083,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 176
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool_ref",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.039,
+          "usage": {
+            "input": 200,
+            "output": 19,
+            "cached": 80
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool_ref",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.08,
+          "usage": {
+            "input": 200,
+            "output": 19,
+            "cached": 192
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "tool_and_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.04,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 176
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "tool_and_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.078,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 176
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.025,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.064,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "local_ref_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.033,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "local_ref_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.065,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 32
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.04,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 176
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.082,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 176
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool_ref",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.038,
+          "usage": {
+            "input": 200,
+            "output": 19,
+            "cached": 192
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool_ref",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.081,
+          "usage": {
+            "input": 200,
+            "output": 19,
+            "cached": 192
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "tool_and_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.042,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 176
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "tool_and_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.075,
+          "usage": {
+            "input": 182,
+            "output": 19,
+            "cached": 176
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        }
+      ],
+      "adversarial": [
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_tool",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_tool",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_json",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_json",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_tool",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_tool",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_json",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_json",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        }
+      ],
+      "lifecycle": {
+        "catalog": true,
+        "error_status": [
+          400,
+          400
+        ],
+        "error_bytes_preserved": true,
+        "error_unbilled_with_job": true,
+        "cancel_stream_status": 200,
+        "capacity_released": true,
+        "jobs_with_usage": 17,
+        "paid_attempts": 0
+      },
+      "accounting": {
+        "measured_requests": 37,
+        "mismatches": 0,
+        "paid_attempts": 0
+      }
+    },
+    "sglang": {
+      "artifact": {
+        "image": "lmsysorg/sglang@sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae",
+        "image_config_digest": "sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae",
+        "entrypoint": [
+          "python3"
+        ],
+        "command": [
+          "-m",
+          "sglang.launch_server",
+          "--model-path",
+          "Qwen/Qwen2.5-0.5B-Instruct",
+          "--revision",
+          "7ae557604adf67be50417f59c2c2f167def9a775",
+          "--served-model-name",
+          "Qwen/Qwen2.5-0.5B-Instruct",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8000",
+          "--context-length",
+          "4096",
+          "--tool-call-parser",
+          "qwen25",
+          "--enable-cache-report"
+        ],
+        "environment": [],
+        "ports": {
+          "8000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "18100"
+            }
+          ]
+        },
+        "shm_size": 2147483648,
+        "device_requests": [
+          {
+            "Driver": "",
+            "Count": -1,
+            "DeviceIDs": null,
+            "Capabilities": [
+              [
+                "gpu"
+              ]
+            ],
+            "Options": {}
+          }
+        ],
+        "volumes": [
+          {
+            "name": "ne-gpu-acceptance-hf",
+            "destination": "/root/.cache/huggingface"
+          }
+        ],
+        "test_metadata": {
+          "admission": "candidate",
+          "deployment_revision": "sha256:8f1b4a752f3173d6751aa25100665727f1c0ba5865b99bd7807169b4f92f9903",
+          "endpoints": {
+            "chat_completions": {
+              "path": "/v1/chat/completions",
+              "profile": "openai.chat.v1",
+              "stream_usage": "include_usage_required",
+              "usage": "chat.final.v1"
+            },
+            "messages": {
+              "path": "/v1/messages",
+              "profile": "anthropic.messages.v1",
+              "stream_usage": "terminal",
+              "usage": "messages.events.v1"
+            },
+            "responses": {
+              "path": "/v1/responses",
+              "profile": "openai.responses.stateless.v1",
+              "stream_usage": "terminal",
+              "usage": "responses.final.v1"
+            }
+          },
+          "inference_contract": 1,
+          "limits": {
+            "context_tokens": 4096
+          },
+          "model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+          "runtime": {
+            "image": "lmsysorg/sglang@sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae",
+            "name": "sglang"
+          }
+        },
+        "node_binary_sha256": "1daa12e7525aa4b7e238d27c804ed9c926dbfbf2f46dad8e49963826aee43a60",
+        "execution_artifact_hash": "sha256:5f9a24f4055b62843e659df66d62c3481f63adc354431ff55af089841ee4d672"
+      },
+      "manifest": {
+        "contract_version": 1,
+        "runner_id": "sglang-llm",
+        "app": "inference/sglang",
+        "runtime": {
+          "name": "sglang",
+          "tool_parser": "qwen25",
+          "reasoning_parser": null
+        },
+        "model": {
+          "name": "Qwen/Qwen2.5-0.5B-Instruct",
+          "source": "Qwen/Qwen2.5-0.5B-Instruct",
+          "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+          "context_tokens": 4096
+        },
+        "endpoints": [
+          "chat_completions",
+          "responses",
+          "messages"
+        ],
+        "capacity": 1,
+        "public_url": "http://127.0.0.1:18935",
+        "admission": "candidate"
+      },
+      "probes": [
+        {
+          "endpoint": "chat_completions",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.029,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.117,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.024,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.057,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.023,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.063,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.024,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.055,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.023,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.065,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.071,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.106,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.024,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.065,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "local_ref_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.023,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "local_ref_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.066,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.035,
+          "usage": {
+            "input": 188,
+            "output": 17,
+            "cached": 187
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.076,
+          "usage": {
+            "input": 188,
+            "output": 17,
+            "cached": 187
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool_ref",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.034,
+          "usage": {
+            "input": 206,
+            "output": 17,
+            "cached": 205
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool_ref",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.073,
+          "usage": {
+            "input": 206,
+            "output": 17,
+            "cached": 205
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "tool_and_json",
+          "route": "direct",
+          "status": 400,
+          "seconds": 0.007,
+          "result": "Unsupported Response"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "tool_and_json",
+          "route": "gateway",
+          "status": 400,
+          "seconds": 0.035,
+          "result": "Unsupported Response"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.024,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.063,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "local_ref_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.024,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "local_ref_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.064,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.035,
+          "usage": {
+            "input": 188,
+            "output": 17,
+            "cached": 187
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.071,
+          "usage": {
+            "input": 188,
+            "output": 17,
+            "cached": 187
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool_ref",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.032,
+          "usage": {
+            "input": 206,
+            "output": 17,
+            "cached": 205
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool_ref",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.075,
+          "usage": {
+            "input": 206,
+            "output": 17,
+            "cached": 205
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "tool_and_json",
+          "route": "direct",
+          "status": 400,
+          "seconds": 0.005,
+          "result": "Unsupported Response"
+        },
+        {
+          "endpoint": "responses",
+          "case": "tool_and_json",
+          "route": "gateway",
+          "status": 400,
+          "seconds": 0.037,
+          "result": "Unsupported Response"
+        }
+      ],
+      "adversarial": [
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_tool",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_tool",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_json",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_json",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_tool",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_tool",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_json",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_json",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        }
+      ],
+      "lifecycle": {
+        "catalog": true,
+        "error_status": [
+          400,
+          400
+        ],
+        "error_bytes_preserved": true,
+        "error_unbilled_with_job": true,
+        "cancel_stream_status": 200,
+        "capacity_released": true,
+        "jobs_with_usage": 14,
+        "paid_attempts": 0
+      },
+      "accounting": {
+        "measured_requests": 34,
+        "mismatches": 0,
+        "paid_attempts": 0
+      }
+    },
+    "ollama": {
+      "artifact": {
+        "image": "ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8",
+        "image_config_digest": "sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8",
+        "entrypoint": [
+          "/bin/ollama"
+        ],
+        "command": [
+          "serve"
+        ],
+        "environment": [
+          "OLLAMA_CONTEXT_LENGTH=4096",
+          "OLLAMA_KEEP_ALIVE=1h"
+        ],
+        "ports": {
+          "11434/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "18100"
+            }
+          ]
+        },
+        "shm_size": 67108864,
+        "device_requests": [
+          {
+            "Driver": "",
+            "Count": -1,
+            "DeviceIDs": null,
+            "Capabilities": [
+              [
+                "gpu"
+              ]
+            ],
+            "Options": {}
+          }
+        ],
+        "volumes": [
+          {
+            "name": "ne-gpu-acceptance-ollama",
+            "destination": "/root/.ollama"
+          }
+        ],
+        "test_metadata": {
+          "admission": "candidate",
+          "deployment_revision": "sha256:28564f2772b49a877c38e406ed2fc8a282602b21114a833275d0b22c8b1a4133",
+          "endpoints": {
+            "chat_completions": {
+              "path": "/v1/chat/completions",
+              "profile": "openai.chat.v1",
+              "stream_usage": "include_usage_required",
+              "usage": "chat.final.v1"
+            },
+            "messages": {
+              "path": "/v1/messages",
+              "profile": "anthropic.messages.v1",
+              "stream_usage": "terminal",
+              "usage": "messages.events.v1"
+            },
+            "responses": {
+              "path": "/v1/responses",
+              "profile": "openai.responses.stateless.v1",
+              "stream_usage": "terminal",
+              "usage": "responses.final.v1"
+            }
+          },
+          "inference_contract": 1,
+          "limits": {
+            "context_tokens": 4096
+          },
+          "model_name": "qwen2.5:0.5b",
+          "runtime": {
+            "image": "ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8",
+            "name": "ollama"
+          }
+        },
+        "node_binary_sha256": "1daa12e7525aa4b7e238d27c804ed9c926dbfbf2f46dad8e49963826aee43a60",
+        "execution_artifact_hash": "sha256:fd26878a612dcd176c2b189cf28f43ec713571defecba9acdbd7edd0837826f4"
+      },
+      "manifest": {
+        "contract_version": 1,
+        "runner_id": "ollama-llm",
+        "app": "inference/ollama",
+        "runtime": {
+          "name": "ollama",
+          "tool_parser": null,
+          "reasoning_parser": null
+        },
+        "model": {
+          "name": "qwen2.5:0.5b",
+          "source": "qwen2.5:0.5b",
+          "revision": "sha256:a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67",
+          "context_tokens": 4096
+        },
+        "endpoints": [
+          "chat_completions",
+          "responses",
+          "messages"
+        ],
+        "capacity": 1,
+        "public_url": "http://127.0.0.1:18935",
+        "admission": "candidate"
+      },
+      "probes": [
+        {
+          "endpoint": "chat_completions",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.036,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 24
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.093,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.029,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.071,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.017,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.069,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.033,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.057,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "unary",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.019,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "unary",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.058,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "stream",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.02,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "case": "stream",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.055,
+          "usage": {
+            "input": 35,
+            "output": 10,
+            "cached": 34
+          },
+          "terminal_success": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.031,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 24
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.07,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "local_ref_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.025,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "local_ref_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.086,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.031,
+          "usage": {
+            "input": 152,
+            "output": 19,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.068,
+          "usage": {
+            "input": 152,
+            "output": 19,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool_ref",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.029,
+          "usage": {
+            "input": 156,
+            "output": 19,
+            "cached": 155
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "strict_tool_ref",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.088,
+          "usage": {
+            "input": 156,
+            "output": 19,
+            "cached": 155
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "tool_and_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.034,
+          "usage": {
+            "input": 152,
+            "output": 10,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": false,
+          "result": "Unsupported Response: semantic mismatch"
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "tool_and_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.093,
+          "usage": {
+            "input": 152,
+            "output": 10,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": false,
+          "accounting_matches": true,
+          "result": "Unsupported Response: semantic mismatch"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.025,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.103,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "local_ref_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.023,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "local_ref_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.063,
+          "usage": {
+            "input": 38,
+            "output": 10,
+            "cached": 37
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.031,
+          "usage": {
+            "input": 152,
+            "output": 19,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.074,
+          "usage": {
+            "input": 152,
+            "output": 19,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool_ref",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.032,
+          "usage": {
+            "input": 156,
+            "output": 19,
+            "cached": 155
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "strict_tool_ref",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.072,
+          "usage": {
+            "input": 156,
+            "output": 19,
+            "cached": 155
+          },
+          "terminal_success": true,
+          "schema_valid": true,
+          "accounting_matches": true,
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "case": "tool_and_json",
+          "route": "direct",
+          "status": 200,
+          "seconds": 0.032,
+          "usage": {
+            "input": 152,
+            "output": 10,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": false,
+          "result": "Unsupported Response: semantic mismatch"
+        },
+        {
+          "endpoint": "responses",
+          "case": "tool_and_json",
+          "route": "gateway",
+          "status": 200,
+          "seconds": 0.078,
+          "usage": {
+            "input": 152,
+            "output": 10,
+            "cached": 151
+          },
+          "terminal_success": true,
+          "schema_valid": false,
+          "accounting_matches": true,
+          "result": "Unsupported Response: semantic mismatch"
+        }
+      ],
+      "adversarial": [
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_tool",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": false
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_tool",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": false
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_json",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "case": "conflicting_prompt_json",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_tool",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": false
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_tool",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": false
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_json",
+          "route": "direct",
+          "status": 200,
+          "schema_valid": true
+        },
+        {
+          "endpoint": "responses",
+          "case": "conflicting_prompt_json",
+          "route": "gateway",
+          "status": 200,
+          "schema_valid": true
+        }
+      ],
+      "lifecycle": {
+        "catalog": true,
+        "error_status": [
+          400,
+          400
+        ],
+        "error_bytes_preserved": true,
+        "error_unbilled_with_job": true,
+        "cancel_stream_status": 200,
+        "capacity_released": true,
+        "jobs_with_usage": 33,
+        "paid_attempts": 0
+      },
+      "accounting": {
+        "measured_requests": 38,
+        "mismatches": 0,
+        "paid_attempts": 0
+      }
+    }
+  }
+}
