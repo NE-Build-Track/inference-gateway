@@ -98,6 +98,7 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
             raise ValueError("Shared application allocation required")
         required = (
             engine_settings.signer_url,
+            engine_settings.discovery_url,
             engine_settings.batteries_url,
             engine_settings.batteries_token,
             engine_settings.shared_payment_key,
@@ -105,11 +106,12 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
             engine_settings.secret_key,
         )
         if not all(required):
-            raise ValueError("Missing payment configuration")
+            raise ValueError("Missing payment or discovery configuration")
     except ValueError:
         # Pydantic error strings can contain input values; never expose configuration secrets.
         raise ValueError(
-            "Livepeer requires valid LPB_* settings and a shared application allocation"
+            "Livepeer requires LPB_DISCOVERY_URL, valid LPB_* payment settings, "
+            "and a shared application allocation"
         ) from None
 
     def decorate(parts: EngineParts) -> EngineParts:

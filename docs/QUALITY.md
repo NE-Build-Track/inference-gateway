@@ -156,3 +156,8 @@ promotion remains gated by review, chain finality and full deployment acceptance
 24 image generation checks plus six malformed-image checks, including paid usage and
 retail accounting. `make check` passes 481 tests. These are bounded inline-PNG fixtures,
 not certification of every image format or other media.
+
+The [repository compatibility review](references/repository-compatibility-2026-10-27.md)
+passes 483 tests on current pins and an isolated latest-M3-plus-native overlay. Plain M3
+is not a native-compatible replacement. Discovery Compose/startup wiring is corrected,
+with a real local discovery-process regression. No live paid/GPU services were started.

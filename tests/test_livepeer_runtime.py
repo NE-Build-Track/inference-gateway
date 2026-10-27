@@ -139,3 +139,38 @@ async def test_discovery_filters_app_and_origin_without_owning_source():
     source = FilteredDiscovery(Source(), frozenset({"yes"}), ("https://orch.example:443",))
     found = await source.fetch()
     assert len(found) == 1 and found[0].orchestrator_url == "https://orch.example"
+
+
+async def test_discovery_configuration_is_required_before_engine_creation(monkeypatch, tmp_path):
+    from cryptography.fernet import Fernet
+
+    from inference_gateway.runtime import BuilderEngine
+
+    for name, value in {
+        "LPB_DATABASE_URL": f"sqlite+aiosqlite:///{tmp_path}/engine.db",
+        "LPB_ALLOCATION_MODE": "per_application",
+        "LPB_SIGNER_URL": "http://signer.test:8937",
+        "LPB_BATTERIES_URL": "http://batteries.test:8081",
+        "LPB_BATTERIES_TOKEN": "fixture-token",
+        "LPB_SHARED_PAYMENT_KEY": "fixture-payment-key",
+        "LPB_SHARED_ALLOCATION_ID": "fixture-allocation",
+        "LPB_SECRET_KEY": Fernet.generate_key().decode(),
+    }.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv("LPB_DISCOVERY_URL", raising=False)
+    created = []
+    engine = FakeEngine(streaming=True)
+
+    async def create(settings, **kwargs):
+        created.append(settings.discovery_url)
+        return engine
+
+    monkeypatch.setattr(BuilderEngine, "create", create)
+    with pytest.raises(ValueError) as exc:
+        await build_engine(LivepeerSettings())
+    assert "LPB_DISCOVERY_URL" in str(exc.value)
+    assert "fixture-payment-key" not in str(exc.value)
+    assert created == []
+    monkeypatch.setenv("LPB_DISCOVERY_URL", "http://discovery.test:8939/discovery")
+    assert await build_engine(LivepeerSettings()) is engine
+    assert created == ["http://discovery.test:8939/discovery"]

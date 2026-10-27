@@ -2,7 +2,8 @@
 
 Status: opt-in HTTP implementation verified offline. See the
 [native contract](../product-specs/native-inference.md) for operator settings and limits.
-Validated routes remain the default. No GPU or paid live acceptance is claimed.
+Validated routes remain the default. Subsequent bounded GPU and paid evidence is linked
+from [quality status](../QUALITY.md); release promotion remains separate.
 
 ## Ownership
 
@@ -51,10 +52,15 @@ Offline tests cover original bytes/unknown fields, all three endpoint usage form
 retail ledger/job correlation, wholesale usage reporting, failed/incomplete Responses,
 HTTP errors, expiration, authentication, deadlines, cancellation and cleanup. Builder Core
 CI also verifies PostgreSQL storage and its container. The gateway package and local review
-image build successfully. No development stack or live inference was started.
+image build successfully. That initial offline slice did not start live inference; later
+GPU/paid probes are recorded in quality status.
 
 Remaining work is deployment acceptance and release review: review/merge the NE dependency
 PRs, repin to accepted revisions as needed, test exact GPU/model/parser configurations,
 verify node metadata/header propagation and real paid settlement, then promote accepted
 runner revisions. Approval automation, hot revocation, shared-capacity multi-model layouts,
 compressed payload observation and stateful APIs remain outside the current native profile.
+
+The [cross-repository review](../references/repository-compatibility-2026-10-27.md) verifies
+current M3 plus native patches and restores the separate discovery service in Compose.
+Do not substitute an unpatched default branch for the native dependency pins.

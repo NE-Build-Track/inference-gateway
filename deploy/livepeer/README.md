@@ -5,7 +5,7 @@ application checkout. Build contexts use this repository or pinned upstream comm
 
 | Project | Components | Persistent state |
 | --- | --- | --- |
-| `gateway/compose.yaml` | Gateway, optional Clearinghouse and payment signer | User/retail DB, engine DB, payment DB and signer state |
+| `gateway/compose.yaml` | Gateway, discovery, optional Clearinghouse and payment signer | User/retail DB, engine DB, payment DB and signer state |
 | `orchestrator/compose.yaml` | `livepeer/node` orchestrator and local vLLM | Model cache and orchestrator payment state |
 
 ## Gateway configuration and build
@@ -31,7 +31,7 @@ Fernet secret in `.env`, along with the allocation settings. Keep all generated 
 docker compose -f deploy/livepeer/gateway/compose.yaml --profile payment-stack up -d clearinghouse signer
 # Only for a NEW allocation: explicitly choose the funding amount.
 deploy/livepeer/gateway/first-run.sh AMOUNT_USD
-docker compose -f deploy/livepeer/gateway/compose.yaml up -d gateway
+docker compose -f deploy/livepeer/gateway/compose.yaml up -d discovery gateway
 ```
 
 The first-run script creates a grant/allocation and refuses to replace an existing allocation
@@ -40,10 +40,13 @@ actions. Never run two signers using the same payer/state. To use independently 
 payment services, omit the profile and set their reachable `LPB_SIGNER_URL` and
 `LPB_BATTERIES_URL` instead. No external Docker network is required by the manifests.
 
-The committed signer configuration contains example public orchestrator origins. Replace
-those and `GATEWAY_APPROVED_ORCHESTRATORS` together for your deployment. For private
-orchestrators, configure the signer's destination grants explicitly. Do not bypass TLS
-verification: public certificates use system trust; intentionally pinned certificates can
+The committed `gateway/config/orchestrators.txt` contains example public orchestrator
+origins. Replace those and `GATEWAY_APPROVED_ORCHESTRATORS` together for your deployment.
+The separate `lpb discovery` service reads that directory; the signer only signs payments.
+`LPB_DISCOVERY_URL` defaults to `http://discovery:8939/discovery` in Compose and is required
+for direct gateway startup. Set it explicitly when using an external discovery service.
+Discovery and gateway use the same image/Core revision and TLS trust directory. Do not bypass
+TLS verification: public certificates use system trust; intentionally pinned certificates can
 be placed in `gateway/config/pinned-certs` and processed with:
 
 ```sh
@@ -95,11 +98,11 @@ The node statically registers the local vLLM HTTP server, checks its health and 
 `RUNNER_APP`. vLLM is not exposed directly on the host. The orchestrator listens on host
 loopback by default. Configure `ORCHESTRATOR_BIND` and `ORCHESTRATOR_SERVICE_URL` for remote
 access, with a TLS reverse proxy for public deployment. The advertised address must be
-reachable from gateway/signer containers; their `localhost` is not the host machine.
+reachable from gateway/discovery containers; their `localhost` is not the host machine.
 
 For gateway routing to this runner, set `GATEWAY_CHAT_APP=inference/chat/default`, the desired
 public `GATEWAY_MODEL_NAME`, and `GATEWAY_UPSTREAM_MODEL=gateway-model`. Configure discovery
-origins and signer grants to reach this orchestrator. The existing gateway payment backend
+origins to reach this orchestrator. The existing gateway payment backend
 still requires its normal engine/signer configuration even when the runner is free.
 
 ### Paid on-chain configuration

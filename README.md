@@ -132,6 +132,7 @@ inference. See [architecture](ARCHITECTURE.md) and [accounting](docs/design-docs
 | `GATEWAY_MODEL_ROUTES` | Public model names mapped to backend applications/models |
 | `GATEWAY_TIMEOUT_SECONDS` | Generation deadline; defaults to 300 seconds |
 | `GATEWAY_APPROVED_ORCHESTRATORS` | Allowed discovery origins for Livepeer |
+| `LPB_DISCOVERY_URL` | Required runner inventory endpoint; separate from the signer |
 | `LPB_*` | Builder Core configuration and upstream payment credentials |
 
 Registry mode fails closed until keys and prices are provisioned. For example:
@@ -160,7 +161,7 @@ scripts/build-images.sh gateway
 
 Two independent Compose deployments live under [deploy/livepeer](deploy/livepeer/README.md):
 
-- **Gateway:** API service, embedded Builder Core, Clearinghouse and payment signer.
+- **Gateway:** API service, embedded Builder Core, discovery, Clearinghouse and payment signer.
 - **Orchestrator:** `livepeer/node` and local vLLM, with explicit off-chain/on-chain configuration.
 
 Each deployment has its own configuration, secrets and persistent volumes. No sibling
