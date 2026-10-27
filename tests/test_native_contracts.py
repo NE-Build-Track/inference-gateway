@@ -467,3 +467,25 @@ async def test_native_selection_embeds_in_real_engine_before_transport():
             async for _ in stream:
                 pass
         assert len(transport.calls) == 1 and transport.calls[0][0] == right.url
+
+
+def test_native_image_counts_toward_request_size_limit():
+    raw = json.dumps(
+        {
+            "model": "m",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": "data:image/png;base64," + "A" * 1000},
+                        }
+                    ],
+                }
+            ],
+        }
+    ).encode()
+    with pytest.raises(InvalidNativeRequest, match="oversized request"):
+        request(raw, max_bytes=len(raw) - 1)
+    assert request(raw, max_bytes=len(raw)).body is raw

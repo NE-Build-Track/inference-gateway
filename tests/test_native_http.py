@@ -121,7 +121,8 @@ async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path):
         assert db.execute("SELECT job_id FROM requests WHERE id=?", (row["id"],)).fetchone()[0]
 
 
-async def test_native_http_errors_keep_status_and_bytes_without_usage(tmp_path):
+@pytest.mark.parametrize("image_input", [False, True])
+async def test_native_http_errors_keep_status_and_bytes_without_usage(tmp_path, image_input):
     raw = b'{ "error":{"message":"backend specific", "future":true} }'
     app, engine, ledger, secret = setup(
         "responses",
@@ -134,7 +135,12 @@ async def test_native_http_errors_keep_status_and_bytes_without_usage(tmp_path):
         ) as client:
             response = await client.post(
                 "/v1/responses",
-                content=b'{"model":"m","store":false}',
+                content=(
+                    b'{"model":"m","store":false,"input":[{"role":"user","content":'
+                    b'[{"type":"input_image","image_url":"data:image/png;base64,broken"}]}]}'
+                    if image_input
+                    else b'{"model":"m","store":false}'
+                ),
                 headers={"authorization": "Bearer " + secret},
             )
     assert response.status_code == 400 and response.content == raw
@@ -142,6 +148,8 @@ async def test_native_http_errors_keep_status_and_bytes_without_usage(tmp_path):
     assert row["input_tokens"] is None
     with ledger.connection() as db:
         assert db.execute("SELECT job_id FROM requests WHERE id=?", (row["id"],)).fetchone()[0]
+    with ledger.connection() as db:
+        assert db.execute("SELECT count(*) FROM entries WHERE kind='charge'").fetchone()[0] == 0
     assert not engine.jobs.usage_reports
 
 
@@ -429,3 +437,79 @@ async def test_engine_failures_keep_timeout_and_availability_status(kind, expect
             response = await client.post("/v1/chat/completions", json={"model": "m"})
     assert response.status_code == expected
     assert "private backend detail" not in response.text
+
+
+@pytest.mark.parametrize("endpoint", list(PROFILES))
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_native_image_input_preserves_bytes_and_accounts(endpoint, streaming, tmp_path):
+    image = (
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8"
+        "AAwMCAO+jP9sAAAAASUVORK5CYII="
+    )
+    data_url = "data:image/png;base64," + image
+    content = [{"type": "text", "text": "Describe the image."}]
+    body = {"model": "m", "stream": streaming}
+    if endpoint == "responses":
+        content = [{"type": "input_text", "text": "Describe the image."}]
+        content.append({"type": "input_image", "image_url": data_url})
+        body.update(input=[{"role": "user", "content": content}], store=False)
+    else:
+        content.append(
+            {"type": "image_url", "image_url": {"url": data_url}}
+            if endpoint == "chat_completions"
+            else {
+                "type": "image",
+                "source": {"type": "base64", "media_type": "image/png", "data": image},
+            }
+        )
+        body.update(messages=[{"role": "user", "content": content}], max_tokens=32)
+        if endpoint == "chat_completions" and streaming:
+            body["stream_options"] = {"include_usage": True}
+    terminal = {"status": "completed", "usage": USAGES[endpoint]}
+    response = json.dumps(terminal).encode()
+    if streaming:
+        events = {
+            "chat_completions": [terminal],
+            "responses": [{"type": "response.completed", "response": terminal}],
+            "messages": [
+                {
+                    "type": "message_start",
+                    "message": {"usage": {"input_tokens": 5, "output_tokens": 0}},
+                },
+                {"type": "message_delta", "usage": {"output_tokens": 3}},
+                {"type": "message_stop"},
+            ],
+        }[endpoint]
+        response = b"".join(b"data: " + json.dumps(event).encode() + b"\n\n" for event in events)
+        if endpoint == "chat_completions":
+            response += b"data: [DONE]\n\n"
+    app, engine, ledger, secret = setup(
+        endpoint,
+        Reply(
+            content_type="text/event-stream" if streaming else "application/json",
+            chunks=(response,),
+        ),
+        tmp_path,
+    )
+    raw = json.dumps(body, indent=2).encode()
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            result = await client.post(
+                PROFILES[endpoint]["path"],
+                content=raw,
+                headers={
+                    "authorization": "Bearer " + secret,
+                    "x-api-key": secret,
+                    "content-type": "application/json",
+                },
+            )
+    assert result.status_code == 200
+    assert result.content == response
+    assert engine.jobs.requests[0][1].raw_body == raw
+    assert len(engine.jobs.usage_reports) == 1
+    rows = ledger.rows(ledger.authenticate(secret), 0, time.time() + 1)
+    assert len(rows) == 1
+    assert (rows[0]["input_tokens"], rows[0]["output_tokens"]) == (5, 3)
+    assert rows[0]["retail_amount"] == "0.000011000"

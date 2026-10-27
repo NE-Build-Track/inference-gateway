@@ -30,3 +30,5 @@ and tests together when behavior changes. Verification status is in [Quality](QU
 - [Native transport boundary](design-docs/native-transport-integration.md): implemented components and the NE dependency review chain.
 
 - [Native inference contract](product-specs/native-inference.md): explicit route mode, admission, forwarding and accounting.
+
+- [Native model inputs](product-specs/native-inputs.md): image request examples and modality limits.

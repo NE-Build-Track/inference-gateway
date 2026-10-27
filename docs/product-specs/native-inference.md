@@ -1,8 +1,9 @@
 # Native inference routes
 
-Status: opt-in implementation verified offline. Runtime families are **vLLM, Ollama and
-SGLang**. The bundled image/model configurations remain candidates; GPU and paid live
-acceptance are deferred. No generic claim of feature parity across those runtimes is made.
+Status: opt-in implementation with offline, bounded GPU and paid accounting acceptance.
+Runtime families are **vLLM, Ollama and SGLang**; the first release target is the tested
+vLLM configuration, with the other families experimental. Bundles remain candidates pending
+release review and deployment approval. No generic feature-parity claim is made.
 
 ## Routing and forwarding
 
@@ -102,3 +103,9 @@ See the [runner bundle](../../live-runner/README.md) and
 [active plan](../exec-plans/active/native-inference-forwarding.md). Remaining acceptance
 covers the exact runtime deployments, node metadata propagation, real paid settlement and
 shared-capacity behavior. The development stack stays stopped.
+
+## Input modalities
+
+See [native model inputs](native-inputs.md) for image payload examples, request limits and
+the distinction between text, image, audio, video and document inputs. Native forwarding
+does not decode media or certify a model capability merely because it accepts JSON.

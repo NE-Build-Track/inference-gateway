@@ -1,0 +1,706 @@
+{
+  "date": "2026-10-27",
+  "scope": "Inline 224x224 PNGs; vLLM Qwen3.8; paid gateway direct discovery",
+  "model": {
+    "source": "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+    "revision": "e3a700906e6a73ba4290b1873dc2ba8198527ab5"
+  },
+  "artifact": {
+    "image": "vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+    "image_config_digest": "sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+    "entrypoint": [
+      "vllm",
+      "serve"
+    ],
+    "command": [
+      "--model",
+      "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+      "--revision",
+      "e3a700906e6a73ba4290b1873dc2ba8198527ab5",
+      "--served-model-name",
+      "qwen3.8-27b",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8000",
+      "--max-model-len",
+      "4096",
+      "--max-num-seqs",
+      "4",
+      "--enable-auto-tool-choice",
+      "--tool-call-parser",
+      "qwen3_coder",
+      "--reasoning-parser",
+      "qwen3",
+      "--enable-prompt-tokens-details"
+    ],
+    "environment": [],
+    "ports": {
+      "8000/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "18100"
+        }
+      ]
+    },
+    "shm_size": 2147483648,
+    "volumes": [
+      {
+        "name": "ne-gpu-acceptance-hf",
+        "destination": "/root/.cache/huggingface"
+      },
+      {
+        "name": "ne-gpu-acceptance-vllm-compile",
+        "destination": "/root/.cache/vllm"
+      }
+    ],
+    "node_image_id": "sha256:361b96c5e5fd0915856145586ca96578287e20d4724ce9bbc17feb211ae985c3",
+    "gateway_image_id": "sha256:edaceee6bab5dc28da1490474aa79d5307b77b6ea6cf2a6ff2ef374da615b7b7",
+    "artifact_hash": "sha256:91d7892b489d0af05d57b153b6cf49820e7b17ae3ed9882ee786d2cb82dfc956"
+  },
+  "results": [
+    {
+      "endpoint": "chat_completions",
+      "streaming": false,
+      "fixture": "red",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "streaming": false,
+      "fixture": "red",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_32165c05733a4a13a60fadcc2deba2ac",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "streaming": false,
+      "fixture": "blue",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "streaming": false,
+      "fixture": "blue",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_481258d23cf34812a6b4ef35c89e10e0",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "streaming": true,
+      "fixture": "red",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "streaming": true,
+      "fixture": "red",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_4b217e42a1d44c90a6b3bda1c1896e18",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "streaming": true,
+      "fixture": "blue",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "streaming": true,
+      "fixture": "blue",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_95f674e9b07040088a82597dc6c24299",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": false,
+      "fixture": "red",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": false,
+      "fixture": "red",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_97e5bfba180d4dcd8f44419eb17ccac1",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": false,
+      "fixture": "blue",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": false,
+      "fixture": "blue",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_0fb6a79bc82448f0b8eae0d1d6b8d624",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": true,
+      "fixture": "red",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": true,
+      "fixture": "red",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_41a4c39a8a6848beb47a5a18733b9b46",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": true,
+      "fixture": "blue",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "streaming": true,
+      "fixture": "blue",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_a5efa829352f4d6c8871b775841e9c30",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "route": "direct",
+      "fixture": "invalid",
+      "status": 400,
+      "request_id": null,
+      "passed": true
+    },
+    {
+      "endpoint": "chat_completions",
+      "route": "gateway",
+      "fixture": "invalid",
+      "status": 400,
+      "request_id": "req_6b4d47e236244b53ad93777314368f3b",
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "route": "direct",
+      "fixture": "invalid",
+      "status": 400,
+      "request_id": null,
+      "passed": true
+    },
+    {
+      "endpoint": "messages",
+      "route": "gateway",
+      "fixture": "invalid",
+      "status": 400,
+      "request_id": "req_fe6d9a7325f54194adb75c594460aeec",
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": false,
+      "fixture": "red",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": false,
+      "fixture": "red",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_b92836c949ee45488179ebb9e0f872a0",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": false,
+      "fixture": "blue",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": false,
+      "fixture": "blue",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_99353eef3d4144a3a93bb19840dc5db6",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": true,
+      "fixture": "red",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": true,
+      "fixture": "red",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_019742d7d126428ead966b63eaad2ae6",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": true,
+      "fixture": "blue",
+      "route": "direct",
+      "status": 200,
+      "request_id": null,
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "streaming": true,
+      "fixture": "blue",
+      "route": "gateway",
+      "status": 200,
+      "request_id": "req_bb06c3f95dec40239936f3b043d3b6e1",
+      "usage": {
+        "input_tokens": 97,
+        "output_tokens": 2
+      },
+      "image_understood": true,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "route": "direct",
+      "fixture": "invalid",
+      "status": 400,
+      "request_id": null,
+      "passed": true
+    },
+    {
+      "endpoint": "responses",
+      "route": "gateway",
+      "fixture": "invalid",
+      "status": 400,
+      "request_id": "req_30a70655f8f64a58a539726cd7bb9c7f",
+      "passed": true
+    }
+  ],
+  "accounting": {
+    "requests": [
+      {
+        "id": "req_32165c05733a4a13a60fadcc2deba2ac",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "71d844f4-52bc-4ebc-9c8a-463d11541683",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_481258d23cf34812a6b4ef35c89e10e0",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "f20d961e-7faa-4276-8827-f952c1ac38bc",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_4b217e42a1d44c90a6b3bda1c1896e18",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "ab9c5632-6003-42b5-b796-6c884b54c800",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_95f674e9b07040088a82597dc6c24299",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "cc77a5ab-3473-4bf5-9384-45247aab5825",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_97e5bfba180d4dcd8f44419eb17ccac1",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "bd47bfdc-2712-49c5-ba17-acab3acc09a8",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_0fb6a79bc82448f0b8eae0d1d6b8d624",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "45de22f3-3edc-40fa-806b-d9d60fec7523",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_41a4c39a8a6848beb47a5a18733b9b46",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "016a2865-a3bc-4f1c-84e5-9388da9e5548",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_a5efa829352f4d6c8871b775841e9c30",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "13cc8fb4-eaeb-4f1d-9855-beedafcf5b75",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_6b4d47e236244b53ad93777314368f3b",
+        "outcome": "failed",
+        "billing_status": "pending",
+        "input_tokens": null,
+        "output_tokens": null,
+        "cached_input_tokens": null,
+        "job_id": "6f68a296-eec4-425f-8a98-7d251a9515e7",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 0,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_fe6d9a7325f54194adb75c594460aeec",
+        "outcome": "failed",
+        "billing_status": "pending",
+        "input_tokens": null,
+        "output_tokens": null,
+        "cached_input_tokens": null,
+        "job_id": "925488d8-0202-4582-b5a8-18136c049c81",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 0,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_b92836c949ee45488179ebb9e0f872a0",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "e1361b07-c995-45b1-99ce-a6781a6207d0",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_99353eef3d4144a3a93bb19840dc5db6",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "ee096167-5bd5-4f59-8f57-9ab74f218631",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_019742d7d126428ead966b63eaad2ae6",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "2d4d2148-d5e8-4310-b764-13b66cd2fb6f",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_bb06c3f95dec40239936f3b043d3b6e1",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 97,
+        "output_tokens": 2,
+        "cached_input_tokens": 0,
+        "job_id": "774d394d-373f-41a9-8d9e-3c8e3962eb8d",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 1,
+        "paid_attempts": 1,
+        "passed": true
+      },
+      {
+        "id": "req_30a70655f8f64a58a539726cd7bb9c7f",
+        "outcome": "failed",
+        "billing_status": "pending",
+        "input_tokens": null,
+        "output_tokens": null,
+        "cached_input_tokens": null,
+        "job_id": "9737d5e2-ae93-4d1a-a52e-6a98ec7b4c1d",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.001003614414266089",
+        "charges": 0,
+        "paid_attempts": 1,
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "cleanup": {
+    "test_runtime_removed": true,
+    "gpu_used_mib": 2,
+    "volumes_retained": 14,
+    "existing_remote_services_retained": 5
+  },
+  "finality_snapshot": {
+    "observed_at_epoch": 1793124739.1382809,
+    "winning_tickets": 54,
+    "pending_tickets": 49,
+    "transactions": [
+      {
+        "hash": "0x5a50914b871000d0d8d3fb5aba2d2f1e189e65d11ae1143f9937916bb80bfccb",
+        "phase": "confirmed",
+        "has_error": false
+      },
+      {
+        "hash": "0x8ad903bb6457b3acf4839745dea63e36a9d61e86cdeb90a0554cf9c1daae2259",
+        "phase": "confirmed",
+        "has_error": false
+      },
+      {
+        "hash": "0x485db92ff4e50f4462017b409f53804a0726fc42fb8f6378fee836c4dd79f8d8",
+        "phase": "confirmed",
+        "has_error": false
+      },
+      {
+        "hash": "0xcc446c8566f0e53258edb8b85bab5a213688d10c17c1c8220c627b4a33fadfd0",
+        "phase": "confirmed",
+        "has_error": false
+      },
+      {
+        "hash": "0x81d29fdf676182fa34d51f4b6bdbd04fe0e173e0b7ee40c6a169acb30d9cc29a",
+        "phase": "superseded",
+        "has_error": false
+      },
+      {
+        "hash": "0xbd8de86a2a4d41bcac5e6e2471e5667fe786d10e2e7383cbac432a9d174f6e6d",
+        "phase": "mined",
+        "has_error": false
+      }
+    ],
+    "state": "pending_finality"
+  }
+}

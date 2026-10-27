@@ -151,3 +151,8 @@ The [vLLM release follow-up](../live-runner/tests/vllm-release-2026-10-27.md) ad
 capacity/cancellation cycles, sequential requests, runtime restart and a fresh paid
 gateway. Node race tests pass, including signer/proxy discovery identity. Production
 promotion remains gated by review, chain finality and full deployment acceptance.
+
+[Native vision acceptance](../live-runner/tests/vision-acceptance-2026-10-27.md) passes
+24 image generation checks plus six malformed-image checks, including paid usage and
+retail accounting. `make check` passes 481 tests. These are bounded inline-PNG fixtures,
+not certification of every image format or other media.

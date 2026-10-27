@@ -168,3 +168,45 @@ def test_endpoint_profile_cannot_supply_arbitrary_paths(tmp_path):
     value["endpoints"]["chat_completions"]["path"] = "/admin/load-model"
     with pytest.raises(ValidationError, match="endpoint profile"):
         RunnerMetadata.model_validate(value)
+
+
+def test_vision_probe_uses_deltas_without_repeating_completed_text():
+    import runpy
+
+    probe = runpy.run_path("live-runner/tests/probe_vision.py")
+    assert (
+        probe["stream_text"](
+            "responses",
+            [
+                {"type": "response.output_text.delta", "delta": "r"},
+                {"type": "response.output_text.delta", "delta": "ed"},
+                {"type": "response.output_text.done", "text": "red"},
+                {"type": "response.completed", "response": {"output": [{"text": "red"}]}},
+            ],
+        )
+        == "red"
+    )
+    assert (
+        probe["stream_text"](
+            "chat_completions",
+            [
+                {"choices": [{"delta": {"content": "bl"}}]},
+                {"choices": [{"delta": {"content": "ue"}}]},
+                {"choices": [], "usage": {"prompt_tokens": 10, "completion_tokens": 2}},
+            ],
+        )
+        == "blue"
+    )
+    assert (
+        probe["stream_text"](
+            "messages",
+            [
+                {
+                    "type": "content_block_delta",
+                    "delta": {"type": "thinking_delta", "thinking": "ignore"},
+                },
+                {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "red"}},
+            ],
+        )
+        == "red"
+    )

@@ -30,3 +30,5 @@ Use a short task note for small edits.
 - [Native inference forwarding](active/native-inference-forwarding.md): native HTTP, admission and accounting verified offline; deployment acceptance pending.
 
 - [Live-runner scaffold](completed/live-runner-scaffold.md): implementation and offline verification.
+
+- [Native image acceptance](completed/native-vision-acceptance.md): inline PNGs, three protocols, streaming and paid accounting.

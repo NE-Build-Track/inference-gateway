@@ -26,3 +26,27 @@ images and four paid calls. Chain finality remains separate from observed costs.
 
 The [vLLM release follow-up](vllm-release-2026-10-27.md) records recovery, fresh paid
 gateway acceptance, signer discovery identity, final candidate images and cleanup.
+
+
+## Opt-in image acceptance
+
+`probe_vision.py` submits synthetic red/blue PNGs with identical prompts to the direct
+runtime and gateway. It checks semantic answers, JSON/SSE usage and invalid-image HTTP
+errors for Chat, Responses and Messages. It sends paid requests when the gateway is paid;
+it is not part of offline CI. It logs only classification, status, usage and request IDs.
+Use an approved vision model and an owner-only file containing the gateway key:
+
+```sh
+uv run python live-runner/tests/probe_vision.py \
+  --direct http://127.0.0.1:18100 --gateway http://127.0.0.1:18002 \
+  --model qwen3.8-27b --key-file /private/path/test-key \
+  --output live-runner/local/vision-results.json
+```
+
+The default pause between gateway submissions is 16 seconds for this single-slot test
+setup's discovery refresh; it does not retry inference and is not a throughput test.
+Offline HTTP tests separately assert image-byte preservation, usage/charges, backend
+rejection and request-size limits without GPU access.
+
+[Recorded image acceptance](vision-acceptance-2026-10-27.md) covers the exact pinned
+vLLM/Qwen configuration and paid accounting; other modalities remain unverified.
