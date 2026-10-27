@@ -104,6 +104,7 @@ class Limits(ContractModel):
 
 class RunnerMetadata(ContractModel):
     inference_contract: Literal[1]
+    runner_id: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{0,62}$")
     model_name: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
     runtime: RuntimeIdentity
     deployment_revision: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
@@ -116,7 +117,7 @@ class RunnerMetadata(ContractModel):
         for name, endpoint in self.endpoints.items():
             if name not in PROFILES or endpoint.model_dump() != PROFILES[name]:
                 raise ValueError("Unknown or mismatched endpoint profile")
-        if len(self.model_dump_json().encode()) > 1024:
+        if len(self.model_dump_json(exclude_none=True).encode()) > 1024:
             raise ValueError("Metadata exceeds legacy 1024-byte limit")
         return self
 
@@ -124,6 +125,7 @@ class RunnerMetadata(ContractModel):
 def metadata(deployment: Deployment, revision: str, image: str) -> str:
     value = {
         "inference_contract": 1,
+        "runner_id": deployment.runner_id,
         "model_name": deployment.model.name,
         "runtime": {"name": deployment.runtime.name, "image": image},
         "deployment_revision": revision,

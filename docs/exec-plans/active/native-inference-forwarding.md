@@ -68,3 +68,6 @@ pins Core `0d0b532`; Core pins SDK `cd6ed5e`.
 The [GPU follow-up](native-gpu-followup.md) records the later 472-test check, three-engine
 Qwen3.8 matrix, four paid calls and published NE candidate images. The node lock now
 includes the discovery identity fix. Chain finality and production admission remain open.
+
+Superseding the earlier node-patch requirement: [metadata runner identity](../completed/metadata-runner-identity.md)
+normalizes IDs in this gateway. The current node lock is unpatched; node PR #1 is optional.

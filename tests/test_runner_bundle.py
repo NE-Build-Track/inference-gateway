@@ -41,6 +41,7 @@ def test_bundle_identity_config_and_health_are_aligned(tmp_path, family):
     health = json.loads((tmp_path / "readiness.json").read_text())
     runtime = compose["services"]["runtime"]
     assert json.loads(runner["Metadata"]) == advertised
+    assert advertised["runner_id"] == runner["ID"] == deployment.runner_id
     assert advertised["model_name"] == health["model"] == deployment.model.name
     assert runner["RunnerURL"] == health["url"]
     assert runner["App"] == deployment.app and runner["Status"] == "idle"

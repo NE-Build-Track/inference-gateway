@@ -1,10 +1,13 @@
 """Constrain the engine's discovered supply to configured apps and approved origins."""
 
+import json
 from collections.abc import Sequence
 from urllib.parse import urlsplit
 
 from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import DiscoverySource, SelectionPolicy
+
+from inference_gateway.adapters.runner_contract import RunnerMetadata
 
 
 def origin(url: str) -> tuple[str, str, int]:
@@ -28,10 +31,16 @@ def origin(url: str) -> tuple[str, str, int]:
 
 class FilteredDiscovery:
     def __init__(
-        self, inner: DiscoverySource, apps: frozenset[str], approved: tuple[str, ...]
+        self,
+        inner: DiscoverySource,
+        apps: frozenset[str],
+        approved: tuple[str, ...],
+        *,
+        native_routes: frozenset[tuple[str, str]] | None = None,
     ) -> None:
         self._inner = inner
         self._apps = apps
+        self._native_routes = native_routes
         self._origins = frozenset(origin(url) for url in approved)
 
     async def fetch(self) -> tuple[Runner, ...]:
@@ -46,14 +55,48 @@ class FilteredDiscovery:
                     continue
                 if address not in self._origins:
                     continue
-            selected.append(runner)
+            native = (
+                self._native_routes is None
+                or (runner.app, model_name(runner)) in self._native_routes
+            )
+            normalized = normalize_native_identity(runner) if native else runner
+            if normalized is not None:
+                selected.append(normalized)
         return tuple(selected)
+
+
+def native_runner_id(runner: Runner, metadata: RunnerMetadata) -> str | None:
+    """Resolve a declaration, not an authorization; never infer identity from a URL."""
+    if metadata.runner_id is not None:
+        if runner.runner_id and runner.runner_id != metadata.runner_id:
+            return None
+        return metadata.runner_id
+    return runner.runner_id or None
+
+
+def normalize_native_identity(runner: Runner) -> Runner | None:
+    if len((runner.metadata or "").encode()) > 1024:
+        return (
+            runner  # Native selection rejects oversized declarations; leave legacy routes intact.
+        )
+    try:
+        value = json.loads(runner.metadata or "")
+    except (ValueError, TypeError):
+        return runner  # Legacy validated routes can carry opaque metadata.
+    if not isinstance(value, dict) or "inference_contract" not in value:
+        return runner
+    try:
+        metadata = RunnerMetadata.model_validate_json(runner.metadata or "")
+    except ValueError:
+        return None
+    identity = native_runner_id(runner, metadata)
+    if identity is None:
+        return None
+    return runner.model_copy(update={"runner_id": identity})
 
 
 def model_name(runner: Runner) -> str | None:
     """Metadata is untrusted; app names and opaque text are never model identities."""
-    import json
-
     try:
         metadata = json.loads(runner.metadata or "")
     except (ValueError, TypeError):

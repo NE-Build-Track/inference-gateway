@@ -1,0 +1,300 @@
+{
+  "node_commit": "dfcf03370cab1f8a08c82914fd874e437f22268c",
+  "top_level_id_absent": true,
+  "paid_network_used": false,
+  "checks": [
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "chat_completions",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "chat_completions",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "chat_completions",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "responses",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "responses",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "responses",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "messages",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "messages",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "plain",
+      "endpoint": "messages",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "chat_completions",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "chat_completions",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "chat_completions",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "responses",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "responses",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "responses",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "messages",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "messages",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "direct",
+      "runner": "proxy",
+      "endpoint": "messages",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "chat_completions",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "chat_completions",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "chat_completions",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "responses",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "responses",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "responses",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "messages",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "messages",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "plain",
+      "endpoint": "messages",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "chat_completions",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "chat_completions",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "chat_completions",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "responses",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "responses",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "responses",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "messages",
+      "mode": "unary",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "messages",
+      "mode": "stream",
+      "status": 200,
+      "body_preserved": true
+    },
+    {
+      "discovery": "aggregate",
+      "runner": "proxy",
+      "endpoint": "messages",
+      "mode": "error",
+      "status": 400,
+      "body_preserved": true
+    }
+  ],
+  "node_image": "registry.livepeer.tools/ne-build-track/inference-node@sha256:de5fb0bf5118cd2171a64c4cae0038dc7d259030c64c2df05f2f613e617f6a30",
+  "offline_tests": 500,
+  "identity_conflicts": "rejected",
+  "dev_stack_started": false,
+  "gateway_image": "registry.livepeer.tools/ne-build-track/inference-gateway@sha256:56314df83a7a1a589b40d548a9bf4b6099a42662f77f067a5133550bd0052289"
+}

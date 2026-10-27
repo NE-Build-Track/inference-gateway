@@ -9,7 +9,7 @@ from livepeer_builder.protocols import SelectionPolicy
 from pydantic import ValidationError
 
 from inference_gateway.adapters.runner_contract import PROFILES, RunnerMetadata
-from inference_gateway.backends.discovery import origin
+from inference_gateway.backends.discovery import native_runner_id, origin
 
 
 @dataclass(frozen=True)
@@ -62,7 +62,12 @@ class NativeSelection:
                 address = origin(runner.orchestrator_url or "")
             except (ValueError, ValidationError):
                 continue
-            if meta.model_name != request.model or endpoint not in meta.endpoints:
+            identity = native_runner_id(runner, meta)
+            if (
+                identity is None
+                or meta.model_name != request.model
+                or endpoint not in meta.endpoints
+            ):
                 continue
             for approval in approvals:
                 try:
@@ -72,7 +77,7 @@ class NativeSelection:
                 if (
                     matches
                     and approval.expires_at > now
-                    and approval.runner_id == runner.runner_id
+                    and approval.runner_id == identity
                     and approval.app == request.app
                     and approval.model == request.model
                     and approval.deployment_revision == meta.deployment_revision

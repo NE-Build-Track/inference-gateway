@@ -109,3 +109,24 @@ shared-capacity behavior. The development stack stays stopped.
 See [native model inputs](native-inputs.md) for image payload examples, request limits and
 the distinction between text, image, audio, video and document inputs. Native forwarding
 does not decode media or certify a model capability merely because it accepts JSON.
+
+## Runner identity without a node patch
+
+New bundles place `runner_id` in metadata using the same value as the node registration ID.
+When discovery omits its top-level `runner_id`, the gateway's discovery adapter fills it
+from validated metadata before Core caches or selects runners. If both IDs are present,
+they must match; conflicts are excluded from discovery and rejected by native selection.
+Missing IDs are never guessed from app names, URL paths or proxy hostnames. Transport
+continues to use the original advertised URL. Legacy metadata without a runner ID remains
+compatible when discovery supplies a top-level ID.
+
+This is identification, not authorization. The independent approval still binds the
+orchestrator origin, runner ID, app, model, deployment revision, endpoint and expiry. Capacity
+and freshness checks still apply. The existing 1,024-byte metadata bound includes the new
+field; the renderer rejects oversized declarations rather than truncating them.
+
+Node PR #1 is not required. The node lock now pins unmodified source commit `dfcf033`.
+Deploy the updated gateway before advertising the new metadata: older gateway contracts
+reject the new field. Regenerate runner configuration, then issue approvals for its new
+deployment revision; old revisions are not automatically promoted. Use matching
+`native-metadata-20261027` gateway/node candidates, not the older native-vllm gateway image.

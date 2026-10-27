@@ -11,11 +11,17 @@ from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import httpx
+import pytest
 
 
-def test_discovery_process_preserves_native_runner_identity(tmp_path):
+@pytest.mark.parametrize("metadata_identity", [False, True])
+def test_discovery_process_preserves_native_runner_identity(tmp_path, metadata_identity):
     metadata = json.dumps(
-        {"model_name": "vision-model", "deployment_revision": "sha256:" + "a" * 64}
+        {
+            "model_name": "vision-model",
+            "deployment_revision": "sha256:" + "a" * 64,
+            "runner_id": "vision-runner",
+        }
     )
 
     class Handler(BaseHTTPRequestHandler):
@@ -26,7 +32,7 @@ def test_discovery_process_preserves_native_runner_identity(tmp_path):
                         "address": f"http://127.0.0.1:{self.server.server_port}",
                         "runners": [
                             {
-                                "runner_id": "vision-runner",
+                                **({} if metadata_identity else {"runner_id": "vision-runner"}),
                                 "url": "https://vision-runner.example",
                                 "app": "inference/vllm",
                                 "mode": "single-shot",
@@ -83,7 +89,7 @@ def test_discovery_process_preserves_native_runner_identity(tmp_path):
                 raise AssertionError("Discovery service did not publish the local runner")
             runners = [runner for row in response.json() for runner in row.get("runners", [])]
             assert len(runners) == 1
-            assert runners[0]["runner_id"] == "vision-runner"
+            assert runners[0].get("runner_id") == (None if metadata_identity else "vision-runner")
             assert runners[0]["metadata"] == metadata
             assert runners[0]["url"] == "https://vision-runner.example"
             assert client.get("/readyz").status_code == 200

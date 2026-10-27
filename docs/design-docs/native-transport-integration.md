@@ -64,3 +64,7 @@ compressed payload observation and stateful APIs remain outside the current nati
 The [cross-repository review](../references/repository-compatibility-2026-10-27.md) verifies
 current M3 plus native patches and restores the separate discovery service in Compose.
 Do not substitute an unpatched default branch for the native dependency pins.
+
+Node PR #1 is no longer required: gateway discovery normalizes runner identity from
+validated metadata and rejects conflicting IDs. SDK/Core native transport patches remain
+required. See the [identity contract](../../live-runner/contract/README.md#runner-identity-without-a-node-patch).

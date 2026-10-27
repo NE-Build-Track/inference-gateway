@@ -161,3 +161,7 @@ The [repository compatibility review](references/repository-compatibility-2026-1
 passes 483 tests on current pins and an isolated latest-M3-plus-native overlay. Plain M3
 is not a native-compatible replacement. Discovery Compose/startup wiring is corrected,
 with a real local discovery-process regression. No live paid/GPU services were started.
+
+[Metadata identity acceptance](../live-runner/tests/metadata-identity-2026-10-27.md) removes
+node PR #1 from the dependency chain. All 500 tests and 36 real unpatched-node transport
+checks pass; live GPU/payment acceptance of the new combined deployment remains separate.

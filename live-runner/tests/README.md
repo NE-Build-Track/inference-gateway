@@ -50,3 +50,6 @@ rejection and request-size limits without GPU access.
 
 [Recorded image acceptance](vision-acceptance-2026-10-27.md) covers the exact pinned
 vLLM/Qwen configuration and paid accounting; other modalities remain unverified.
+
+[Metadata identity acceptance](metadata-identity-2026-10-27.md) verifies ordinary/proxy
+transport and direct/aggregated discovery with an unmodified node.

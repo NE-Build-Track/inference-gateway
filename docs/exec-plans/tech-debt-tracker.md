@@ -31,8 +31,8 @@ shared-capacity multi-model layouts, compressed payload observation and stateful
 separate work; see the [native plan](active/native-inference-forwarding.md).
 
 Remote GPU acceptance found deployment-specific gaps; see the
-[Qwen3.8 results](../../live-runner/tests/qwen38-followup-2026-10-27.md). The corrected node
-is published and pinned. SGLang rejects forced tools combined with structured output and
+[Qwen3.8 results](../../live-runner/tests/qwen38-followup-2026-10-27.md). The node-patch dependency is removed: runner identity now comes from validated metadata
+when the top-level discovery field is absent; the lock pins an unpatched node. SGLang rejects forced tools combined with structured output and
 the tested Responses auto combination; Ollama fails forced-tool choice and strict argument
 constraints. Endpoint admission is not feature certification. Cached capacity can cause
 temporary 503s around cancellation and discovery refresh (15 seconds by default);

@@ -19,7 +19,7 @@ USAGES = {
 }
 
 
-def setup(endpoint, reply, tmp_path=None, expiry=None):
+def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
     meta = {
         "inference_contract": 1,
         "model_name": "m",
@@ -29,12 +29,14 @@ def setup(endpoint, reply, tmp_path=None, expiry=None):
         "limits": {"context_tokens": 4096},
         "admission": "candidate",
     }
+    if metadata_identity:
+        meta["runner_id"] = "one"
     candidate = runner(
         "chat",
         metadata=json.dumps(meta, separators=(",", ":")),
         orchestrator_url="https://orch",
         capacity_available=1,
-    ).model_copy(update={"runner_id": "one"})
+    ).model_copy(update={"runner_id": None if metadata_identity else "one"})
     engine = FakeEngine(
         streaming=True, runners=[candidate], replies={("chat", PROFILES[endpoint]["path"]): reply}
     )
@@ -75,7 +77,8 @@ def setup(endpoint, reply, tmp_path=None, expiry=None):
 
 
 @pytest.mark.parametrize("endpoint", list(PROFILES))
-async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path):
+@pytest.mark.parametrize("metadata_identity", [False, True])
+async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata_identity):
     raw_response = json.dumps(
         {"id": "native", "status": "completed", "usage": USAGES[endpoint], "future": "untouched"},
         indent=2,
@@ -85,7 +88,9 @@ async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path):
         chunks=(raw_response[:10], raw_response[10:]),
         headers=(("Content-Type", "application/json"), ("Set-Cookie", "secret")),
     )
-    app, engine, ledger, secret = setup(endpoint, reply, tmp_path)
+    app, engine, ledger, secret = setup(
+        endpoint, reply, tmp_path, metadata_identity=metadata_identity
+    )
     raw = (
         b'{ "model":"m", "store":false, '
         b'"tools":[{"strict":true,"parameters":{"$ref":"#/$defs/X"}}], "future":42 }'

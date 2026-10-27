@@ -128,6 +128,9 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
                 parts.discovery_source,
                 frozenset(route.app for route in settings.routes),
                 settings.approved_orchestrators,
+                native_routes=frozenset(
+                    (route.app, route.name) for route in settings.routes if route.mode == "native"
+                ),
             ),
         )
 

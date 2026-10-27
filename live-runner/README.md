@@ -112,3 +112,11 @@ now published as NE candidates; the lock pins that tested node artifact. It also
 four paid calls, persistent volumes, exact configurations and runtime feature gaps.
 Generated deployments still require their own explicit approval; these tests do not
 automatically promote deployments or certify every backend feature.
+
+## Node compatibility
+
+The current bundle uses an unpatched node and advertises the registration ID as
+`metadata.runner_id`. Node PR #1 is no longer a dependency. See the
+[identity contract](contract/README.md#runner-identity-without-a-node-patch) for conflict
+handling and gateway-first rollout. Older GPU reports describe the images used at that time;
+the current lock and metadata-identity report supersede their node-patch requirement.
