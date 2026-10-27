@@ -59,15 +59,32 @@ Use Bearer authentication and a public model identifier. For example:
 Messages accept text strings, `input_text` / `output_text` parts, and `input_image` URLs or data
 URLs on a configured vision route. File IDs and audio inputs are not supported by this endpoint.
 Function definitions use `type:function`, `name`, `description`, `parameters` and optional
-`strict:false`. Tool choice supports auto/none/required/named function; parallel calls require
+`strict` (boolean, default false). Tool choice supports auto/none/required/named function; parallel calls require
 route support. The gateway does not execute client functions. Return `function_call_output` with
 its matching `call_id` and string `output`, together with the preceding conversation and calls.
 Tool calls must precede their results; unresolved or unmatched tool results are rejected.
 
 Additional supported fields: `instructions`, `temperature`, `top_p`, and `text.format` with plain
-text, JSON object or the existing supported JSON schema subset. Strict *function argument*
-validation is not supported and `strict:true` on a function is rejected. Structured final text
-validation is separate and supports its documented strict schema contract.
+text, JSON object or the existing supported JSON schema subset. `strict:true` validates each
+function's parameter schema before dispatch and enforces generated arguments independently of the
+runner. Each object must set `additionalProperties:false` and require every declared property;
+optional values use nullable types or nested `anyOf`. Non-recursive local `$ref` references
+to `$defs` and `definitions` are supported with the [structured schema limits](extended-generation.md#structured-output).
+Referenced objects must meet the same strict rules. Unsupported schema keywords fail before
+payment. Schemas are never silently weakened. Omitted/false `strict` retains best-effort schema
+behavior (arguments must still be a JSON object). This default is deliberately unchanged from
+previous gateway releases, even though OpenAI Responses may normalize omitted strictness.
+
+Strict tools and structured final text can be requested together. A tool-only turn is validated
+against tool parameter schemas, without requiring a nonexistent JSON text answer. Any final text
+is independently checked against `text.format`. The fake generates schema-valid arguments for
+strict tools unless explicit argument fixtures are supplied.
+
+Streaming argument deltas remain provisional. A call failing its strict schema never emits
+argument/item completion or response success. The gateway drains the bounded stream under existing
+deadlines to collect terminal usage, records usage once with a failed outcome, and returns
+`unsupported_response`. Cancellation still closes the backend. Clients should execute calls only
+after their completion event, never from incomplete argument deltas.
 
 Omitted `store` defaults to **false**, a deliberate difference from OpenAI's storage default.
 Only `store:false`, `background:false` and null/omitted `previous_response_id` are accepted.

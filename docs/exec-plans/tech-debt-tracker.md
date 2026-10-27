@@ -9,7 +9,7 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Production resource controls | Before shared hosting: request-body limits, per-tenant concurrency quotas, proxy TLS |
 | Observability | Define SLOs, then add metrics, tracing, and validation/failure counters |
 | Full protocol semantics | Expand the compatibility matrix and fixture coverage as client requirements appear |
-| Argument schema checking | Decide whether backend or gateway owns schema validation before claiming strict tool guarantees |
+| Schema compatibility | Strict OpenAI tools and structured text validate locally, including non-recursive local references. Recursive/external references and other unsupported JSON Schema keywords remain rejected; Anthropic strict tools remain outside the contract. |
 | Client idempotency | Requests are distinct paid operations; add a replay/duplicate-request contract before enabling transparent retries |
 | Reporting scale | Reports cap authorized requests at 10,000 per window; introduce indexed SQL aggregation/export when measured demand exceeds this |
 | Accounting operations | Automate backups and reconciliation alerts; incomplete usage remains explicit and may require an operator adjustment |

@@ -7,7 +7,7 @@ from contextlib import aclosing
 
 from inference_gateway.adapters.ledger import SQLiteLedger
 from inference_gateway.core.accounting import AccountingSource, Ledger
-from inference_gateway.core.backend import Backend
+from inference_gateway.core.backend import Backend, UnsupportedResponse
 from inference_gateway.core.models import Event, Finished, Generate
 from inference_gateway.core.service import GenerationService
 
@@ -26,6 +26,10 @@ class MeteredBackend:
                         self.ledger.record_usage(request.request_id, event)
                         outcome = "succeeded"
                     yield event
+        except UnsupportedResponse as exc:
+            if exc.usage is not None:
+                self.ledger.record_usage(request.request_id, exc.usage)
+            raise
         except (asyncio.CancelledError, GeneratorExit):
             if outcome != "succeeded":
                 outcome = "disconnected"

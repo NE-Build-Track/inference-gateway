@@ -42,6 +42,7 @@ from inference_gateway.core.models import (
     ToolCall,
     ToolResult,
 )
+from inference_gateway.core.structured import validate_strict_schema
 
 
 def text_block(block: TextBlock) -> Text:
@@ -155,7 +156,8 @@ def openai_request(body: OpenAIRequest) -> Generate:
         )
         messages.append(Message(message.role, tuple(parts)))
     tools = tuple(
-        Tool(t.function.name, t.function.description, t.function.parameters) for t in body.tools
+        Tool(t.function.name, t.function.description, t.function.parameters, t.function.strict)
+        for t in body.tools
     )
     choice = (
         NamedTool(body.tool_choice.function.name)
@@ -323,6 +325,9 @@ def anthropic_request(body: AnthropicRequest) -> Generate:
 
 
 def validate(request: Generate) -> Generate:
+    for tool in request.tools:
+        if tool.strict:
+            validate_strict_schema(tool.schema)
     names = [tool.name for tool in request.tools] + (
         ["web_search"] if request.hosted_search else []
     )
@@ -335,12 +340,14 @@ def validate(request: Generate) -> Generate:
     if len(request.sampling.stop) > 4 or any(not s for s in request.sampling.stop):
         raise ValueError("One to four nonempty stop sequences supported")
     if request.output_format and (
-        names
+        request.hosted_search
         or request.output_media
         or request.sources
         or any(isinstance(p, Document) and p.cite for m in request.messages for p in m.content)
     ):
-        raise ValueError("Structured output cannot combine with tools, citations or media output")
+        raise ValueError(
+            "Structured output cannot combine with hosted tools, citations or media output"
+        )
     if not request.output_text and (
         request.sources or request.hosted_search or request.output_format
     ):

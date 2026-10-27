@@ -79,6 +79,7 @@ class Tool:
     name: str
     description: str
     schema: dict[str, JSON]
+    strict: bool = False
 
 
 @dataclass(frozen=True)

@@ -39,10 +39,13 @@ generation. This scaffold validates references, not every provider-specific hist
 | Stream usage | `stream_options.include_usage` | Final message usage |
 | Multiple completions | Only `n: 1` | One message |
 
-Tool schemas pass to the backend unchanged; the gateway does not validate tool schemas as
-JSON Schema or validate generated tool arguments against them. Structured final output has a separate
-validated schema subset. The fake emits `{}` unless
-configured with argument fixtures. Set fixtures to match the supplied schema.
+Function definitions accept optional `strict:true` on OpenAI interfaces. The gateway validates
+and enforces the supported parameter schema subset for those tools; omitted/false keeps existing
+non-strict behavior. All generated arguments must encode JSON objects. Structured text and tool
+schemas are independent and may be supplied together. See the
+[Models/Responses contract](models-and-responses.md) for strict schema and streaming semantics.
+The fake generates schema examples for strict tools and otherwise emits `{}` unless argument
+fixtures are supplied. Anthropic tool definitions retain their existing non-strict behavior.
 Nullable SDK fields `caller` and `toolset_name` are accepted on historical Anthropic
 tool-use blocks only when null; their non-null features are unsupported.
 

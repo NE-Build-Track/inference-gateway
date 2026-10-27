@@ -78,9 +78,7 @@ def payload(request: Generate, route: ModelRoute) -> dict[str, Any]:
         if field in chat:
             out[field] = chat[field]
     if request.tools:
-        out["tools"] = [
-            {"type": "function", **t["function"], "strict": False} for t in chat["tools"]
-        ]
+        out["tools"] = [{"type": "function", **t["function"]} for t in chat["tools"]]
         choice = chat["tool_choice"]
         out["tool_choice"] = (
             {"type": "function", "name": choice["function"]["name"]}

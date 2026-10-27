@@ -105,7 +105,14 @@ class FakeBackend:
                 ToolCall(
                     f"call_fake_{number + i}",
                     t.name,
-                    json.dumps(self._arguments.get(t.name, {}), separators=(",", ":")),
+                    json.dumps(
+                        self._arguments[t.name]
+                        if t.name in self._arguments
+                        else schema_example(t.schema)
+                        if t.strict
+                        else {},
+                        separators=(",", ":"),
+                    ),
                 )
                 for i, t in enumerate(selected)
             )
