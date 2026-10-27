@@ -47,8 +47,15 @@ The supported schema subset is deliberately explicit:
   a two-member nullable union such as `["string","null"]`. Nested `anyOf` supports up to 16 branches.
 - Objects accept `properties`, `required`, and boolean `additionalProperties`.
 - Arrays require an `items` schema. Nodes may include `enum`, `title`, and `description`.
-- Root schemas must be objects. Nesting is limited to 16 levels. References, other unions,
-  patterns, numerical bounds and other keywords fail explicitly rather than being ignored.
+- Root schemas must resolve to objects. Local JSON Pointer `$ref` references can reuse `$defs`
+  or legacy `definitions`, including chains, escaped names and root references to definitions.
+  References are relative to the complete submitted schema. The original schema is forwarded
+  unchanged; the gateway resolves references for validation and fake examples.
+- Resolution is bounded to 16 levels (including reference hops) and 4,096 schema-node visits,
+  including definitions and repeated expansions. Recursive, external, missing and non-schema
+  references fail before dispatch. Only `title`, `description`, `$defs` and `definitions` may
+  accompany `$ref`; sibling constraints are rejected rather than ignored.
+- Other unions, patterns, numerical bounds and unsupported keywords fail explicitly.
 - Chat Completions schema mode accepts `strict: true`; false is not implemented.
 
 The fake builds a deterministic example or uses an injected `structured_output` fixture.

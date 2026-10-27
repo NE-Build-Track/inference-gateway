@@ -160,7 +160,20 @@ async def scripted_backend(native, arguments, *, ledger=None, text=None):
 @pytest.mark.parametrize("native", [False, True])
 @pytest.mark.parametrize("streaming", [False, True])
 @pytest.mark.parametrize("valid", [False, True])
-async def test_strict_native_and_chat_usage_accounting(tmp_path, native, streaming, valid):
+@pytest.mark.parametrize("referenced", [False, True])
+async def test_strict_native_and_chat_usage_accounting(
+    tmp_path, native, streaming, valid, referenced, monkeypatch
+):
+    if referenced:
+        import test_strict_tools
+
+        schema = {
+            **SCHEMA,
+            "properties": {"city": {"$ref": "#/$defs/city"}, "units": {"$ref": "#/$defs/units"}},
+            "$defs": SCHEMA["properties"],
+        }
+        monkeypatch.setattr(test_strict_tools, "SCHEMA", schema)
+
     from decimal import Decimal
 
     from inference_gateway.adapters.ledger import SQLiteLedger
@@ -248,7 +261,16 @@ async def test_strict_missing_extra_and_wrong_type_rejected(arguments):
 
 @pytest.mark.parametrize("native", [False, True])
 @pytest.mark.parametrize("valid", [False, True])
-async def test_final_text_schema_is_checked_with_tools_present(native, valid):
+@pytest.mark.parametrize("referenced", [False, True])
+async def test_final_text_schema_is_checked_with_tools_present(
+    native, valid, referenced, monkeypatch
+):
+    if referenced:
+        import test_strict_tools
+
+        schema = {"$ref": "#/$defs/answer", "$defs": {"answer": FORMAT["schema"]}}
+        monkeypatch.setattr(test_strict_tools, "FORMAT", {**FORMAT, "schema": schema})
+
     backend, _ = await scripted_backend(
         native, {}, text=json.dumps({"answer": "blue"} if valid else {"answer": 9})
     )

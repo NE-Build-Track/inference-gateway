@@ -1,11 +1,12 @@
 """Small, explicit JSON Schema subset shared by validation and deterministic fixtures.
 
-No references, remote schemas, coercion, or silently ignored keywords.
+Local non-recursive references; no remote schemas, coercion or ignored keywords.
 """
 
 import math
 
 from inference_gateway.core.models import JSON
+from inference_gateway.core.schema_refs import resolve_schema
 
 
 def reject_nonfinite(value: str) -> None:
@@ -13,6 +14,14 @@ def reject_nonfinite(value: str) -> None:
 
 
 def schema_example(schema: dict[str, JSON], depth: int = 0) -> JSON:
+    return _schema_example(resolve_schema(schema), depth)
+
+
+def validate_value(value: JSON, schema: dict[str, JSON]) -> None:
+    _validate_value(value, resolve_schema(schema))
+
+
+def _schema_example(schema: dict[str, JSON], depth: int = 0) -> JSON:
     if depth > 16:
         raise ValueError("Schema nesting exceeds limit")
     if "anyOf" in schema:
@@ -25,7 +34,7 @@ def schema_example(schema: dict[str, JSON], depth: int = 0) -> JSON:
         for branch in branches:
             if not isinstance(branch, dict):
                 raise ValueError("anyOf branch must be a schema")
-            examples.append(schema_example(branch, depth + 1))
+            examples.append(_schema_example(branch, depth + 1))
         for annotation in ("title", "description"):
             if annotation in schema and not isinstance(schema[annotation], str):
                 raise ValueError("Invalid schema annotation")
@@ -49,13 +58,13 @@ def schema_example(schema: dict[str, JSON], depth: int = 0) -> JSON:
         base_kind = next(k for k in kind if k != "null")
         base = {k: v for k, v in schema.items() if k != "enum"}
         base["type"] = base_kind
-        example = schema_example(base, depth + 1)
+        example = _schema_example(base, depth + 1)
         if "enum" in schema:
             values = schema["enum"]
             if not isinstance(values, list) or not values:
                 raise ValueError("Enum must be nonempty")
             for candidate in values:
-                validate_value(candidate, {k: v for k, v in schema.items() if k != "enum"})
+                _validate_value(candidate, {k: v for k, v in schema.items() if k != "enum"})
             return values[0]
         return example
     if kind not in ("object", "array", "string", "integer", "number", "boolean", "null"):
@@ -86,14 +95,14 @@ def schema_example(schema: dict[str, JSON], depth: int = 0) -> JSON:
         for key, child in properties.items():
             if not isinstance(child, dict):
                 raise ValueError("Property schema must be an object")
-            example = schema_example(child, depth + 1)
+            example = _schema_example(child, depth + 1)
             if key in required:
                 value[key] = example
     elif kind == "array":
         child = schema.get("items")
         if not isinstance(child, dict):
             raise ValueError("Array requires items schema")
-        schema_example(child, depth + 1)
+        _schema_example(child, depth + 1)
         value = []
     else:
         defaults: dict[str, JSON] = {
@@ -110,19 +119,19 @@ def schema_example(schema: dict[str, JSON], depth: int = 0) -> JSON:
             raise ValueError("Enum must be nonempty")
         base = {k: v for k, v in schema.items() if k != "enum"}
         for candidate in values:
-            validate_value(candidate, base)
+            _validate_value(candidate, base)
         value = values[0]
     return value
 
 
-def validate_value(value: JSON, schema: dict[str, JSON]) -> None:
+def _validate_value(value: JSON, schema: dict[str, JSON]) -> None:
     if "anyOf" in schema:
         branches = schema["anyOf"]
         assert isinstance(branches, list)
         for branch in branches:
             assert isinstance(branch, dict)
             try:
-                validate_value(value, branch)
+                _validate_value(value, branch)
                 return
             except ValueError:
                 pass
@@ -138,7 +147,7 @@ def validate_value(value: JSON, schema: dict[str, JSON]) -> None:
             return
         base = dict(schema)
         base["type"] = next(k for k in kind if k != "null")
-        validate_value(value, base)
+        _validate_value(value, base)
         return
     valid = {
         "object": isinstance(value, dict),
@@ -169,19 +178,20 @@ def validate_value(value: JSON, schema: dict[str, JSON]) -> None:
         for key, item in value.items():
             child = properties.get(key)
             if isinstance(child, dict):
-                validate_value(item, child)
+                _validate_value(item, child)
     if isinstance(value, list):
         child = schema["items"]
         assert isinstance(child, dict)
         for item in value:
-            validate_value(item, child)
+            _validate_value(item, child)
 
 
 def validate_strict_schema(schema: dict[str, JSON]) -> None:
     """Validate the supported strict function subset before generation, without coercion."""
+    schema = resolve_schema(schema)
     if schema.get("type") != "object":
         raise ValueError("Function parameters require an object schema")
-    schema_example(schema)
+    _schema_example(schema)
 
     def visit(node: dict[str, JSON]) -> None:
         if "anyOf" in node:

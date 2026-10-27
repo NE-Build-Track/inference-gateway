@@ -68,7 +68,9 @@ Additional supported fields: `instructions`, `temperature`, `top_p`, and `text.f
 text, JSON object or the existing supported JSON schema subset. `strict:true` validates each
 function's parameter schema before dispatch and enforces generated arguments independently of the
 runner. Each object must set `additionalProperties:false` and require every declared property;
-optional values use nullable types or nested `anyOf`. Unsupported schema keywords fail before
+optional values use nullable types or nested `anyOf`. Non-recursive local `$ref` references
+to `$defs` and `definitions` are supported with the [structured schema limits](extended-generation.md#structured-output).
+Referenced objects must meet the same strict rules. Unsupported schema keywords fail before
 payment. Schemas are never silently weakened. Omitted/false `strict` retains best-effort schema
 behavior (arguments must still be a JSON object). This default is deliberately unchanged from
 previous gateway releases, even though OpenAI Responses may normalize omitted strictness.

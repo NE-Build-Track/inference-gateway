@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from inference_gateway.core.models import JSON
+from inference_gateway.core.schema_refs import resolve_schema
 from inference_gateway.core.structured import schema_example
 
 
@@ -177,7 +178,7 @@ class SchemaDefinition(WireModel):
     @model_validator(mode="after")
     def valid(self) -> Self:
         schema_example(self.schema_)
-        if self.schema_.get("type") != "object":
+        if resolve_schema(self.schema_).get("type") != "object":
             raise ValueError("Output schema root must be an object")
         return self
 
@@ -200,7 +201,7 @@ class JSONFormat(WireModel):
     @model_validator(mode="after")
     def valid(self) -> Self:
         schema_example(self.schema_)
-        if self.schema_.get("type") != "object":
+        if resolve_schema(self.schema_).get("type") != "object":
             raise ValueError("Output schema root must be an object")
         return self
 

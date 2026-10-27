@@ -24,3 +24,5 @@ Use a short task note for small edits.
 - [Models and Responses](completed/models-and-responses.md): implementation and verification.
 
 - [Strict function tools](completed/strict-function-tools.md): schema enforcement and combined structured text.
+
+- [Local schema references](completed/local-schema-references.md): bounded resolution for strict tools and structured output.
