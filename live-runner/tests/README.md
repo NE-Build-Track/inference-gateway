@@ -23,3 +23,6 @@ settlement, all models or every provider feature.
 The [Qwen3.8 follow-up](qwen38-followup-2026-10-27.md) adds adversarial schemas, combined
 output/tool choices, tool-result follow-ups, deadlines/recovery, published candidate
 images and four paid calls. Chain finality remains separate from observed costs.
+
+The [vLLM release follow-up](vllm-release-2026-10-27.md) records recovery, fresh paid
+gateway acceptance, signer discovery identity, final candidate images and cleanup.

@@ -146,3 +146,8 @@ records 180 protocol probes, failure/recovery checks and four paid requests with
 wholesale costs. Corrected images are published as NE candidates and the node lock is
 updated. Chain finality, production load and feature-specific admission remain pending.
 Gateway checks pass 472 tests after the usage regressions.
+
+The [vLLM release follow-up](../live-runner/tests/vllm-release-2026-10-27.md) adds three
+capacity/cancellation cycles, sequential requests, runtime restart and a fresh paid
+gateway. Node race tests pass, including signer/proxy discovery identity. Production
+promotion remains gated by review, chain finality and full deployment acceptance.

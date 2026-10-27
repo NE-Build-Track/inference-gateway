@@ -1,0 +1,152 @@
+{
+  "scope": "vLLM release candidate follow-up",
+  "node_commit": "e75e5b6a00fac471f0dce561dea4d564a651513b",
+  "images": {
+    "vllm": "vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+    "ollama": "ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8",
+    "sglang": "lmsysorg/sglang@sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae",
+    "readiness": "python@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753",
+    "node": "registry.livepeer.tools/ne-build-track/inference-node@sha256:6042f62ea94213c700c57e4d7e1ae1fab8bfb07f4055a140552708e6eedd4561"
+  },
+  "gateway_image": "registry.livepeer.tools/ne-build-track/inference-gateway@sha256:cfd1bcdca6cbb8eb01eecee079f2636c9f432ed573038a3e8e535867e472548f",
+  "recovery": [
+    {
+      "cycle": 0,
+      "initial_status": 200,
+      "stream_status": 200,
+      "overlap_status": 503,
+      "recovery_statuses": [
+        {
+          "seconds": 0.235,
+          "node_capacity": 0,
+          "status": 503
+        },
+        {
+          "seconds": 1.763,
+          "node_capacity": 1,
+          "status": 200
+        }
+      ],
+      "recovered": true
+    },
+    {
+      "cycle": 1,
+      "initial_status": 200,
+      "stream_status": 200,
+      "overlap_status": 503,
+      "recovery_statuses": [
+        {
+          "seconds": 0.213,
+          "node_capacity": 0,
+          "status": 503
+        },
+        {
+          "seconds": 1.558,
+          "node_capacity": 1,
+          "status": 200
+        }
+      ],
+      "recovered": true
+    },
+    {
+      "cycle": 2,
+      "initial_status": 200,
+      "stream_status": 200,
+      "overlap_status": 503,
+      "recovery_statuses": [
+        {
+          "seconds": 0.194,
+          "node_capacity": 0,
+          "status": 503
+        },
+        {
+          "seconds": 1.432,
+          "node_capacity": 1,
+          "status": 200
+        }
+      ],
+      "recovered": true
+    }
+  ],
+  "restart": {
+    "runtime_health_seconds": 45.537,
+    "gateway_success_seconds": 57.041,
+    "status": 200
+  },
+  "paid": [
+    {
+      "id": "req_e6dfd738ab8f4fbd8983c163ef36bc31",
+      "outcome": "failed",
+      "billing_status": "pending",
+      "input_tokens": null,
+      "output_tokens": null,
+      "job_id": null,
+      "wholesale_status": "unknown",
+      "wholesale_amount": null,
+      "wholesale_basis": "backend_reported"
+    },
+    {
+      "id": "req_4d42516398df479285fa5c7367eab8a0",
+      "outcome": "succeeded",
+      "billing_status": "charged",
+      "input_tokens": 15,
+      "output_tokens": 3,
+      "job_id": "7f2ad700-af91-4d31-a3cf-33a59e2bef1e",
+      "wholesale_status": "observed",
+      "wholesale_amount": "0.000999048939331017",
+      "wholesale_basis": "ticket_expected_value"
+    },
+    {
+      "id": "req_322dd6b4763a43c3b8650c17c86fb9ba",
+      "outcome": "succeeded",
+      "billing_status": "charged",
+      "input_tokens": 15,
+      "output_tokens": 3,
+      "job_id": "806c399d-6f19-4e74-ba62-0bc599f8744a",
+      "wholesale_status": "observed",
+      "wholesale_amount": "0.000999048939331017",
+      "wholesale_basis": "ticket_expected_value"
+    },
+    {
+      "id": "req_80adf9d01ed64bcf9115550ffd0a9ffc",
+      "outcome": "failed",
+      "billing_status": "pending",
+      "input_tokens": null,
+      "output_tokens": null,
+      "job_id": "d4e04451-c297-40b8-aa58-af224d261e87",
+      "wholesale_status": "observed",
+      "wholesale_amount": "0.000999048939331017",
+      "wholesale_basis": "ticket_expected_value"
+    }
+  ],
+  "finality_snapshot": {
+    "observed_at_epoch": 1793122129.0773811,
+    "winning_tickets": 11,
+    "pending_tickets": 9,
+    "transactions": [
+      {
+        "hash": "0x5a50914b871000d0d8d3fb5aba2d2f1e189e65d11ae1143f9937916bb80bfccb",
+        "phase": "confirmed",
+        "has_error": false
+      },
+      {
+        "hash": "0x8ad903bb6457b3acf4839745dea63e36a9d61e86cdeb90a0554cf9c1daae2259",
+        "phase": "confirmed",
+        "has_error": false
+      },
+      {
+        "hash": "0x485db92ff4e50f4462017b409f53804a0726fc42fb8f6378fee836c4dd79f8d8",
+        "phase": "mined",
+        "has_error": false
+      }
+    ],
+    "state": "pending_finality"
+  },
+  "cleanup": {
+    "remote_test_containers_removed": 6,
+    "remote_gpu_used_mib": 2,
+    "volumes_removed": 0,
+    "local_paid_node_retained": true,
+    "inference_runner_idle": true
+  }
+}

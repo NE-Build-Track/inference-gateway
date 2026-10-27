@@ -95,6 +95,14 @@ No automatic production promotion or approval-writing command is provided. Readi
 not endpoint certification. The current integration pins NE-Build-Track review revisions;
 Chain finality and production admission remain pending.
 
+## Initial supported configuration
+
+Focus release acceptance on the tested Qwen3.8-27B AWQ vLLM configuration. SGLang and
+Ollama remain experimental, with feature gaps in the reports. See the
+[vLLM release follow-up](tests/vllm-release-2026-10-27.md) for candidate digests, recovery
+behavior, paid accounting and outstanding release gates. This is a candidate, not an
+automatic production approval.
+
 ## Remote GPU evidence
 
 The [27 October offchain run](tests/gpu-acceptance-2026-10-27.md) tested these runtime

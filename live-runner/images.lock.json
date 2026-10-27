@@ -6,12 +6,12 @@
     "ollama": "ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8",
     "sglang": "lmsysorg/sglang@sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae",
     "readiness": "python@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753",
-    "node": "registry.livepeer.tools/ne-build-track/inference-node@sha256:be68e3776cf624949959482e2694bb73b5a4b0a8e7a251d25ad08bb04669e7c9"
+    "node": "registry.livepeer.tools/ne-build-track/inference-node@sha256:6042f62ea94213c700c57e4d7e1ae1fab8bfb07f4055a140552708e6eedd4561"
   },
   "provenance": {
     "runtime_tags": "vllm/vllm-openai:latest, ollama/ollama:latest, lmsysorg/sglang:latest resolved once; generated deployments use only digests",
     "readiness_tag": "python:3.12-slim-bookworm",
-    "node_tag": "registry.livepeer.tools/ne-build-track/inference-node:native-gpu-20261027",
-    "node_source_commit": "29e069d1080924d4f079c685e2f4ee62053da390"
+    "node_tag": "registry.livepeer.tools/ne-build-track/inference-node:native-vllm-20261027",
+    "node_source_commit": "e75e5b6a00fac471f0dce561dea4d564a651513b"
   }
 }
