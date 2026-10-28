@@ -45,7 +45,7 @@ fragments, not persisted domain events. Request and response IDs provide correla
 not durable deduplication. Registry mode persists request attribution, measured usage and retail charges. Its
 reconciliation worker retries accounting reads/writes, never generation. There is no
 response replay cache or message broker. In Livepeer mode,
-Builder Core owns its durable job/payment/cost records and eligible prepayment failover.
+Builder Core owns its durable job/payment/cost records and failover, including paid failover to another orchestrator (its D52, capped by `LPB_MAX_PAID_ATTEMPTS`).
 Gateway request IDs become engine operation references for correlation. Client disconnects
 stop reading and preserve the engine's outcome; no application reply is saved.
 

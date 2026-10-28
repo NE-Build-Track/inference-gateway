@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "Model": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 96,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+          "title": "Source",
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^(?:[0-9a-f]{40}|sha256:[0-9a-f]{64})$",
+          "title": "Revision",
+          "type": "string"
+        },
+        "context_tokens": {
+          "maximum": 2097152,
+          "minimum": 128,
+          "title": "Context Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "source",
+        "revision",
+        "context_tokens"
+      ],
+      "title": "Model",
+      "type": "object"
+    },
+    "Runtime": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "vllm",
+            "ollama",
+            "sglang"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "tool_parser": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Parser"
+        },
+        "reasoning_parser": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reasoning Parser"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Runtime",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Contract Version",
+      "type": "integer"
+    },
+    "runner_id": {
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+      "title": "Runner Id",
+      "type": "string"
+    },
+    "app": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+      "title": "App",
+      "type": "string"
+    },
+    "runtime": {
+      "$ref": "#/$defs/Runtime"
+    },
+    "model": {
+      "$ref": "#/$defs/Model"
+    },
+    "endpoints": {
+      "items": {
+        "enum": [
+          "chat_completions",
+          "responses",
+          "messages"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Endpoints",
+      "type": "array"
+    },
+    "capacity": {
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Capacity",
+      "type": "integer"
+    },
+    "public_url": {
+      "title": "Public Url",
+      "type": "string"
+    },
+    "admission": {
+      "const": "candidate",
+      "default": "candidate",
+      "title": "Admission",
+      "type": "string"
+    }
+  },
+  "required": [
+    "runner_id",
+    "app",
+    "runtime",
+    "model",
+    "endpoints",
+    "capacity",
+    "public_url"
+  ],
+  "title": "Deployment",
+  "type": "object"
+}

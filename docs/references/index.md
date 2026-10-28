@@ -33,3 +33,6 @@ SDK request/response classes, including their streaming accumulators. See the
 - [OpenAI model catalog](https://developers.openai.com/api/reference/resources/models/methods/list).
 - [Responses request contract](https://developers.openai.com/api/reference/python/resources/responses/methods/create).
 - [Responses streaming events](https://developers.openai.com/api/reference/resources/responses/streaming-events).
+
+- [Repository compatibility review](repository-compatibility-2026-10-27.md): pins, newer M3 compatibility and discovery deployment fix.
+- [M3 payment compatibility review](repository-compatibility-2026-10-28.md): new Core payment ownership and the native port it required (merged as Core `2134e29`).

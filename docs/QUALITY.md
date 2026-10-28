@@ -124,3 +124,52 @@ The candidate Docker image passed isolated fake-backend HTTP smoke tests for Mod
 JSON/SSE and a function-result follow-up. Its 34 Python files match the working tree; see the
 [build manifest](references/models-responses-build.json). Live verification is deferred at the
 user's request. No new image was published and no running service was changed.
+
+Native boundary slice: `make check` passes 446 tests, lint, formatting, typing and docs.
+Tests cover raw bytes, expiring admission, real-engine selection, fragmented usage in all
+three protocols, cached tokens, errors, cancellation, deadline and pre-body cleanup. These
+are offline components; they do not certify the paid raw transport or enable native HTTP
+routes. See the [integration boundary](design-docs/native-transport-integration.md).
+
+Native HTTP integration now passes `make check` with 465 tests, including original-body
+forwarding for all three endpoints, registry accounting/job correlation, wholesale usage
+reporting, HTTP errors, failed/incomplete Responses, expiry, auth, deadline and ASGI
+disconnect cleanup. Subsequent GPU/paid evidence is recorded below. Builder Core
+PR #55 has since merged as `2134e29` (pinned), and SDK PR #6 is closed, superseded by it.
+
+The [27 October GPU run](../live-runner/tests/gpu-acceptance-2026-10-27.md) exercises real
+vLLM, SGLang and Ollama through an offchain local node and the native gateway. It found
+and fixed optional-null usage details, final Messages input/cache usage updates, and
+missing node discovery identity. Runtime-specific strict-tool/combined-output limitations
+remain documented. The [Qwen3.8 follow-up](../live-runner/tests/qwen38-followup-2026-10-27.md)
+records 180 protocol probes, failure/recovery checks and four paid requests with observed
+wholesale costs. Corrected images are published as NE candidates and the node lock is
+updated. Chain finality, production load and feature-specific admission remain pending.
+Gateway checks pass 472 tests after the usage regressions.
+
+The [vLLM release follow-up](../live-runner/tests/vllm-release-2026-10-27.md) adds three
+capacity/cancellation cycles, sequential requests, runtime restart and a fresh paid
+gateway. Node race tests pass, including signer/proxy discovery identity. Production
+promotion remains gated by review, chain finality and full deployment acceptance.
+
+[Native vision acceptance](../live-runner/tests/vision-acceptance-2026-10-27.md) passes
+24 image generation checks plus six malformed-image checks, including paid usage and
+retail accounting. `make check` passes 481 tests. These are bounded inline-PNG fixtures,
+not certification of every image format or other media.
+
+The [repository compatibility review](references/repository-compatibility-2026-10-27.md)
+passes 483 tests on current pins and an isolated latest-M3-plus-native overlay. Plain M3
+is not a native-compatible replacement. Discovery Compose/startup wiring is corrected,
+with a real local discovery-process regression. No live paid/GPU services were started.
+
+[Metadata identity acceptance](../live-runner/tests/metadata-identity-2026-10-27.md) removes
+node PR #1 from the dependency chain. All 500 tests and 36 real unpatched-node transport
+checks pass; live GPU/payment acceptance of the new combined deployment remains separate.
+
+The [28 October M3 review](references/repository-compatibility-2026-10-28.md) found that
+Core `efb9c03` needed a new native port onto its engine-owned paid runner call: an isolated
+full gateway run passed 473 tests and failed 27 native tests. The startup guard rejects that
+installation before engine construction. Core PR #55 made the port and merged as `2134e29`;
+the gateway now pins it, with the SDK on upstream `2017a80`. On that pin the locked
+`make check` passes 512 tests, including the guard's missing-contract cases and both
+native/validated startup configurations. Live GPU/payment acceptance on `2134e29` has not run yet.

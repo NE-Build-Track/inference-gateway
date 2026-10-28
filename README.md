@@ -39,6 +39,18 @@ The gateway does not execute tools,
 collect customer payments or replay generated responses. See the
 [compatibility contract](docs/product-specs/compatibility.md).
 
+## Native backend direction
+
+Native routes support **vLLM, Ollama and SGLang** through original-body forwarding,
+metadata-aware admission and read-only usage accounting. Enable them explicitly per model;
+existing routes default to validated generation. Native strictness belongs to the backend.
+
+The [native contract](docs/product-specs/native-inference.md) describes configuration and
+limits. The [live-runner bundle](live-runner/README.md) supplies candidate manifests,
+pinned images and readiness checks. The [Qwen3.8 acceptance report](live-runner/tests/qwen38-followup-2026-10-27.md)
+records GPU tests on all three engines and four paid calls with reconciled wholesale costs.
+Chain finality and production admission remain pending. Dependencies pin NE-Build-Track review revisions.
+
 ## Quick start
 
 Install Python 3.12+ and [uv](https://docs.astral.sh/uv/), then:
@@ -120,6 +132,7 @@ inference. See [architecture](ARCHITECTURE.md) and [accounting](docs/design-docs
 | `GATEWAY_MODEL_ROUTES` | Public model names mapped to backend applications/models |
 | `GATEWAY_TIMEOUT_SECONDS` | Generation deadline; defaults to 300 seconds |
 | `GATEWAY_APPROVED_ORCHESTRATORS` | Allowed discovery origins for Livepeer |
+| `LPB_DISCOVERY_URL` | Required runner inventory endpoint; separate from the signer |
 | `LPB_*` | Builder Core configuration and upstream payment credentials |
 
 Registry mode fails closed until keys and prices are provisioned. For example:
@@ -148,7 +161,7 @@ scripts/build-images.sh gateway
 
 Two independent Compose deployments live under [deploy/livepeer](deploy/livepeer/README.md):
 
-- **Gateway:** API service, embedded Builder Core, Clearinghouse and payment signer.
+- **Gateway:** API service, embedded Builder Core, discovery, Clearinghouse and payment signer.
 - **Orchestrator:** `livepeer/node` and local vLLM, with explicit off-chain/on-chain configuration.
 
 Each deployment has its own configuration, secrets and persistent volumes. No sibling
@@ -174,3 +187,8 @@ Verification results and limits are recorded in [quality status](docs/QUALITY.md
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), follow the
 [Code of Conduct](CODE_OF_CONDUCT.md), and use the issue/PR templates. Security issues
 should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LICENSE).
+
+Related repository upgrades must preserve native transport. The
+[28 October compatibility review](docs/references/repository-compatibility-2026-10-28.md)
+found that native transport had to move into Core after M3 moved the paid call there. Core PR
+#55 did that, and the gateway pins its merge, `2134e29`. Use the locked dependencies.

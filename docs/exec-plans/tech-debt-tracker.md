@@ -22,5 +22,26 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Live route availability and model variability | Two configured US-central origins failed TLS verification; excluded locally pending investigation. One parallel-call acceptance assertion failed before a successful follow-up; retain evidence and avoid deterministic tool-selection claims |
 
 Models/Responses: live Gemma acceptance remains pending runner access with `metadata.model_name`.
-Stored Responses, Anthropic model-list formatting, automatic cross-app retry and per-runner
-endpoint capability metadata are not implemented. See the [contract](../product-specs/models-and-responses.md).
+Stored Responses, Anthropic model-list formatting and automatic cross-app retry are not
+implemented. Native routes now use endpoint capability metadata with independent approval. See the [contract](../product-specs/models-and-responses.md).
+
+Native forwarding is opt-in, with offline, bounded Qwen3.8 GPU and paid accounting evidence.
+Dependency PR review, chain finality and production deployment admission remain. Approval automation/hot revocation,
+shared-capacity multi-model layouts, compressed payload observation and stateful APIs need
+separate work; see the [native plan](active/native-inference-forwarding.md).
+
+Remote GPU acceptance found deployment-specific gaps; see the
+[Qwen3.8 results](../../live-runner/tests/qwen38-followup-2026-10-27.md). The node-patch dependency is removed: runner identity now comes from validated metadata
+when the top-level discovery field is absent; the lock pins an unpatched node. SGLang rejects forced tools combined with structured output and
+the tested Responses auto combination; Ollama fails forced-tool choice and strict argument
+constraints. Endpoint admission is not feature certification. Cached capacity can cause
+temporary 503s around cancellation and discovery refresh (15 seconds by default);
+load/concurrency acceptance must address this. Four paid calls reconciled expected-ticket
+costs; winning-ticket chain finality remains separately observable in the retained paid node.
+
+Live GPU/payment acceptance on Builder Core `2134e29` has not run. The pin moved from the
+native review revision `0d0b532` once Core PR #55 merged (the M3 upgrade the
+[28 October review](../references/repository-compatibility-2026-10-28.md) required). Paid
+failover is kept: Core may fail a paid 503, 404 or 409 over to another orchestrator, at most
+`LPB_MAX_PAID_ATTEMPTS` (2) paid attempts; set it to `1` to turn paid failover off. Rerun the
+combined GPU/payment acceptance on this pin before calling it released.

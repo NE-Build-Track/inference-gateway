@@ -1,0 +1,2772 @@
+{
+  "date": "2026-10-27",
+  "scope": "Qwen3.8-27B sequential runtime tests; built local images; four paid SGLang calls",
+  "runtimes": {
+    "vllm": {
+      "manifest": {
+        "contract_version": 1,
+        "runner_id": "qwen38-vllm",
+        "app": "inference/vllm",
+        "runtime": {
+          "name": "vllm",
+          "tool_parser": "qwen3_coder",
+          "reasoning_parser": "qwen3"
+        },
+        "model": {
+          "name": "qwen3.8-27b",
+          "source": "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+          "revision": "e3a700906e6a73ba4290b1873dc2ba8198527ab5",
+          "context_tokens": 4096
+        },
+        "endpoints": [
+          "chat_completions",
+          "responses",
+          "messages"
+        ],
+        "capacity": 1,
+        "public_url": "http://127.0.0.1:18935",
+        "admission": "candidate"
+      },
+      "artifact": {
+        "image": "vllm/vllm-openai@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+        "image_config_digest": "sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+        "entrypoint": [
+          "vllm",
+          "serve"
+        ],
+        "command": [
+          "--model",
+          "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+          "--revision",
+          "e3a700906e6a73ba4290b1873dc2ba8198527ab5",
+          "--served-model-name",
+          "qwen3.8-27b",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8000",
+          "--max-model-len",
+          "4096",
+          "--max-num-seqs",
+          "4",
+          "--enable-auto-tool-choice",
+          "--tool-call-parser",
+          "qwen3_coder",
+          "--reasoning-parser",
+          "qwen3",
+          "--enable-prompt-tokens-details"
+        ],
+        "environment": [],
+        "ports": {
+          "8000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "18100"
+            }
+          ]
+        },
+        "shm_size": 2147483648,
+        "volumes": [
+          {
+            "name": "ne-gpu-acceptance-hf",
+            "destination": "/root/.cache/huggingface"
+          },
+          {
+            "name": "ne-gpu-acceptance-vllm-compile",
+            "destination": "/root/.cache/vllm"
+          }
+        ],
+        "node_image_id": "sha256:361b96c5e5fd0915856145586ca96578287e20d4724ce9bbc17feb211ae985c3",
+        "gateway_image_id": "sha256:edaceee6bab5dc28da1490474aa79d5307b77b6ea6cf2a6ff2ef374da615b7b7",
+        "artifact_hash": "sha256:91d7892b489d0af05d57b153b6cf49820e7b17ae3ed9882ee786d2cb82dfc956"
+      },
+      "baseline": [
+        {
+          "endpoint": "chat_completions",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        }
+      ],
+      "extended": [
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 1.139
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.823
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.775
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.801
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.487
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.549
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.486
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.537
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.513
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.588
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.525
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.579
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.358
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.427
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.365
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.412
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.749
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.826
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.765
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 404,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.797
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.492
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.553
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.499
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.544
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.526
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.578
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.52
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 399,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.567
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.356
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.434
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.362
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.409
+        }
+      ],
+      "combined": [
+        {
+          "endpoint": "chat_completions",
+          "choice": "auto",
+          "route": "direct",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "auto",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "none",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "none",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "forced",
+          "route": "direct",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "forced",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "auto",
+          "route": "direct",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "auto",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "none",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "none",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "forced",
+          "route": "direct",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "forced",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": true,
+          "valid": true
+        }
+      ],
+      "followup": [
+        {
+          "endpoint": "chat_completions",
+          "route": "direct",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "route": "gateway",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "responses",
+          "route": "direct",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "responses",
+          "route": "gateway",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        }
+      ],
+      "accounting": {
+        "measured_requests": 32,
+        "mismatches": 0,
+        "paid_attempts": 0
+      },
+      "concurrency": {
+        "first_status": 200,
+        "capacity_during_stream": [
+          0
+        ],
+        "overlap_status": 503,
+        "overlap_seconds": 0.084,
+        "catalog_recovery_seconds": 0.014,
+        "post_cancel_status": 503
+      }
+    },
+    "sglang": {
+      "manifest": {
+        "contract_version": 1,
+        "runner_id": "qwen38-sglang",
+        "app": "inference/sglang",
+        "runtime": {
+          "name": "sglang",
+          "tool_parser": "qwen3_coder",
+          "reasoning_parser": "qwen3"
+        },
+        "model": {
+          "name": "qwen3.8-27b",
+          "source": "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+          "revision": "e3a700906e6a73ba4290b1873dc2ba8198527ab5",
+          "context_tokens": 4096
+        },
+        "endpoints": [
+          "chat_completions",
+          "responses",
+          "messages"
+        ],
+        "capacity": 1,
+        "public_url": "http://127.0.0.1:18935",
+        "admission": "candidate"
+      },
+      "artifact": {
+        "image": "lmsysorg/sglang@sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae",
+        "image_config_digest": "sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae",
+        "entrypoint": [
+          "python3"
+        ],
+        "command": [
+          "-m",
+          "sglang.launch_server",
+          "--model-path",
+          "cyankiwi/Qwen3.8-27B-AWQ-INT4",
+          "--revision",
+          "e3a700906e6a73ba4290b1873dc2ba8198527ab5",
+          "--served-model-name",
+          "qwen3.8-27b",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8000",
+          "--context-length",
+          "4096",
+          "--max-running-requests",
+          "4",
+          "--tool-call-parser",
+          "qwen3_coder",
+          "--reasoning-parser",
+          "qwen3",
+          "--enable-cache-report"
+        ],
+        "environment": [],
+        "ports": {
+          "8000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "18100"
+            }
+          ]
+        },
+        "shm_size": 2147483648,
+        "volumes": [
+          {
+            "name": "ne-gpu-acceptance-hf",
+            "destination": "/root/.cache/huggingface"
+          }
+        ],
+        "node_image_id": "sha256:361b96c5e5fd0915856145586ca96578287e20d4724ce9bbc17feb211ae985c3",
+        "gateway_image_id": "sha256:edaceee6bab5dc28da1490474aa79d5307b77b6ea6cf2a6ff2ef374da615b7b7",
+        "artifact_hash": "sha256:a0e4ad2c77cda5c8f379d6d36c9a838b17895f395465d3bc679e460b2339ff68"
+      },
+      "baseline": [
+        {
+          "endpoint": "chat_completions",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 2,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 10,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 0
+          },
+          "result": "pass"
+        }
+      ],
+      "extended": [
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.942
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.708
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.631
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.687
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.464
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.553
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.464
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.521
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.502
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.509
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.411
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.462
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.344
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.438
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.343
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.445
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.632
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.71
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.651
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 410,
+            "output": 50,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.684
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.465
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.528
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.471
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.518
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.408
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.487
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.471
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 405,
+            "output": 32,
+            "cached": 384
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.46
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.342
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.405
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.349
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.391
+        }
+      ],
+      "combined": [
+        {
+          "endpoint": "chat_completions",
+          "choice": "auto",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "auto",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "none",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "none",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "forced",
+          "route": "direct",
+          "status": 400,
+          "valid": false
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "forced",
+          "route": "gateway",
+          "status": 400,
+          "valid": false
+        },
+        {
+          "endpoint": "responses",
+          "choice": "auto",
+          "route": "direct",
+          "status": 400,
+          "valid": false
+        },
+        {
+          "endpoint": "responses",
+          "choice": "auto",
+          "route": "gateway",
+          "status": 400,
+          "valid": false
+        },
+        {
+          "endpoint": "responses",
+          "choice": "none",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "none",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "forced",
+          "route": "direct",
+          "status": 400,
+          "valid": false
+        },
+        {
+          "endpoint": "responses",
+          "choice": "forced",
+          "route": "gateway",
+          "status": 400,
+          "valid": false
+        }
+      ],
+      "followup": [
+        {
+          "endpoint": "chat_completions",
+          "route": "direct",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "route": "gateway",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "responses",
+          "route": "direct",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "responses",
+          "route": "gateway",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        }
+      ],
+      "accounting": {
+        "measured_requests": 29,
+        "mismatches": 0,
+        "paid_attempts": 0
+      }
+    },
+    "ollama": {
+      "manifest": {
+        "contract_version": 1,
+        "runner_id": "qwen38-ollama",
+        "app": "inference/ollama",
+        "runtime": {
+          "name": "ollama",
+          "tool_parser": null,
+          "reasoning_parser": null
+        },
+        "model": {
+          "name": "qwen3.8:27b",
+          "source": "qwen3.8:27b",
+          "revision": "sha256:aaee06c39dcf2437cde036998d960e1fc1494b8191be7cc9657d01e509097813",
+          "context_tokens": 4096
+        },
+        "endpoints": [
+          "chat_completions",
+          "responses",
+          "messages"
+        ],
+        "capacity": 1,
+        "public_url": "http://127.0.0.1:18935",
+        "admission": "candidate"
+      },
+      "artifact": {
+        "image": "ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8",
+        "image_config_digest": "sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8",
+        "entrypoint": [
+          "/bin/ollama"
+        ],
+        "command": [
+          "serve"
+        ],
+        "environment": [
+          "OLLAMA_CONTEXT_LENGTH=4096",
+          "OLLAMA_KEEP_ALIVE=1h"
+        ],
+        "ports": {
+          "11434/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "18100"
+            }
+          ]
+        },
+        "shm_size": 67108864,
+        "volumes": [
+          {
+            "name": "ne-gpu-acceptance-ollama",
+            "destination": "/root/.ollama"
+          }
+        ],
+        "node_image_id": "sha256:361b96c5e5fd0915856145586ca96578287e20d4724ce9bbc17feb211ae985c3",
+        "gateway_image_id": "sha256:edaceee6bab5dc28da1490474aa79d5307b77b6ea6cf2a6ff2ef374da615b7b7",
+        "artifact_hash": "sha256:c05911bff52fea16a630a0aac3be1a588bed7b207684793801e65dce6965303b"
+      },
+      "baseline": [
+        {
+          "endpoint": "chat_completions",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 2,
+            "cached": 0
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "chat_completions",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 2,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 2,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 10,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "responses",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 2,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 11
+          },
+          "result": "pass"
+        },
+        {
+          "endpoint": "messages",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 15,
+            "output": 3,
+            "cached": 11
+          },
+          "result": "pass"
+        }
+      ],
+      "extended": [
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 192,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 1.572
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 192,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 1.174
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 192,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 1.11
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 192,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 1.16
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.506
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.477
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.416
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.469
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.392
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.298
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.234
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.306
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.36
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.348
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.278
+        },
+        {
+          "endpoint": "chat_completions",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.327
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 374,
+            "output": 229,
+            "cached": 0
+          },
+          "terminal_success": true,
+          "result": "missing_or_invalid_output",
+          "seconds": 1.698
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 374,
+            "output": 229,
+            "cached": 370
+          },
+          "terminal_success": true,
+          "result": "missing_or_invalid_output",
+          "seconds": 1.601
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 374,
+            "output": 229,
+            "cached": 370
+          },
+          "terminal_success": true,
+          "result": "missing_or_invalid_output",
+          "seconds": 1.543
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 374,
+            "output": 229,
+            "cached": 370
+          },
+          "terminal_success": true,
+          "result": "missing_or_invalid_output",
+          "seconds": 1.601
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.495
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.499
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.426
+        },
+        {
+          "endpoint": "responses",
+          "schema": "nested",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 36,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.47
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.32
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.298
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.237
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "tool",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 376,
+            "output": 38,
+            "cached": 372
+          },
+          "terminal_success": true,
+          "result": "schema_violation",
+          "seconds": 0.298
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.357
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": false,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.343
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "direct",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.279
+        },
+        {
+          "endpoint": "responses",
+          "schema": "local_ref",
+          "mode": "json",
+          "stream": true,
+          "route": "gateway",
+          "status": 200,
+          "usage": {
+            "input": 62,
+            "output": 26,
+            "cached": 58
+          },
+          "terminal_success": true,
+          "result": "pass",
+          "seconds": 0.345
+        }
+      ],
+      "combined": [
+        {
+          "endpoint": "chat_completions",
+          "choice": "auto",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "auto",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "none",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "none",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "forced",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": false
+        },
+        {
+          "endpoint": "chat_completions",
+          "choice": "forced",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": false
+        },
+        {
+          "endpoint": "responses",
+          "choice": "auto",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "auto",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "none",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "none",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": true
+        },
+        {
+          "endpoint": "responses",
+          "choice": "forced",
+          "route": "direct",
+          "status": 200,
+          "tool_called": false,
+          "valid": false
+        },
+        {
+          "endpoint": "responses",
+          "choice": "forced",
+          "route": "gateway",
+          "status": 200,
+          "tool_called": false,
+          "valid": false
+        }
+      ],
+      "followup": [
+        {
+          "endpoint": "chat_completions",
+          "route": "direct",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "chat_completions",
+          "route": "gateway",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "responses",
+          "route": "direct",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        },
+        {
+          "endpoint": "responses",
+          "route": "gateway",
+          "first_status": 200,
+          "second_status": 200,
+          "result_used": true
+        }
+      ],
+      "accounting": {
+        "measured_requests": 33,
+        "mismatches": 0,
+        "paid_attempts": 0
+      },
+      "failure": [
+        {
+          "case": "deadline",
+          "status": 200,
+          "request_id": "req_db7aae65f2be4028989e7230c4115487",
+          "client_error": "RemoteProtocolError",
+          "complete_stream": false,
+          "seconds": 2.093,
+          "retail": [
+            "failed",
+            null,
+            null,
+            "89794161-eda0-4b6d-9f37-b030809c61cb"
+          ],
+          "charges": 0
+        },
+        {
+          "case": "backend_stop",
+          "status": 200,
+          "request_id": "req_5bea415cb1764d2eab4c56eedb0ed0cb",
+          "client_error": "RemoteProtocolError",
+          "complete_stream": false,
+          "seconds": 0.785,
+          "retail": [
+            "failed",
+            null,
+            null,
+            "c1b8d3fe-cf22-41c1-8f20-c415c4a00ea4"
+          ],
+          "charges": 0
+        }
+      ],
+      "restart": {
+        "status": 200,
+        "seconds_after_model_load": 13.657
+      }
+    }
+  },
+  "paid": {
+    "requests": [
+      {
+        "case": "chat",
+        "status": 200,
+        "request_id": "req_83878b786d5145fb9b37d81d5de8ea0e",
+        "retail": [
+          "4c184785-7a5c-45c7-81a2-a66c202ae39b",
+          "running",
+          15,
+          3
+        ],
+        "attempts": [
+          [
+            1,
+            "succeeded",
+            200
+          ]
+        ]
+      },
+      {
+        "case": "responses_stream",
+        "status": 200,
+        "request_id": "req_741383a8c2bc4b51a162b91f7fc5896f",
+        "retail": [
+          "7572f8b3-8455-4ff8-996b-36b1f68bd4fe",
+          "running",
+          15,
+          2
+        ],
+        "attempts": [
+          [
+            1,
+            "succeeded",
+            200
+          ]
+        ]
+      },
+      {
+        "case": "invalid",
+        "status": 400,
+        "request_id": "req_0a14d9ac4cb5441e9b4f576d5d8e4e64",
+        "retail": [
+          "77862d27-cde2-46a1-bb31-b358493a1b5e",
+          "running",
+          null,
+          null
+        ],
+        "attempts": [
+          [
+            1,
+            "http",
+            400
+          ]
+        ]
+      }
+    ],
+    "cancel": {
+      "status": 200,
+      "request_id": "req_058176ee155543368c62545409233b89"
+    },
+    "reconciliation": [
+      {
+        "id": "req_83878b786d5145fb9b37d81d5de8ea0e",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 15,
+        "output_tokens": 3,
+        "job_id": "4c184785-7a5c-45c7-81a2-a66c202ae39b",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.000997936139824642",
+        "wholesale_basis": "ticket_expected_value"
+      },
+      {
+        "id": "req_741383a8c2bc4b51a162b91f7fc5896f",
+        "outcome": "succeeded",
+        "billing_status": "charged",
+        "input_tokens": 15,
+        "output_tokens": 2,
+        "job_id": "7572f8b3-8455-4ff8-996b-36b1f68bd4fe",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.000997936139824642",
+        "wholesale_basis": "ticket_expected_value"
+      },
+      {
+        "id": "req_0a14d9ac4cb5441e9b4f576d5d8e4e64",
+        "outcome": "failed",
+        "billing_status": "pending",
+        "input_tokens": null,
+        "output_tokens": null,
+        "job_id": "77862d27-cde2-46a1-bb31-b358493a1b5e",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.000997936139824642",
+        "wholesale_basis": "ticket_expected_value"
+      },
+      {
+        "id": "req_058176ee155543368c62545409233b89",
+        "outcome": "disconnected",
+        "billing_status": "pending",
+        "input_tokens": null,
+        "output_tokens": null,
+        "job_id": "df73c215-2411-469a-8312-10242af8a3e1",
+        "wholesale_status": "observed",
+        "wholesale_amount": "0.000997936139824642",
+        "wholesale_basis": "ticket_expected_value"
+      }
+    ],
+    "finality_snapshot": {
+      "observed_at_epoch": 1793119459.0176048,
+      "winning_tickets": 6,
+      "pending_tickets": 6,
+      "transactions": [
+        {
+          "hash": "0x5a50914b871000d0d8d3fb5aba2d2f1e189e65d11ae1143f9937916bb80bfccb",
+          "phase": "mined",
+          "has_error": false
+        }
+      ],
+      "state": "pending_finality"
+    }
+  },
+  "source": {
+    "gateway_head": "0031a07dcab488b4d7313e79b71e47a5f982a788",
+    "node_head": "dfcf03370cab1f8a08c82914fd874e437f22268c",
+    "gateway_usage_sha256": "c542297797dc33af38869ce8833df3323e9a91cfd6121463927d058379450f1a",
+    "node_registry_sha256": "e4eaf4c5cc5ee2a45f2fbe6106cc6ff8b6ae0e389e3e48cdd4005f7ccf092f33",
+    "working_tree_patches_uncommitted": true
+  },
+  "publication": {
+    "tag": "native-gpu-20261027",
+    "node": "registry.livepeer.tools/ne-build-track/inference-node@sha256:be68e3776cf624949959482e2694bb73b5a4b0a8e7a251d25ad08bb04669e7c9",
+    "gateway": "registry.livepeer.tools/ne-build-track/inference-gateway@sha256:cfd1bcdca6cbb8eb01eecee079f2636c9f432ed573038a3e8e535867e472548f",
+    "node_source_commit": "29e069d1080924d4f079c685e2f4ee62053da390",
+    "v0_0_1_unchanged": true
+  }
+}

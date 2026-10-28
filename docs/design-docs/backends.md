@@ -1,5 +1,9 @@
 # Add a backend
 
+This is the existing translated/validated generation port. The opt-in
+[native forwarding port](native-inference-routing.md) will preserve opaque protocol payloads
+separately; see the [native contract](../product-specs/native-inference.md) for implementation and limits.
+
 Implement `Backend.stream(Generate) -> AsyncGenerator[Event, None]` using core types.
 Inject the instance into `create_app(backend=...)`. HTTP routes and protocol codecs
 remain unchanged when a generation backend changes.
@@ -31,7 +35,8 @@ indexed deltas. Hosted tool starts use `ToolCall(hosted=True)` and require a mat
 `HostedResult` after the call closes.
 A tool block starts with `ToolCall(id, name, arguments="")`; its deltas must concatenate
 to a JSON object. End with exactly one `Finished` and return. The service checks order,
-block closure, argument JSON, and stream termination. It does not check tool argument schemas. It validates structured final text against the requested
+block closure, argument JSON, and stream termination. Strict OpenAI tools additionally validate generated arguments against the supported schema.
+It validates structured final text against the requested
 schema before a successful finish. Output is bounded to 128 blocks and 8 MiB. See the
 [extended contract](../product-specs/extended-generation.md).
 

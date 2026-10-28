@@ -5,7 +5,7 @@ services:
     profiles: [payment-stack]
     image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/clearinghouse:ca09e47
     build:
-      context: https://github.com/NE-Build-Track/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
+      context: https://github.com/livepeer/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
       dockerfile: examples/compose/Dockerfile
     command: [serve, --config-file, /etc/clearinghouse.toml]
     volumes:
@@ -28,16 +28,39 @@ services:
     network_mode: service:clearinghouse  # Kafka and the webhook listen on this namespace's loopback
     entrypoint: ["/usr/local/bin/livepeer-signer"]
     command: [--data-dir, /data/node, --config, /etc/signer.toml]
-    environment:
-      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/pinned  # system CAs + certificates pinned by config/pin-orchestrator-certs.py (T3)
     volumes:
       - paid-state:/data
       - ./config/signer.toml:/etc/signer.toml:ro
-      - ./config/pinned-certs:/etc/ssl/pinned:ro
       - ./secrets:/run/secrets:ro
     depends_on:
       clearinghouse:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Use the same image/Core revision as the gateway; the signer only signs payments.
+  discovery:
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/gateway:local
+    build:
+      context: ../../..
+      dockerfile: deploy/livepeer/gateway/Dockerfile
+    command: [lpb, discovery]
+    environment:
+      LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt
+      LPD_HTTP_HOST: 0.0.0.0
+      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/pinned
+    volumes:
+      - ./config/orchestrators.txt:/etc/lpd/orchestrators.txt:ro
+      - ./config/runner-trust:/etc/ssl/pinned:ro
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8939/healthz')"]
+      interval: 15s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     restart: unless-stopped
 
   gateway:
@@ -52,7 +75,9 @@ services:
       LPB_ENGINE_ID: endpoint-gateway
       LPB_DATABASE_URL: sqlite+aiosqlite:////data/livepeer-builder.db
       LPB_HTTP_HOST: 127.0.0.1
-      # The embedded engine owns discovery, paid jobs, and its persistent records.
+      LPB_DISCOVERY_URL: ${LPB_DISCOVERY_URL:-http://discovery:8939/discovery}
+      LPB_MAX_PAID_ATTEMPTS: ${LPB_MAX_PAID_ATTEMPTS:-2}
+      # The embedded engine owns paid jobs; discovery supplies runner inventory.
       GATEWAY_BACKEND: ${GATEWAY_BACKEND:-livepeer}
       GATEWAY_ACCOUNTING_DB: ${GATEWAY_ACCOUNTING_DB:-/data/gateway.db}
       GATEWAY_APPLICATION_ID: ${GATEWAY_APPLICATION_ID:-endpoint-gateway}

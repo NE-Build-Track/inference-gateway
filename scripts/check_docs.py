@@ -24,6 +24,7 @@ def main() -> None:
         list(ROOT.glob("*.md"))
         + list((ROOT / "docs").rglob("*.md"))
         + list((ROOT / "deploy").rglob("*.md"))
+        + list((ROOT / "live-runner").rglob("*.md"))
     )
     for path in paths:
         for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", path.read_text()):

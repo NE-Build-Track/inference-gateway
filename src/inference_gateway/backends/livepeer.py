@@ -37,6 +37,7 @@ from inference_gateway.core.backend import (
     UnsupportedFeature,
 )
 from inference_gateway.core.models import Event, Finished, Generate
+from inference_gateway.core.native import NativeBackend
 
 
 class LivepeerBackend:
@@ -46,7 +47,10 @@ class LivepeerBackend:
         settings: LivepeerSettings,
         usage_recorder: Callable[[str, Finished], None] | None = None,
         job_recorder: Callable[[str, str], None] | None = None,
+        *,
+        native_backend: NativeBackend | None = None,
     ) -> None:
+        self.native_backend = native_backend
         self._usage_recorder = usage_recorder
         self._job_recorder = job_recorder
         streaming = engine.jobs.streaming
@@ -68,7 +72,12 @@ class LivepeerBackend:
         health = self._engine.health()
         if not health.ready or not health.discovery_fresh:
             return ()
-        return tuple(sorted({r.name for r in self._routes if self._eligible(r)}))
+        return tuple(
+            sorted(
+                {r.name for r in self._routes if r.mode == "validated" and self._eligible(r)}
+                | set(self.native_backend.models() if self.native_backend else ())
+            )
+        )
 
     def _eligible(self, route: ModelRoute) -> list[int]:
         approved = {origin(url) for url in self._settings.approved_orchestrators}
@@ -90,7 +99,7 @@ class LivepeerBackend:
         return bool(self.models())
 
     async def stream(self, request: Generate) -> AsyncGenerator[Event, None]:
-        routes = [r for r in self._routes if r.name == request.model]
+        routes = [r for r in self._routes if r.name == request.model and r.mode == "validated"]
         if not routes:
             raise UnknownModel("Unknown configured model")
         compatible: list[tuple[ModelRoute, dict[str, object]]] = []
@@ -240,6 +249,8 @@ class LivepeerBackend:
             failure = exc.job.failure
             if failure is not None and failure.kind == "timeout":
                 raise BackendDeadline("Livepeer generation deadline exceeded") from exc
+            if exc.job.state == "uncertain":  # may have run and been charged: never "unavailable"
+                raise BackendError("Livepeer generation outcome unknown") from exc
             if failure is not None and failure.kind in {
                 "no_offering",
                 "no_capacity",

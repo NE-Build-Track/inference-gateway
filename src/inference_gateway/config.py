@@ -30,6 +30,7 @@ class ModelRoute(BaseModel):
     name: str = Field(min_length=1)
     app: str = Field(min_length=1)
     upstream_model: str | None = Field(default=None, min_length=1)
+    mode: Literal["validated", "native"] = "validated"
     upstream_api: Literal["chat_completions", "responses"] = "chat_completions"
     # The initial Qwen runner supports this vLLM extension. Other routes can omit it.
     disable_thinking: bool = True
@@ -63,6 +64,17 @@ class ModelRoute(BaseModel):
         return self
 
 
+class NativeApproval(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+    orchestrator: str
+    runner_id: str = Field(min_length=1)
+    app: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    deployment_revision: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    endpoint: Literal["chat_completions", "responses", "messages"]
+    expires_at: float = Field(gt=0)
+
+
 class LivepeerSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
     application_id: str = Field(default="endpoint-gateway", min_length=1)
@@ -71,6 +83,7 @@ class LivepeerSettings(BaseModel):
         ModelRoute(name="qwen3.8-27b", app="blueclaw/chat/qwen3.8-27b"),
     )
     approved_orchestrators: tuple[str, ...] = ()
+    native_approvals: tuple[NativeApproval, ...] = ()
     timeout_seconds: float = Field(default=300, gt=0, le=3600)
     first_byte_timeout_seconds: float = Field(default=60, gt=0, le=3600)
     idle_timeout_seconds: float = Field(default=60, gt=0, le=3600)
@@ -80,6 +93,9 @@ class LivepeerSettings(BaseModel):
 
     @model_validator(mode="after")
     def unique_routes(self) -> "LivepeerSettings":
+        for name in {r.name for r in self.routes}:
+            if len({r.mode for r in self.routes if r.name == name}) != 1:
+                raise ValueError("A model must have one route mode")
         if not self.routes or len({(r.name, r.app) for r in self.routes}) != len(self.routes):
             raise ValueError("Configure at least one route with unique model/app pairs")
         return self

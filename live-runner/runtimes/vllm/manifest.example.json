@@ -1,0 +1,22 @@
+{
+  "contract_version": 1,
+  "runner_id": "vllm-llm",
+  "app": "inference/vllm",
+  "runtime": {
+    "name": "vllm",
+    "tool_parser": null,
+    "reasoning_parser": null
+  },
+  "model": {
+    "name": "Qwen/Qwen2.5-0.5B-Instruct",
+    "source": "Qwen/Qwen2.5-0.5B-Instruct",
+    "revision": "REPLACE_WITH_HF_COMMIT",
+    "context_tokens": 4096
+  },
+  "endpoints": [
+    "chat_completions"
+  ],
+  "capacity": 1,
+  "public_url": "http://127.0.0.1:8935",
+  "admission": "candidate"
+}

@@ -8,10 +8,18 @@ from dataclasses import replace
 from typing import Literal, cast
 
 import anyio
-from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings
+from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings, JobRequest
+from livepeer_builder.api import JobStreamApi
 
-from inference_gateway.backends.discovery import FilteredDiscovery, ModelSelection, origin
+from inference_gateway.backends.discovery import (
+    FilteredDiscovery,
+    ModelSelection,
+    ProtocolSelection,
+    origin,
+)
 from inference_gateway.backends.livepeer import LivepeerBackend
+from inference_gateway.backends.native_livepeer import LivepeerNativeBackend
+from inference_gateway.backends.native_selection import Admission, NativeSelection
 from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.models import Finished
 
@@ -48,6 +56,7 @@ def load_livepeer_settings(
         )
         options: dict[str, object] = {
             "routes": routes,
+            "native_approvals": json.loads(values.get("GATEWAY_NATIVE_APPROVALS", "[]")),
             "timeout_seconds": config.timeout_seconds,
             "approved_orchestrators": tuple(
                 x.strip()
@@ -67,6 +76,8 @@ def load_livepeer_settings(
             if (raw := values.get("GATEWAY_" + field.upper())) is not None:
                 options[field] = raw
         settings = LivepeerSettings.model_validate(options)
+        for approval in settings.native_approvals:
+            origin(approval.orchestrator)
         for url in settings.approved_orchestrators:
             origin(url)
         return settings
@@ -77,6 +88,15 @@ def load_livepeer_settings(
 
 
 async def build_engine(settings: LivepeerSettings) -> ActorApi:
+    if any(route.mode == "native" for route in settings.routes):
+        required_fields = {"raw_body", "content_type", "headers", "return_http_errors"}
+        if not required_fields <= JobRequest.model_fields.keys() or not hasattr(
+            JobStreamApi, "headers"
+        ):
+            raise ValueError(
+                "Installed Builder Core lacks the native HTTP contract; "
+                "restore this gateway's locked dependencies with uv sync --locked"
+            )
     try:
         engine_settings = EngineSettings.from_env()
         if (
@@ -88,6 +108,7 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
             raise ValueError("Shared application allocation required")
         required = (
             engine_settings.signer_url,
+            engine_settings.discovery_url,
             engine_settings.batteries_url,
             engine_settings.batteries_token,
             engine_settings.shared_payment_key,
@@ -95,21 +116,31 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
             engine_settings.secret_key,
         )
         if not all(required):
-            raise ValueError("Missing payment configuration")
+            raise ValueError("Missing payment or discovery configuration")
     except ValueError:
         # Pydantic error strings can contain input values; never expose configuration secrets.
         raise ValueError(
-            "Livepeer requires valid LPB_* settings and a shared application allocation"
+            "Livepeer requires LPB_DISCOVERY_URL, valid LPB_* payment settings, "
+            "and a shared application allocation"
         ) from None
 
     def decorate(parts: EngineParts) -> EngineParts:
         return replace(
             parts,
-            selection=ModelSelection(parts.selection),
+            selection=ProtocolSelection(
+                ModelSelection(parts.selection),
+                NativeSelection(
+                    parts.selection,
+                    lambda: tuple(Admission(**a.model_dump()) for a in settings.native_approvals),
+                ),
+            ),
             discovery_source=FilteredDiscovery(
                 parts.discovery_source,
                 frozenset(route.app for route in settings.routes),
                 settings.approved_orchestrators,
+                native_routes=frozenset(
+                    (route.app, route.name) for route in settings.routes if route.mode == "native"
+                ),
             ),
         )
 
@@ -125,7 +156,14 @@ async def livepeer_backend(
 ) -> AsyncIterator[LivepeerBackend]:
     engine = await factory(settings)
     try:
-        backend = LivepeerBackend(engine, settings, usage_recorder, job_recorder)
+        native = LivepeerNativeBackend(
+            engine,
+            settings,
+            lambda: tuple(Admission(**a.model_dump()) for a in settings.native_approvals),
+        )
+        backend = LivepeerBackend(
+            engine, settings, usage_recorder, job_recorder, native_backend=native
+        )
         await engine.start()
         yield backend
     finally:
