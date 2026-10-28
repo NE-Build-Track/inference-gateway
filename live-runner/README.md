@@ -47,6 +47,9 @@ uv run python live-runner/tooling/render.py \
 docker compose -f live-runner/generated/vllm/compose.json config --quiet
 ```
 
+`--output` must stay inside the directory you run it from: the bundle overwrites files there, so a
+path that resolves elsewhere is refused before anything is written.
+
 Rendering and Compose validation do not start services, download model weights or make
 paid requests. The optional local candidate launch below uses the GPU and may download
 weights; this work has not been run as part of the offline implementation:

@@ -176,9 +176,19 @@ def main() -> None:
     parser.add_argument("manifest", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    output = inside_working_directory(args.output)
     deployment = Deployment.model_validate_json(args.manifest.read_text())
-    render(deployment, args.output)
-    print(f"Rendered candidate into {args.output}; idle registration, acceptance pending")
+    render(deployment, output)
+    print(f"Rendered candidate into {output}; idle registration, acceptance pending")
+
+
+def inside_working_directory(path: Path) -> Path:
+    """The bundle overwrites files, so --output must stay under the directory it runs in."""
+    base = Path.cwd().resolve()
+    resolved = (base / path).resolve()
+    if not resolved.is_relative_to(base):
+        raise SystemExit(f"--output must be inside the working directory ({base}), not {resolved}")
+    return resolved
 
 
 if __name__ == "__main__":
