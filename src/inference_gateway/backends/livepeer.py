@@ -249,6 +249,8 @@ class LivepeerBackend:
             failure = exc.job.failure
             if failure is not None and failure.kind == "timeout":
                 raise BackendDeadline("Livepeer generation deadline exceeded") from exc
+            if exc.job.state == "uncertain":  # may have run and been charged: never "unavailable"
+                raise BackendError("Livepeer generation outcome unknown") from exc
             if failure is not None and failure.kind in {
                 "no_offering",
                 "no_capacity",
