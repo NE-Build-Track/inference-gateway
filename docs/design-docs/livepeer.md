@@ -5,7 +5,8 @@ OpenAI Chat Completions and Anthropic Messages into a runner's OpenAI chat contr
 Both interfaces therefore serve the configured Livepeer model; an Anthropic interface
 does not imply that the model is Claude.
 
-Builder Core is pinned to `629f1ab0ff84d1b350db7aea66c01989262d1325`. Its transitive Python gateway SDK pin is retained in `uv.lock`.
+Builder Core is pinned to `2134e29e9fb4d06790c23fea9311945b01e9fb01` (`releases/m3`, with native HTTP).
+Core pins the Python gateway SDK to upstream `2017a80`, recorded in `uv.lock`; no fork is pinned.
 Only the backend and application composition import Livepeer packages.
 
 ## Configuration and ownership
@@ -15,9 +16,12 @@ loads settings at startup, creates the engine, validates streaming capability, s
 it, and closes it through FastAPI lifespan. Startup failure also closes acquired resources.
 An explicitly injected backend is borrowed; its creator remains responsible for its engine.
 
-The deployed engine requires `LPB_ALLOCATION_MODE=per_application`, `LPB_SIGNER_URL`,
-`LPB_BATTERIES_URL`, `LPB_BATTERIES_TOKEN`, `LPB_SHARED_PAYMENT_KEY`,
+The deployed engine requires `LPB_ALLOCATION_MODE=per_application`, `LPB_SIGNER_URL` (payments only),
+`LPB_DISCOVERY_URL` (runners, from builder-core's discovery service; the signer is not a discovery
+source, builder-core D43), `LPB_BATTERIES_URL`, `LPB_BATTERIES_TOKEN`, `LPB_SHARED_PAYMENT_KEY`,
 `LPB_SHARED_ALLOCATION_ID`, and `LPB_SECRET_KEY`. Settings errors omit secret values.
+`LPB_MAX_PAID_ATTEMPTS` (default 2, Compose sets it explicitly) bounds the paid attempts a job may
+fail over from; `1` turns paid failover off and keeps unpaid failover.
 The engine database must be durable; in-memory database URLs are rejected by the live
 composition root. Engine initialization applies its migrations by default. Run one engine
 process per database and keep the database volume across restarts.
@@ -35,7 +39,7 @@ process per database and keep the database volume across restarts.
 | `GATEWAY_TIMEOUT_SECONDS` | `300` | Total generation limit; live backend maximum 3600 seconds |
 | `GATEWAY_FIRST_BYTE_TIMEOUT_SECONDS` | `60` | Engine opening/first-byte budget, capped by total |
 | `GATEWAY_IDLE_TIMEOUT_SECONDS` | `60` | Maximum upstream idle interval |
-| `GATEWAY_MAX_ATTEMPTS` | `3` | Builder Core's eligible prepayment attempts, maximum 10 |
+| `GATEWAY_MAX_ATTEMPTS` | `3` | Runners Builder Core may try for one job, maximum 10; paid ones are also capped by `LPB_MAX_PAID_ATTEMPTS` |
 | `GATEWAY_MAX_EVENT_BYTES` | `1048576` | Maximum buffered SSE frame bytes |
 | `GATEWAY_MAX_OUTPUT_BYTES` | `8388608` | Output text and tool data limit per generation |
 
@@ -97,10 +101,13 @@ The network tests use file-backed SQLite, matching deployment. An interrupted SQ
 can invalidate the single connection of an in-memory SQLite database and erase that database;
 in-memory engines are suitable only for controlled offline tests, not this runtime.
 
-Only Builder Core retries eligible prepayment failures. The gateway never retries a paid
-or partial job. Pre-header errors map to 400 for unknown models, 409 for operation conflicts,
+Only Builder Core retries. It fails a job over to another runner when the runner refused it
+(503, 404, 409, or a refused payment), also after payment, but then only to another orchestrator
+and at most `LPB_MAX_PAID_ATTEMPTS` times (Core D52, D55). The gateway never retries a paid or
+partial job itself. Pre-header errors map to 400 for unknown models, 409 for operation conflicts,
 503 for unavailable capacity/payment infrastructure, 504 for timeouts, or 502 for other backend
-failures. After headers commit, an error frame ends the response without a success terminator.
+failures. A job Builder Core leaves `uncertain` (it may have run and been charged) is a 502, never a
+503: a 503 says nothing ran, so a retry is safe. Native routes follow the same rule. After headers commit, an error frame ends the response without a success terminator.
 Underlying messages and response bodies are not copied into public errors.
 
 After completion, the gateway reports prompt, cached-input and completion counts to the engine.

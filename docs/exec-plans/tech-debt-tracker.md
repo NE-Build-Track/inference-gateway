@@ -39,7 +39,9 @@ temporary 503s around cancellation and discovery refresh (15 seconds by default)
 load/concurrency acceptance must address this. Four paid calls reconciled expected-ticket
 costs; winning-ticket chain finality remains separately observable in the retained paid node.
 
-Builder Core M3 upgrade: `efb9c03` owns the paid runner call but lacks the native transport
-contract (27 gateway tests fail). Rework NE Core PR #55 on that implementation, retaining
-signer-intent/uncertainty handling and explicitly disabling paid failover for this gateway
-before repinning. See the [28 October review](../references/repository-compatibility-2026-10-28.md).
+Live GPU/payment acceptance on Builder Core `2134e29` has not run. The pin moved from the
+native review revision `0d0b532` once Core PR #55 merged (the M3 upgrade the
+[28 October review](../references/repository-compatibility-2026-10-28.md) required). Paid
+failover is kept: Core may fail a paid 503, 404 or 409 over to another orchestrator, at most
+`LPB_MAX_PAID_ATTEMPTS` (2) paid attempts; set it to `1` to turn paid failover off. Rerun the
+combined GPU/payment acceptance on this pin before calling it released.

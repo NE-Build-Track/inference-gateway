@@ -1,5 +1,8 @@
 # Related repository compatibility — 27 October 2026
 
+> **Superseded** by the [28 October review](repository-compatibility-2026-10-28.md), and that by
+> Builder Core `2134e29` (PR #55 merged), which the gateway now pins.
+
 The gateway's pinned dependency set passes. A blind move to the latest default/release
 branches does not preserve native inference. The review fixed a gateway deployment gap;
 no dependency pins or registry image tags were changed. The dev stack stayed stopped.

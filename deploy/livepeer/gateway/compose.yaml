@@ -5,7 +5,7 @@ services:
     profiles: [payment-stack]
     image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/clearinghouse:ca09e47
     build:
-      context: https://github.com/NE-Build-Track/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
+      context: https://github.com/livepeer/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
       dockerfile: examples/compose/Dockerfile
     command: [serve, --config-file, /etc/clearinghouse.toml]
     volumes:
@@ -76,6 +76,7 @@ services:
       LPB_DATABASE_URL: sqlite+aiosqlite:////data/livepeer-builder.db
       LPB_HTTP_HOST: 127.0.0.1
       LPB_DISCOVERY_URL: ${LPB_DISCOVERY_URL:-http://discovery:8939/discovery}
+      LPB_MAX_PAID_ATTEMPTS: ${LPB_MAX_PAID_ATTEMPTS:-2}
       # The embedded engine owns paid jobs; discovery supplies runner inventory.
       GATEWAY_BACKEND: ${GATEWAY_BACKEND:-livepeer}
       GATEWAY_ACCOUNTING_DB: ${GATEWAY_ACCOUNTING_DB:-/data/gateway.db}

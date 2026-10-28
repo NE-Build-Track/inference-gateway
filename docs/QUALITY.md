@@ -135,7 +135,7 @@ Native HTTP integration now passes `make check` with 465 tests, including origin
 forwarding for all three endpoints, registry accounting/job correlation, wholesale usage
 reporting, HTTP errors, failed/incomplete Responses, expiry, auth, deadline and ASGI
 disconnect cleanup. Subsequent GPU/paid evidence is recorded below. Builder Core
-PR #55 CI passes, including PostgreSQL and container checks; SDK PR #6 is in the NE fork.
+PR #55 has since merged as `2134e29` (pinned), and SDK PR #6 is closed, superseded by it.
 
 The [27 October GPU run](../live-runner/tests/gpu-acceptance-2026-10-27.md) exercises real
 vLLM, SGLang and Ollama through an offchain local node and the native gateway. It found
@@ -166,9 +166,10 @@ with a real local discovery-process regression. No live paid/GPU services were s
 node PR #1 from the dependency chain. All 500 tests and 36 real unpatched-node transport
 checks pass; live GPU/payment acceptance of the new combined deployment remains separate.
 
-The [28 October M3 review](references/repository-compatibility-2026-10-28.md) finds that
-Core `efb9c03` needs a new native port onto its engine-owned paid runner call. An isolated
-full gateway run passed 473 tests and failed 27 native tests. Current dependency pins
-remain; this is not an accepted M3 upgrade. The new startup guard also rejects the actual
-latest-M3 installation before engine construction. The locked `make check` passes 506 tests,
-including missing-contract failures and both native/validated startup configuration.
+The [28 October M3 review](references/repository-compatibility-2026-10-28.md) found that
+Core `efb9c03` needed a new native port onto its engine-owned paid runner call: an isolated
+full gateway run passed 473 tests and failed 27 native tests. The startup guard rejects that
+installation before engine construction. Core PR #55 made the port and merged as `2134e29`;
+the gateway now pins it, with the SDK on upstream `2017a80`. On that pin the locked
+`make check` passes 512 tests, including the guard's missing-contract cases and both
+native/validated startup configurations. Live GPU/payment acceptance on `2134e29` has not run yet.

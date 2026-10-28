@@ -190,5 +190,5 @@ should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LI
 
 Related repository upgrades must preserve native transport. The
 [28 October compatibility review](docs/references/repository-compatibility-2026-10-28.md)
-identifies a required Core PR #55 update after M3 moved payment transport into Core.
-Use the locked dependencies; latest M3 is not yet a native-compatible replacement.
+found that native transport had to move into Core after M3 moved the paid call there. Core PR
+#55 did that, and the gateway pins its merge, `2134e29`. Use the locked dependencies.

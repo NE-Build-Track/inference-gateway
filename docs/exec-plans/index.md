@@ -36,4 +36,4 @@ Use a short task note for small edits.
 - [Repository compatibility review](completed/repository-compatibility-review.md): cross-repository checks and discovery deployment alignment.
 
 - [Metadata runner identity](completed/metadata-runner-identity.md): native admission without node PR #1.
-- [M3 payment compatibility](completed/m3-payment-compatibility.md): latest Core review, startup guard and blocked native port.
+- [M3 payment compatibility](completed/m3-payment-compatibility.md): latest Core review and startup guard; the native port it needed merged as Core `2134e29`.

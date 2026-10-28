@@ -59,6 +59,8 @@ charge. Valid Responses `failed`/`incomplete` payloads remain visible unchanged 
 failed gateway outcome, retaining any measured usage. Builder Core's HTTP-200 transport
 outcome is separate from the provider's generation outcome. Non-2xx backend responses retain
 their status/body and fail the underlying native job; they do not trigger a gateway retry.
+Builder Core still fails over a 503, 404 or 409 to another runner first, as for any job (its
+D52, at most `LPB_MAX_PAID_ATTEMPTS` paid attempts); only the answer it stops at is returned.
 
 Deadlines include opening, consuming and delivering the response. Disconnects notify the
 backend before owned iterators close. Failures before response headers return a sanitized
@@ -92,12 +94,12 @@ idle until the operator has completed the required deployment acceptance.
 
 ## Dependency and release status
 
-The gateway pins Builder Core `0d0b532` from
-[NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55),
-which pins SDK `cd6ed5e` from
-[NE-Build-Track PR #6](https://github.com/NE-Build-Track/livepeer-python-gateway/pull/6).
-These are immutable review revisions, not merged release claims. Publication is restricted
-to NE-Build-Track forks. No upstream Livepeer PR or push is part of this release chain.
+The gateway pins Builder Core `2134e29`, the merge of
+[NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55) into
+`releases/m3`. Core pins the SDK to upstream `livepeer/livepeer-python-gateway` `2017a80`; the
+earlier SDK fork pin (`cd6ed5e`, NE PR #6) is gone. Node and Clearinghouse Batteries build from
+`livepeer/node` and `livepeer/clearinghouse-batteries`. No upstream Livepeer PR or push is part of
+this release chain.
 
 See the [runner bundle](../../live-runner/README.md) and
 [active plan](../exec-plans/active/native-inference-forwarding.md). Remaining acceptance
@@ -134,5 +136,5 @@ deployment revision; old revisions are not automatically promoted. Use matching
 Native startup requires Core's raw-body, content-type, protocol-header and HTTP-error
 request fields plus its response-header stream facade. An incompatible dependency
 installation fails before engine creation with a diagnostic to restore the locked
-versions. Latest M3 cannot currently replace those pins; see the
-[28 October review](../references/repository-compatibility-2026-10-28.md).
+versions. The [28 October review](../references/repository-compatibility-2026-10-28.md) found
+M3 `efb9c03` lacked them; Core `2134e29`, now pinned, has them.

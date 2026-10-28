@@ -27,5 +27,6 @@ Retained working pins. Full locked checks pass 506 tests. The
 [review report](../../references/repository-compatibility-2026-10-28.md) specifies the
 Core PR #55 port, payment/failover decisions and exact upgrade acceptance work.
 
-Review and gateway guard are complete. The dependency upgrade remains blocked on that
-Core port, recorded in the debt tracker; no upgraded dependency/image is claimed.
+Review and gateway guard are complete. The dependency upgrade was blocked on that Core port
+until Core PR #55 merged as `2134e29` the same day; the gateway now pins it (see the
+[native forwarding plan](../active/native-inference-forwarding.md)).
