@@ -3,7 +3,7 @@ services:
   orchestrator:
     image: inference-gateway/orchestrator:b887ad0
     build:
-      context: https://github.com/NE-Build-Track/node.git#b887ad0354a8aeb239d7cd65a38cf8aa0246046a
+      context: https://github.com/livepeer/node.git#b887ad0354a8aeb239d7cd65a38cf8aa0246046a
       dockerfile: docker/Dockerfile
     # Bind-mounted operator secrets can be owner-only; host/container UID mapping is operator-owned.
     user: "0:0"
