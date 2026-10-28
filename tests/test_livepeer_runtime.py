@@ -141,7 +141,10 @@ async def test_discovery_filters_app_and_origin_without_owning_source():
     assert len(found) == 1 and found[0].orchestrator_url == "https://orch.example"
 
 
-async def test_discovery_configuration_is_required_before_engine_creation(monkeypatch, tmp_path):
+@pytest.mark.parametrize("mode", ["validated", "native"])
+async def test_discovery_configuration_is_required_before_engine_creation(
+    monkeypatch, tmp_path, mode
+):
     from cryptography.fernet import Fernet
 
     from inference_gateway.runtime import BuilderEngine
@@ -157,6 +160,7 @@ async def test_discovery_configuration_is_required_before_engine_creation(monkey
         "LPB_SECRET_KEY": Fernet.generate_key().decode(),
     }.items():
         monkeypatch.setenv(name, value)
+    options = LivepeerSettings(routes=(ModelRoute(name="m", app="chat", mode=mode),))
     monkeypatch.delenv("LPB_DISCOVERY_URL", raising=False)
     created = []
     engine = FakeEngine(streaming=True)
@@ -167,10 +171,36 @@ async def test_discovery_configuration_is_required_before_engine_creation(monkey
 
     monkeypatch.setattr(BuilderEngine, "create", create)
     with pytest.raises(ValueError) as exc:
-        await build_engine(LivepeerSettings())
+        await build_engine(options)
     assert "LPB_DISCOVERY_URL" in str(exc.value)
     assert "fixture-payment-key" not in str(exc.value)
     assert created == []
     monkeypatch.setenv("LPB_DISCOVERY_URL", "http://discovery.test:8939/discovery")
-    assert await build_engine(LivepeerSettings()) is engine
+    assert await build_engine(options) is engine
     assert created == ["http://discovery.test:8939/discovery"]
+
+
+@pytest.mark.parametrize("missing", ["raw_body", "content_type", "headers", "return_http_errors"])
+async def test_native_contract_mismatch_fails_before_engine_creation(monkeypatch, missing):
+    from inference_gateway.runtime import BuilderEngine, JobRequest
+
+    fields = dict(JobRequest.model_fields)
+    fields.pop(missing)
+    monkeypatch.setattr(JobRequest, "__pydantic_fields__", fields)
+
+    async def unexpected_create(*args, **kwargs):
+        pytest.fail("Incompatible native engine must not open resources")
+
+    monkeypatch.setattr(BuilderEngine, "create", unexpected_create)
+    settings = LivepeerSettings(routes=(ModelRoute(name="m", app="chat", mode="native"),))
+    with pytest.raises(ValueError, match="lacks the native HTTP contract"):
+        await build_engine(settings)
+
+
+async def test_native_requires_response_headers_before_engine_creation(monkeypatch):
+    import inference_gateway.runtime as runtime
+
+    monkeypatch.setattr(runtime, "JobStreamApi", object)
+    settings = LivepeerSettings(routes=(ModelRoute(name="m", app="chat", mode="native"),))
+    with pytest.raises(ValueError, match="uv sync --locked"):
+        await build_engine(settings)

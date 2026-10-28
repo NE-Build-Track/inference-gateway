@@ -187,3 +187,8 @@ Verification results and limits are recorded in [quality status](docs/QUALITY.md
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), follow the
 [Code of Conduct](CODE_OF_CONDUCT.md), and use the issue/PR templates. Security issues
 should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LICENSE).
+
+Related repository upgrades must preserve native transport. The
+[28 October compatibility review](docs/references/repository-compatibility-2026-10-28.md)
+identifies a required Core PR #55 update after M3 moved payment transport into Core.
+Use the locked dependencies; latest M3 is not yet a native-compatible replacement.

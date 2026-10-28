@@ -130,3 +130,9 @@ Deploy the updated gateway before advertising the new metadata: older gateway co
 reject the new field. Regenerate runner configuration, then issue approvals for its new
 deployment revision; old revisions are not automatically promoted. Use matching
 `native-metadata-20261027` gateway/node candidates, not the older native-vllm gateway image.
+
+Native startup requires Core's raw-body, content-type, protocol-header and HTTP-error
+request fields plus its response-header stream facade. An incompatible dependency
+installation fails before engine creation with a diagnostic to restore the locked
+versions. Latest M3 cannot currently replace those pins; see the
+[28 October review](../references/repository-compatibility-2026-10-28.md).

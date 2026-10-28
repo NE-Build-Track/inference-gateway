@@ -68,3 +68,9 @@ Do not substitute an unpatched default branch for the native dependency pins.
 Node PR #1 is no longer required: gateway discovery normalizes runner identity from
 validated metadata and rejects conflicting IDs. SDK/Core native transport patches remain
 required. See the [identity contract](../../live-runner/contract/README.md#runner-identity-without-a-node-patch).
+
+The [28 October review](../references/repository-compatibility-2026-10-28.md) supersedes
+that overlay result for newer M3: Core now owns the paid runner call. PR #55 must port
+native behavior onto that implementation; SDK PR #6 alone no longer supplies the missing
+transport. Keep current pins until the new combination passes. Native startup rejects
+an installed Core that lacks the required request fields or response-header facade.

@@ -38,3 +38,8 @@ constraints. Endpoint admission is not feature certification. Cached capacity ca
 temporary 503s around cancellation and discovery refresh (15 seconds by default);
 load/concurrency acceptance must address this. Four paid calls reconciled expected-ticket
 costs; winning-ticket chain finality remains separately observable in the retained paid node.
+
+Builder Core M3 upgrade: `efb9c03` owns the paid runner call but lacks the native transport
+contract (27 gateway tests fail). Rework NE Core PR #55 on that implementation, retaining
+signer-intent/uncertainty handling and explicitly disabling paid failover for this gateway
+before repinning. See the [28 October review](../references/repository-compatibility-2026-10-28.md).

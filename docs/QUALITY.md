@@ -165,3 +165,10 @@ with a real local discovery-process regression. No live paid/GPU services were s
 [Metadata identity acceptance](../live-runner/tests/metadata-identity-2026-10-27.md) removes
 node PR #1 from the dependency chain. All 500 tests and 36 real unpatched-node transport
 checks pass; live GPU/payment acceptance of the new combined deployment remains separate.
+
+The [28 October M3 review](references/repository-compatibility-2026-10-28.md) finds that
+Core `efb9c03` needs a new native port onto its engine-owned paid runner call. An isolated
+full gateway run passed 473 tests and failed 27 native tests. Current dependency pins
+remain; this is not an accepted M3 upgrade. The new startup guard also rejects the actual
+latest-M3 installation before engine construction. The locked `make check` passes 506 tests,
+including missing-contract failures and both native/validated startup configuration.

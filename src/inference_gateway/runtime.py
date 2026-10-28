@@ -8,7 +8,8 @@ from dataclasses import replace
 from typing import Literal, cast
 
 import anyio
-from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings
+from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings, JobRequest
+from livepeer_builder.api import JobStreamApi
 
 from inference_gateway.backends.discovery import (
     FilteredDiscovery,
@@ -87,6 +88,15 @@ def load_livepeer_settings(
 
 
 async def build_engine(settings: LivepeerSettings) -> ActorApi:
+    if any(route.mode == "native" for route in settings.routes):
+        required_fields = {"raw_body", "content_type", "headers", "return_http_errors"}
+        if not required_fields <= JobRequest.model_fields.keys() or not hasattr(
+            JobStreamApi, "headers"
+        ):
+            raise ValueError(
+                "Installed Builder Core lacks the native HTTP contract; "
+                "restore this gateway's locked dependencies with uv sync --locked"
+            )
     try:
         engine_settings = EngineSettings.from_env()
         if (
