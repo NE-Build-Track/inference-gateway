@@ -158,6 +158,51 @@ async def test_native_http_errors_keep_status_and_bytes_without_usage(tmp_path, 
     assert not engine.jobs.usage_reports
 
 
+@pytest.mark.parametrize("status", [400, 429, 502, 503])
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_forwarded_native_errors_disable_sdk_retries(status, streaming):
+    raw = b'{"error":{"message":"busy"}}'
+    app, _, _, _ = setup(
+        "chat_completions",
+        Reply(status_code=status, content_type="application/json", chunks=(raw,)),
+    )
+    body = {"model": "m", "stream": streaming}
+    if streaming:
+        body["stream_options"] = {"include_usage": True}
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post("/v1/chat/completions", json=body)
+    # SDKs retry 429/5xx by default; each retry would be a new paid request.
+    assert response.status_code == status and response.content == raw
+    assert response.headers["x-should-retry"] == "false"
+
+
+@pytest.mark.parametrize("protocol", ["openai", "anthropic"])
+async def test_default_sdk_retries_do_not_repeat_forwarded_native_error(protocol):
+    from anthropic import APIStatusError as AnthropicStatusError
+    from anthropic import AsyncAnthropic
+    from openai import APIStatusError as OpenAIStatusError
+    from openai import AsyncOpenAI
+
+    endpoint = "chat_completions" if protocol == "openai" else "messages"
+    reply = Reply(status_code=503, content_type="application/json", chunks=(b'{"error":{}}',))
+    app, engine, _, _ = setup(endpoint, reply)
+    messages = [{"role": "user", "content": "hello"}]
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as http:
+            if protocol == "openai":
+                client = AsyncOpenAI(base_url="http://test/v1", api_key="local", http_client=http)
+                with pytest.raises(OpenAIStatusError):
+                    await client.chat.completions.create(model="m", messages=messages)
+            else:
+                claude = AsyncAnthropic(base_url="http://test", api_key="local", http_client=http)
+                with pytest.raises(AnthropicStatusError):
+                    await claude.messages.create(model="m", max_tokens=50, messages=messages)
+    assert len(engine.jobs.requests) == 1
+
+
 async def test_native_stream_unknown_events_are_unchanged():
     raw = (
         b': native comment\n\ndata: {"choices":[],"future":true}\n\n'
@@ -177,6 +222,7 @@ async def test_native_stream_unknown_events_are_unchanged():
                 json={"model": "m", "stream": True, "stream_options": {"include_usage": True}},
             )
     assert response.status_code == 200 and response.content == raw
+    assert "x-should-retry" not in response.headers
     assert len(engine.jobs.usage_reports) == 1
 
 

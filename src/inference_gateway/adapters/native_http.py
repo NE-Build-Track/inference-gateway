@@ -64,6 +64,9 @@ class NativeHTTPResponse(Response):
                     (b"x-request-id", self.request.request_id.encode()),
                     (b"request-id", self.request.request_id.encode()),
                 ]
+                if delivery.status_code >= 400:
+                    # SDK default retries would repeat a paid request as a new operation.
+                    headers.append((b"x-should-retry", b"false"))
                 if self.request.streaming:
                     # Resolve failures before sending headers whenever possible.
                     first = await anext(delivery.body, None)

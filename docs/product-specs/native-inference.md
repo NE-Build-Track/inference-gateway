@@ -59,6 +59,11 @@ charge. Valid Responses `failed`/`incomplete` payloads remain visible unchanged 
 failed gateway outcome, retaining any measured usage. Builder Core's HTTP-200 transport
 outcome is separate from the provider's generation outcome. Non-2xx backend responses retain
 their status/body and fail the underlying native job; they do not trigger a gateway retry.
+The one exception is Core's own failover: an unpaid 404, 409 or 503 means the runner did not
+run the work, and Core may try another approved runner within `GATEWAY_MAX_ATTEMPTS`. A request
+is never sent again after payment; startup rejects `LPB_MAX_PAID_ATTEMPTS` above 1.
+Forwarded responses with status 400 or above also carry `x-should-retry: false`, so default
+OpenAI and Anthropic SDK retries do not repeat a paid request.
 
 Deadlines include opening, consuming and delivering the response. Disconnects notify the
 backend before owned iterators close. Failures before response headers return a sanitized
@@ -92,12 +97,12 @@ idle until the operator has completed the required deployment acceptance.
 
 ## Dependency and release status
 
-The gateway pins Builder Core `0d0b532` from
-[NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55),
-which pins SDK `cd6ed5e` from
-[NE-Build-Track PR #6](https://github.com/NE-Build-Track/livepeer-python-gateway/pull/6).
-These are immutable review revisions, not merged release claims. Publication is restricted
-to NE-Build-Track forks. No upstream Livepeer PR or push is part of this release chain.
+The gateway pins Builder Core `releases/m3` at `d3df806`, which includes the merged
+[NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55).
+Core in turn pins the upstream SDK, `livepeer/livepeer-python-gateway` `main` at `2017a80`;
+the NE SDK fork is no longer in the chain. Deployment images build Node and Clearinghouse
+Batteries from `livepeer/` `main`. Image publication is restricted to NE-Build-Track
+infrastructure; no upstream Livepeer PR or push is part of this release chain.
 
 See the [runner bundle](../../live-runner/README.md) and
 [active plan](../exec-plans/active/native-inference-forwarding.md). Remaining acceptance
@@ -130,3 +135,9 @@ Deploy the updated gateway before advertising the new metadata: older gateway co
 reject the new field. Regenerate runner configuration, then issue approvals for its new
 deployment revision; old revisions are not automatically promoted. Use matching
 `native-metadata-20261027` gateway/node candidates, not the older native-vllm gateway image.
+
+Native startup requires Core's raw-body, content-type, protocol-header and HTTP-error
+request fields plus its response-header stream facade. An incompatible dependency
+installation fails before engine creation with a diagnostic to restore the locked
+versions. Core `d3df806` satisfies the guard; see the
+[29 October repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md).

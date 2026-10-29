@@ -116,8 +116,14 @@ python3 deploy/livepeer/orchestrator/render-config.py --mode onchain
 docker compose -f deploy/livepeer/orchestrator/compose.yaml up -d --build
 ```
 
-The generated configuration selects Arbitrum One and its ETH/USD feed. Review the generated
-ticket parameters and upstream node requirements before paid deployment. The keystore account
+The generated configuration selects Arbitrum One and its ETH/USD feed. Ticket terms come from
+`TICKET_FACE_VALUE_WEI`, `TICKET_EV_WEI` and `REDEEMER_MAX_FEE_PER_GAS_WEI`; the renderer derives
+the win probability as expected value / face value. A winning ticket must be worth more than
+redeeming it costs: rendering fails unless the face value covers the fee cap times 250,000 gas.
+A measured Arbitrum redemption used 191,870 gas. The defaults pay 0.0004 ETH with a one-in-1000
+chance, against a 0.00025 ETH worst-case redemption. The payer's signer also limits expected
+value per ticket and per payment (`MaxTicketEV`, `MaxBatchEV`). Review these and upstream node
+requirements before paid deployment. The keystore account
 needs gas; the gateway payer needs deposit/reserve. Rendering configuration never registers an
 orchestrator, funds accounts or moves money. Keep signing and orchestrator identities separate.
 The orchestrator container currently runs as root to read operator-owned 0600 secrets; restrict

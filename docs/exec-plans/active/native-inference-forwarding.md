@@ -50,7 +50,8 @@ image build successfully. This image has not replaced a published release.
 SDK [NE PR #6](https://github.com/NE-Build-Track/livepeer-python-gateway/pull/6) passes 346
 tests. Builder Core [NE PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55)
 targets releases/m3 and passes 972 local tests plus CI PostgreSQL/container checks. Gateway
-pins Core `0d0b532`; Core pins SDK `cd6ed5e`.
+pinned Core `0d0b532` and SDK `cd6ed5e` at the time; it now pins Core `d3df806` with the upstream SDK
+(see the [upstream repin plan](upstream-repin-publication.md)).
 
 ## Decisions and remaining limits
 

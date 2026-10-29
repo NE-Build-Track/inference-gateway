@@ -135,7 +135,8 @@ Native HTTP integration now passes `make check` with 465 tests, including origin
 forwarding for all three endpoints, registry accounting/job correlation, wholesale usage
 reporting, HTTP errors, failed/incomplete Responses, expiry, auth, deadline and ASGI
 disconnect cleanup. Subsequent GPU/paid evidence is recorded below. Builder Core
-PR #55 CI passes, including PostgreSQL and container checks; SDK PR #6 is in the NE fork.
+PR #55 CI passes, including PostgreSQL and container checks; SDK PR #6 was in the NE fork
+(later closed unmerged once Core carried the transport).
 
 The [27 October GPU run](../live-runner/tests/gpu-acceptance-2026-10-27.md) exercises real
 vLLM, SGLang and Ollama through an offchain local node and the native gateway. It found
@@ -165,3 +166,13 @@ with a real local discovery-process regression. No live paid/GPU services were s
 [Metadata identity acceptance](../live-runner/tests/metadata-identity-2026-10-27.md) removes
 node PR #1 from the dependency chain. All 500 tests and 36 real unpatched-node transport
 checks pass; live GPU/payment acceptance of the new combined deployment remains separate.
+
+The [28 October M3 review](references/repository-compatibility-2026-10-28.md) found that
+Core `efb9c03` lacked the native port onto its engine-owned paid runner call (27 native
+tests failed). The port merged as Core PR #55. On 29 October the gateway repinned to Core
+`d3df806`, which brings the upstream SDK `2017a80`, and moved Node and Batteries builds to
+`livepeer/` `main`. The gateway now forces Core's paid-attempt cap to 1 and refuses a
+higher configured value. `make check` passes 509 tests. Paid native vLLM acceptance passed
+on the rebuilt images, with exact wholesale reconciliation and no paid failover; see the
+[repin evidence](../live-runner/tests/m3-upstream-2026-10-29.md). The repository's live
+suites still assume validated-route tool semantics that native vLLM does not meet.

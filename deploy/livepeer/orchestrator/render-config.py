@@ -7,6 +7,9 @@ from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlsplit
 
+# Gas allowance for one winning-ticket redemption; a measured Arbitrum redemption used 191,870.
+REDEMPTION_GAS = 250_000
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -48,6 +51,15 @@ def main() -> None:
         if len(address) != 42 or not address.startswith("0x"):
             parser.error("Set ORCHESTRATOR_ADDRESS for on-chain mode")
         int(address[2:], 16)
+        face = int(values.get("TICKET_FACE_VALUE_WEI", "400000000000000"))
+        ev = int(values.get("TICKET_EV_WEI", "400000000000"))
+        fee_cap = int(values.get("REDEEMER_MAX_FEE_PER_GAS_WEI", "1000000000"))
+        # The fee cap bounds redemption cost, so a ticket is never worth less than its gas.
+        if fee_cap < 1 or face < fee_cap * REDEMPTION_GAS:
+            parser.error("TICKET_FACE_VALUE_WEI must cover REDEEMER_MAX_FEE_PER_GAS_WEI x 250000")
+        if not 0 < ev < face:
+            parser.error("TICKET_EV_WEI must be positive and below TICKET_FACE_VALUE_WEI")
+        win_prob = (2**256 - 1) * ev // face
         config += (
             "\n".join(
                 [
@@ -57,9 +69,9 @@ def main() -> None:
                     'KeystorePasswordFile = "/run/secrets/keystore-password"',
                     'RPCURLFile = "/run/secrets/rpc-url"',
                     'ETHUSDFeed = "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"',
-                    'TicketFaceValue = "400000000000"',
-                    'TicketWinProb = "'
-                    '57896044618658097711785492504343953926634992332820282019728792003956564819967"',
+                    f'TicketFaceValue = "{face}"',
+                    f'TicketWinProb = "{win_prob}"',
+                    f'RedeemerMaxFeePerGas = "{fee_cap}"',
                 ]
             )
             + "\n"

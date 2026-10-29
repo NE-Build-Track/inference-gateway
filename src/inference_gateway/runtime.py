@@ -8,7 +8,8 @@ from dataclasses import replace
 from typing import Literal, cast
 
 import anyio
-from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings
+from livepeer_builder import ActorApi, BuilderEngine, EngineParts, EngineSettings, JobRequest
+from livepeer_builder.api import JobStreamApi
 
 from inference_gateway.backends.discovery import (
     FilteredDiscovery,
@@ -87,6 +88,15 @@ def load_livepeer_settings(
 
 
 async def build_engine(settings: LivepeerSettings) -> ActorApi:
+    if any(route.mode == "native" for route in settings.routes):
+        required_fields = {"raw_body", "content_type", "headers", "return_http_errors"}
+        if not required_fields <= JobRequest.model_fields.keys() or not hasattr(
+            JobStreamApi, "headers"
+        ):
+            raise ValueError(
+                "Installed Builder Core lacks the native HTTP contract; "
+                "restore this gateway's locked dependencies with uv sync --locked"
+            )
     try:
         engine_settings = EngineSettings.from_env()
         if (
@@ -113,6 +123,12 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
             "Livepeer requires LPB_DISCOVERY_URL, valid LPB_* payment settings, "
             "and a shared application allocation"
         ) from None
+    # Each client request is one paid operation; another paid attempt would charge twice.
+    if engine_settings.max_paid_attempts != 1 and (
+        "max_paid_attempts" in engine_settings.model_fields_set
+    ):
+        raise ValueError("LPB_MAX_PAID_ATTEMPTS must be 1; the gateway disables paid failover")
+    engine_settings = engine_settings.model_copy(update={"max_paid_attempts": 1})
 
     def decorate(parts: EngineParts) -> EngineParts:
         return replace(

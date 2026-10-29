@@ -187,3 +187,9 @@ Verification results and limits are recorded in [quality status](docs/QUALITY.md
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), follow the
 [Code of Conduct](CODE_OF_CONDUCT.md), and use the issue/PR templates. Security issues
 should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LICENSE).
+
+Related repository upgrades must preserve native transport. The gateway pins Builder Core
+`releases/m3`; Core pins the upstream Python SDK, and deployment images build Node and
+Clearinghouse Batteries from `livepeer/` `main`. The
+[29 October repin evidence](live-runner/tests/m3-upstream-2026-10-29.md) records the tested
+combination. Use the locked dependencies (`uv sync --locked`).

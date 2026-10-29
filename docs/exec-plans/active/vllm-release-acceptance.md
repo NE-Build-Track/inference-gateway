@@ -2,7 +2,7 @@
 
 Ship one supported configuration before expanding runtime guarantees: Qwen3.8-27B AWQ
 on pinned vLLM, with the gateway preserving native requests and observing usage. SGLang
-and Ollama remain experimental. Existing volumes and unrelated ai2-rig services must survive
+and Ollama remain experimental. Existing volumes and unrelated remote GPU host services must survive
 cleanup. Only NE-Build-Track publication is authorized.
 
 Acceptance:
@@ -16,7 +16,7 @@ Acceptance:
   hosts; run node race tests and gateway checks.
 - Record immutable image identities, source commits, paid reconciliation and chain finality
   separately. Do not call mined tickets finalized.
-- Remove task-owned ai2-rig containers without removing any volumes or unrelated services.
+- Remove task-owned remote GPU host containers without removing any volumes or unrelated services.
 
 Release review: node PR #1 requested preservation of runner_id through the signer.
 Gateway PR #4 passes CI checks but SonarCloud requires security triage. Private runtime HTTP

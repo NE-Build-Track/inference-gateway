@@ -11,7 +11,7 @@ The runtime/model pins and launch arguments are those in the
 `cyankiwi/Qwen3.8-27B-AWQ-INT4` at revision
 `e3a700906e6a73ba4290b1873dc2ba8198527ab5`, served as `qwen3.8-27b` with a 4,096-token
 context. That exact model configuration includes a vision encoder. We reused its persistent
-HF cache on ai2-rig's RTX 5090; no replacement model was downloaded.
+HF cache on the remote GPU host's RTX 5090; no replacement model was downloaded.
 
 Gateway image:
 `registry.livepeer.tools/ne-build-track/inference-gateway@sha256:cfd1bcdca6cbb8eb01eecee079f2636c9f432ed573038a3e8e535867e472548f`.
@@ -59,7 +59,7 @@ Run [probe_vision.py](probe_vision.py) as described in the [test guide](README.m
 Offline CI additionally covers image-bearing JSON byte preservation, unary/SSE usage and
 charges, backend rejection, request-size limits and stream text extraction.
 
-The vision runtime container was stopped and removed from ai2-rig; all fourteen volumes
+The vision runtime container was stopped and removed from the remote GPU host; all fourteen volumes
 and its five existing services were retained. GPU memory returned to 2 MiB. The SSH tunnel
 and local readiness server were stopped. The paid node remains with its inference runner
 idle to redeem persisted tickets. No v0.0.1 image tag was changed.

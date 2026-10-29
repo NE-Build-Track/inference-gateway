@@ -5,7 +5,8 @@ OpenAI Chat Completions and Anthropic Messages into a runner's OpenAI chat contr
 Both interfaces therefore serve the configured Livepeer model; an Anthropic interface
 does not imply that the model is Claude.
 
-Builder Core is pinned to `629f1ab0ff84d1b350db7aea66c01989262d1325`. Its transitive Python gateway SDK pin is retained in `uv.lock`.
+Builder Core is pinned to `releases/m3` at `d3df80657ef1b497d1b6dff90fb7e27d9e03bc58`. Its transitive
+Python gateway SDK pin, `livepeer/livepeer-python-gateway` at `2017a80`, is retained in `uv.lock`.
 Only the backend and application composition import Livepeer packages.
 
 ## Configuration and ownership
@@ -36,6 +37,7 @@ process per database and keep the database volume across restarts.
 | `GATEWAY_FIRST_BYTE_TIMEOUT_SECONDS` | `60` | Engine opening/first-byte budget, capped by total |
 | `GATEWAY_IDLE_TIMEOUT_SECONDS` | `60` | Maximum upstream idle interval |
 | `GATEWAY_MAX_ATTEMPTS` | `3` | Builder Core's eligible prepayment attempts, maximum 10 |
+| `LPB_MAX_PAID_ATTEMPTS` | Forced to `1` | Paid failover is disabled; startup rejects a larger value |
 | `GATEWAY_MAX_EVENT_BYTES` | `1048576` | Maximum buffered SSE frame bytes |
 | `GATEWAY_MAX_OUTPUT_BYTES` | `8388608` | Output text and tool data limit per generation |
 
@@ -119,6 +121,8 @@ for the copied configuration, trust pins, and existing-stack network overlay.
 
 HTTP errors include `x-should-retry: false`, which the tested OpenAI and Anthropic SDKs
 honor. This prevents their default status-code retries from repeating a paid request.
+Native routes add the header to every forwarded backend response with status 400 or above,
+leaving the backend's status and body unchanged.
 Other clients must disable automatic retries themselves. Connection failures can still
 trigger SDK retries; use `max_retries=0` when paid uncertainty must never cause a repeat.
 Request IDs provide correlation, not cross-request idempotency or result replay.

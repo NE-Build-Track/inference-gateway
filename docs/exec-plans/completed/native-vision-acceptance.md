@@ -13,7 +13,7 @@ support from successful image tests. Only NE-Build-Track publication is allowed.
 
 Completed: all 30 live image checks and 15 paid accounting audits pass. Offline CI passes
 481 tests. No gateway application change was required. The probe classifier was corrected
-to use streaming deltas only. ai2-rig test containers were removed, all volumes retained.
+to use streaming deltas only. Remote GPU host test containers were removed, all volumes retained.
 
 Evidence: [image acceptance](../../../live-runner/tests/vision-acceptance-2026-10-27.md).
 Other input modalities and overall release/finality gates remain separately tracked.

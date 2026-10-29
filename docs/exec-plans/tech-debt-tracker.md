@@ -38,3 +38,20 @@ constraints. Endpoint admission is not feature certification. Cached capacity ca
 temporary 503s around cancellation and discovery refresh (15 seconds by default);
 load/concurrency acceptance must address this. Four paid calls reconciled expected-ticket
 costs; winning-ticket chain finality remains separately observable in the retained paid node.
+
+Builder Core M3 upgrade: done on 29 October (Core `d3df806`, upstream SDK, `livepeer/` Node
+and Batteries); see the [repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md).
+That run left four open items:
+
+- Capacity cost: after a cancelled stream, the next request can be paid and then refused
+  with 503 while discovery still advertises the single slot. Each occurrence wastes one
+  ticket. Fix through capacity freshness or reservation, not automatic paid retries.
+- Payment-layer statuses: a node payment-challenge failure reaches native clients as 502,
+  and a rejected payment as 400, indistinguishable from runtime errors. Classify node-originated
+  failures before forwarding, without altering genuine backend bodies.
+- Live suites: `test-live-provider.py` and `test-accounting-http.py` require
+  `finish_reason: "tool_calls"` for a forced named tool and read Anthropic `thinking` blocks
+  as tool calls. Native vLLM returns `stop` and Qwen3 emits thinking blocks. Decide per route
+  which semantics each suite asserts.
+- Node image reproducibility: two builds from identical source and arguments gave different
+  image IDs. Publish one build and pin its digest.

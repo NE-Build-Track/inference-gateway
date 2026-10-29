@@ -116,4 +116,5 @@ Native forwarding is an explicit per-model route mode, tested offline. Validated
 retain the compatibility guarantees above. In native mode the backend owns tools, schemas
 and generation controls; the gateway owns auth, admission, transport and usage accounting.
 See the [native contract](native-inference.md) for configuration, constraints and remaining
-live acceptance. Dependencies currently pin NE-Build-Track review revisions.
+live acceptance. Dependencies pin Builder Core `releases/m3`; Node, Clearinghouse Batteries
+and the Python SDK come from `livepeer/` `main`.

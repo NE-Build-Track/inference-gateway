@@ -27,6 +27,10 @@ images and four paid calls. Chain finality remains separate from observed costs.
 The [vLLM release follow-up](vllm-release-2026-10-27.md) records recovery, fresh paid
 gateway acceptance, signer discovery identity, final candidate images and cleanup.
 
+The [upstream repin run](m3-upstream-2026-10-29.md) repeats paid native vLLM acceptance on
+Core `releases/m3` and `livepeer/` Node, Batteries and SDK, with exact wholesale reconciliation.
+The [capacity benchmark](vllm-capacity-2026-10-29.md) measures concurrency limits for the vLLM runner.
+
 
 ## Opt-in image acceptance
 

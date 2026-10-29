@@ -51,7 +51,7 @@ expected-ticket costs of $0.000999048939331017 each (about $0.002997 total). Thi
 wholesale evidence, not finalized redemption. Two of the accumulated eleven winning
 tickets were confirmed at the recorded snapshot; nine remained pending.
 
-All six task-owned inference containers were removed from ai2-rig. Its five pre-existing
+All six task-owned inference containers were removed from the remote GPU host. Its five pre-existing
 services remain running. All fourteen pre-existing/model volumes remain, including the
 three NE model/compile caches. GPU memory returned to 2 MiB. Local test gateway/node
 containers, readiness server and SSH tunnel were stopped/removed. Only the private paid
