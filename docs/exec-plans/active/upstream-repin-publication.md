@@ -33,7 +33,8 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 - [x] Compose image names match the registry repositories; `IMAGE_REGISTRY` and `IMAGE_TAG`
       select a published release.
 - [ ] Push three images under `m3-upstream-20261029` to `registry.livepeer.tools/ne-build-track/`:
-      `inference-gateway` (local `inference-gateway:local`), `inference-node` (signer,
+      `inference-gateway` (local `inference-gateway:local`, `sha256:fd175fb0…`, built from the
+      merge with `main`; offline and smoke checks only, so run a short paid check first), `inference-node` (signer,
       orchestrator and runner bundle; local `inference-node:a4b68ed`) and
       `inference-clearinghouse` (local `inference-clearinghouse:d47d1ff`). Each local image ID
       becomes the published config digest; record the manifest digests. Leave `v0.0.1` unchanged.
