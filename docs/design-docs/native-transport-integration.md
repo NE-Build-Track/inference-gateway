@@ -25,24 +25,18 @@ still goes through Builder Core; no separate HTTP client bypasses payment/sessio
 
 ## Dependency review chain
 
-Current chain, from 29 October: Builder Core `releases/m3` at `d3df806` contains the merged
-PR #55 port onto Core's own paid runner call (D56). Core pins the upstream SDK at `2017a80`.
-SDK PR #6 was closed unmerged and is no longer required. The gateway sets Core's
-paid-attempt cap to 1. The full suite and paid native vLLM acceptance pass on this
-combination; see the [repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md).
+The gateway pins Builder Core `releases/m3` at `d3df806`, which includes `2134e29`, the merge of
+[Builder Core PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55) into
+`releases/m3` (28 October). Core sends the paid runner request itself (its D53), so native
+transport lives in Core: bounded raw bodies, content type, validated headers, operation identity,
+response header pairs and opt-in HTTP error delivery (its D56). Native error streams are not
+decompressed, redirects are never followed, and no paid request is resent on a dropped connection.
+Payment challenges and signer failures remain control flow. Core pins the SDK to upstream
+`livepeer/livepeer-python-gateway` `2017a80`; no fork is pinned. Paid native vLLM acceptance
+passed on this combination; see the [repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md).
 
-The original review chain, kept for history; all branches and PRs are in NE-Build-Track forks:
-
-- [SDK PR #6](https://github.com/NE-Build-Track/livepeer-python-gateway/pull/6), commit
-  `cd6ed5e`: validated runner protocol headers and opt-in non-402 error streams. Payment
-  challenges remain control flow. Native streams disable redirects, implicit connection
-  retries and decompression; original bytes and repeated response headers are exposed.
-- [Builder Core PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55),
-  commit `0d0b532`, targets `releases/m3`. It adds bounded raw bodies, content type, validated
-  headers, operation identity and opt-in HTTP error delivery. Completed native HTTP errors
-  record failed jobs, including when paid; interrupted paid streams preserve uncertainty.
-
-The gateway pins those immutable review revisions. They are not merged release claims.
+[SDK PR #6](https://github.com/NE-Build-Track/livepeer-python-gateway/pull/6) (`cd6ed5e`) and
+Core PR #55's review revision `0d0b532` were the earlier chain; #6 is closed, superseded by #55.
 An attempted upstream SDK PR creation was rejected by GitHub permissions; no upstream PR
 was created and no upstream branch was pushed. The user's publication policy is NE forks only.
 
@@ -75,9 +69,8 @@ Node PR #1 is no longer required: gateway discovery normalizes runner identity f
 validated metadata and rejects conflicting IDs. SDK/Core native transport patches remain
 required. See the [identity contract](../../live-runner/contract/README.md#runner-identity-without-a-node-patch).
 
-The [28 October review](../references/repository-compatibility-2026-10-28.md) supersedes
-that overlay result for newer M3: Core now owns the paid runner call. PR #55 must port
-native behavior onto that implementation; SDK PR #6 alone no longer supplies the missing
-transport. That port merged the same day and the gateway now pins it (see the current
-chain above). Native startup rejects an installed Core that lacks the required request
+The [28 October review](../references/repository-compatibility-2026-10-28.md) superseded
+that overlay result for newer M3: Core now owns the paid runner call, so PR #55 had to port
+native behavior onto that implementation. It did, and merged as `2134e29`, which the pinned
+`d3df806` includes. Native startup still rejects an installed Core that lacks the required request
 fields or response-header facade.

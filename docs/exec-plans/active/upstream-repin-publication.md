@@ -8,7 +8,7 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 ## Acceptance
 
 - The full suite passes on the repinned lockfile; native startup accepts the installed Core.
-- The gateway never fails over after payment, whatever Core's default.
+- Paid failover follows the documented policy: on, at most `LPB_MAX_PAID_ATTEMPTS` (2).
 - The built gateway image contains the pinned Core and SDK; node and Clearinghouse binaries
   report their source commits.
 - Paid native vLLM on the remote GPU host: Chat, Responses and Messages in JSON and SSE, image input,
@@ -20,7 +20,9 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 
 - [x] Repin Core to `d3df806`; the lock now resolves SDK `livepeer/…@2017a80`.
 - [x] Build Node `a4b68ed` and Batteries `d47d1ff` from `livepeer/`, passing `COMMIT`.
-- [x] Force Core's paid-attempt cap to 1; reject a configured value above 1 before startup.
+- [x] Keep paid failover on (`LPB_MAX_PAID_ATTEMPTS=2`, decided on `main`); an interim
+      forced cap of 1 was dropped when merging `main`. Live paid failover across orchestrators
+      remains unexercised: the acceptance topology had one orchestrator.
 - [x] `make check` and gateway image smoke.
 - [x] Forwarded native errors carry `x-should-retry: false` (found during review; SDK contract tests).
 - [x] Paid remote GPU acceptance and cleanup; see the [evidence](../../../live-runner/tests/m3-upstream-2026-10-29.md).
@@ -48,7 +50,7 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 
 ## Verification
 
-`make check`: 519 passed, plus lint, formatting, strict typing and documentation checks.
+`make check`: 532 passed, plus lint, formatting, strict typing and documentation checks.
 `uv run python scripts/smoke-image.py` passed. Paid acceptance: every probe case passed. The
 provider suite passed 10 of 12; the two failures are forced-tool semantics. The accounting
 suite passed with forced-tool cases skipped. Remaining limitations are in the

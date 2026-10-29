@@ -27,6 +27,6 @@ Retained working pins. Full locked checks pass 506 tests. The
 [review report](../../references/repository-compatibility-2026-10-28.md) specifies the
 Core PR #55 port, payment/failover decisions and exact upgrade acceptance work.
 
-Review and gateway guard are complete. The dependency upgrade remained blocked on that
-Core port at the time. The port merged later that day; the
-[upstream repin plan](../active/upstream-repin-publication.md) carries the upgrade.
+Review and gateway guard are complete. The dependency upgrade was blocked on that Core port
+until Core PR #55 merged as `2134e29` the same day. The gateway now pins the later `d3df806`,
+which includes it (see the [upstream repin plan](../active/upstream-repin-publication.md)).

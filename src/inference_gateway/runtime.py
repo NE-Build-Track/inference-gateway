@@ -123,12 +123,6 @@ async def build_engine(settings: LivepeerSettings) -> ActorApi:
             "Livepeer requires LPB_DISCOVERY_URL, valid LPB_* payment settings, "
             "and a shared application allocation"
         ) from None
-    # Each client request is one paid operation; another paid attempt would charge twice.
-    if engine_settings.max_paid_attempts != 1 and (
-        "max_paid_attempts" in engine_settings.model_fields_set
-    ):
-        raise ValueError("LPB_MAX_PAID_ATTEMPTS must be 1; the gateway disables paid failover")
-    engine_settings = engine_settings.model_copy(update={"max_paid_attempts": 1})
 
     def decorate(parts: EngineParts) -> EngineParts:
         return replace(

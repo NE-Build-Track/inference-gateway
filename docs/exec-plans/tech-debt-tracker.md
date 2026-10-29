@@ -39,13 +39,16 @@ temporary 503s around cancellation and discovery refresh (15 seconds by default)
 load/concurrency acceptance must address this. Four paid calls reconciled expected-ticket
 costs; winning-ticket chain finality remains separately observable in the retained paid node.
 
-Builder Core M3 upgrade: done on 29 October (Core `d3df806`, upstream SDK, `livepeer/` Node
-and Batteries); see the [repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md).
-That run left four open items:
+Builder Core M3 upgrade: done on 29 October (Core `d3df806`, which includes the PR #55 merge
+`2134e29`; upstream SDK; `livepeer/` Node and Batteries); see the
+[repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md). Paid failover is kept: Core
+may fail a paid 503, 404 or 409 over to another orchestrator, at most `LPB_MAX_PAID_ATTEMPTS` (2)
+paid attempts; set it to `1` to turn paid failover off. The acceptance topology had one
+orchestrator, so paid failover is not yet exercised live. That run left these open items:
 
 - Capacity cost: after a cancelled stream, the next request can be paid and then refused
-  with 503 while discovery still advertises the single slot. Each occurrence wastes one
-  ticket. Fix through capacity freshness or reservation, not automatic paid retries.
+  with 503 while discovery still advertises a full slot. Each occurrence wastes one ticket.
+  Fix through capacity freshness or reservation.
 - Payment-layer statuses: a node payment-challenge failure reaches native clients as 502,
   and a rejected payment as 400, indistinguishable from runtime errors. Classify node-originated
   failures before forwarding, without altering genuine backend bodies.

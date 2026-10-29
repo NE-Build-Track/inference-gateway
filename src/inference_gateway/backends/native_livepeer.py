@@ -134,6 +134,8 @@ class LivepeerNativeBackend:
         except JobFailed as exc:
             if exc.job.failure and exc.job.failure.kind == "timeout":
                 raise BackendDeadline("Native job deadline exceeded") from None
+            if exc.job.state == "uncertain":  # may have run and been charged: not "could not start"
+                raise BackendError("Native job outcome unknown") from None
             raise BackendUnavailable("Native job could not start") from None
         except EngineError:
             raise BackendUnavailable("Native job could not start") from None

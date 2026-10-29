@@ -186,7 +186,7 @@ nested message/tool/schema structures. Do not traverse every tool schema on nati
 The backend returns its own unsupported-field/schema error.
 
 Select by `(model, endpoint, compatible profile)` and route policy before ranking by
-capacity/health/cost. Apply the same eligibility rules on any allowed pre-payment retry.
+capacity/health/cost. Apply the same eligibility rules on any failover Builder Core makes, unpaid or paid (its D52).
 Use immutable deployment identity to prevent fresh requests from being admitted against
 stale capability evidence. Capacity snapshots remain advisory: handle a busy refusal
 before payment without relaxing eligibility.

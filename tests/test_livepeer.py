@@ -385,14 +385,21 @@ async def test_real_engine_timeout_preserves_paid_uncertainty():
 
 @pytest.mark.parametrize("protocol", ["openai", "anthropic"])
 @pytest.mark.parametrize(
-    "kind,status", [("timeout", 504), ("no_capacity", 503), ("runner_error", 502)]
+    "kind,paid,status",
+    [
+        ("timeout", True, 504),
+        ("no_capacity", True, 503),
+        ("runner_error", True, 502),
+        ("unreachable", False, 503),  # nothing ran and nothing was paid: safe to retry
+        ("unreachable", True, 502),  # uncertain: may have run and been charged, never 503
+    ],
 )
-async def test_engine_failures_map_to_safe_http_errors(protocol, kind, status):
+async def test_engine_failures_map_to_safe_http_errors(protocol, kind, paid, status):
     engine = FakeEngine(
         streaming=True,
         runners=[runner(APP, metadata='{"model_name":"qwen"}')],
         replies={
-            (APP, PATH): Fails(kind=kind, message="upstream private secret", payment_sent=True)
+            (APP, PATH): Fails(kind=kind, message="upstream private secret", payment_sent=paid)
         },
     )
     app = create_app(LivepeerBackend(engine, OPTIONS))

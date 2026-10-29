@@ -223,3 +223,18 @@ def test_vision_probe_uses_deltas_without_repeating_completed_text():
         )
         == "red"
     )
+
+
+@pytest.mark.parametrize("escape", ["../escaped", "/tmp/escaped-bundle", "inside/../../escaped"])
+def test_the_cli_refuses_an_output_outside_the_working_directory(tmp_path, monkeypatch, escape):
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "manifest.json").write_text(json.dumps(manifest()))
+    monkeypatch.chdir(work)
+    monkeypatch.setattr("sys.argv", ["render.py", "manifest.json", "--output", escape])
+    with pytest.raises(SystemExit, match="inside the working directory"):
+        module("render").main()
+    assert not (tmp_path / "escaped").exists() and not Path("/tmp/escaped-bundle").exists()
+    monkeypatch.setattr("sys.argv", ["render.py", "manifest.json", "--output", "bundle"])
+    module("render").main()
+    assert (work / "bundle" / "compose.json").exists()

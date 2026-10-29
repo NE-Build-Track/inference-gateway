@@ -473,13 +473,21 @@ async def test_native_routes_work_through_provider_sdks(endpoint):
     assert json.loads(engine.jobs.requests[0][1].raw_body)["native_extension"] is True
 
 
-@pytest.mark.parametrize("kind,expected", [("timeout", 504), ("no_capacity", 503)])
-async def test_engine_failures_keep_timeout_and_availability_status(kind, expected):
+@pytest.mark.parametrize(
+    "kind,paid,expected",
+    [
+        ("timeout", True, 504),
+        ("no_capacity", False, 503),
+        ("unreachable", False, 503),
+        ("unreachable", True, 502),  # uncertain: may have run and been charged, never 503
+    ],
+)
+async def test_engine_failures_keep_timeout_and_availability_status(kind, paid, expected):
     from livepeer_builder.testing import Fails
 
     app, _, _, _ = setup(
         "chat_completions",
-        Fails(kind=kind, message="private backend detail", payment_sent=kind == "timeout"),
+        Fails(kind=kind, message="private backend detail", payment_sent=paid),
     )
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(

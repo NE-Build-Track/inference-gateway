@@ -80,6 +80,7 @@ services:
       LPB_DATABASE_URL: sqlite+aiosqlite:////data/livepeer-builder.db
       LPB_HTTP_HOST: 127.0.0.1
       LPB_DISCOVERY_URL: ${LPB_DISCOVERY_URL:-http://discovery:8939/discovery}
+      LPB_MAX_PAID_ATTEMPTS: ${LPB_MAX_PAID_ATTEMPTS:-2}
       # The embedded engine owns paid jobs; discovery supplies runner inventory.
       GATEWAY_BACKEND: ${GATEWAY_BACKEND:-livepeer}
       GATEWAY_ACCOUNTING_DB: ${GATEWAY_ACCOUNTING_DB:-/data/gateway.db}

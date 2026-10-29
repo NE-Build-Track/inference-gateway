@@ -141,8 +141,13 @@ async def test_discovery_filters_app_and_origin_without_owning_source():
     assert len(found) == 1 and found[0].orchestrator_url == "https://orch.example"
 
 
-def set_payment_env(monkeypatch, tmp_path):
+@pytest.mark.parametrize("mode", ["validated", "native"])
+async def test_discovery_configuration_is_required_before_engine_creation(
+    monkeypatch, tmp_path, mode
+):
     from cryptography.fernet import Fernet
+
+    from inference_gateway.runtime import BuilderEngine
 
     for name, value in {
         "LPB_DATABASE_URL": f"sqlite+aiosqlite:///{tmp_path}/engine.db",
@@ -155,15 +160,6 @@ def set_payment_env(monkeypatch, tmp_path):
         "LPB_SECRET_KEY": Fernet.generate_key().decode(),
     }.items():
         monkeypatch.setenv(name, value)
-
-
-@pytest.mark.parametrize("mode", ["validated", "native"])
-async def test_discovery_configuration_is_required_before_engine_creation(
-    monkeypatch, tmp_path, mode
-):
-    from inference_gateway.runtime import BuilderEngine
-
-    set_payment_env(monkeypatch, tmp_path)
     options = LivepeerSettings(routes=(ModelRoute(name="m", app="chat", mode=mode),))
     monkeypatch.delenv("LPB_DISCOVERY_URL", raising=False)
     created = []
@@ -182,42 +178,6 @@ async def test_discovery_configuration_is_required_before_engine_creation(
     monkeypatch.setenv("LPB_DISCOVERY_URL", "http://discovery.test:8939/discovery")
     assert await build_engine(options) is engine
     assert created == ["http://discovery.test:8939/discovery"]
-
-
-@pytest.mark.parametrize("configured", [None, "1"])
-async def test_engine_never_fails_over_after_payment(monkeypatch, tmp_path, configured):
-    from inference_gateway.runtime import BuilderEngine
-
-    set_payment_env(monkeypatch, tmp_path)
-    monkeypatch.setenv("LPB_DISCOVERY_URL", "http://discovery.test:8939/discovery")
-    if configured is None:
-        monkeypatch.delenv("LPB_MAX_PAID_ATTEMPTS", raising=False)
-    else:
-        monkeypatch.setenv("LPB_MAX_PAID_ATTEMPTS", configured)
-    created = []
-
-    async def create(settings, **kwargs):
-        created.append(settings.max_paid_attempts)
-        return FakeEngine(streaming=True)
-
-    monkeypatch.setattr(BuilderEngine, "create", create)
-    await build_engine(LivepeerSettings())
-    assert created == [1]
-
-
-async def test_paid_failover_configuration_is_rejected(monkeypatch, tmp_path):
-    from inference_gateway.runtime import BuilderEngine
-
-    set_payment_env(monkeypatch, tmp_path)
-    monkeypatch.setenv("LPB_DISCOVERY_URL", "http://discovery.test:8939/discovery")
-    monkeypatch.setenv("LPB_MAX_PAID_ATTEMPTS", "2")
-
-    async def unexpected_create(*args, **kwargs):
-        pytest.fail("Paid failover must be rejected before opening resources")
-
-    monkeypatch.setattr(BuilderEngine, "create", unexpected_create)
-    with pytest.raises(ValueError, match="LPB_MAX_PAID_ATTEMPTS"):
-        await build_engine(LivepeerSettings())
 
 
 @pytest.mark.parametrize("missing", ["raw_body", "content_type", "headers", "return_http_errors"])

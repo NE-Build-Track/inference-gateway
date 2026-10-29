@@ -1,9 +1,14 @@
 # Related repository compatibility — 28 October 2026
 
-> **Superseded on 29 October.** Core PR #55 merged into `releases/m3` after this review.
-> The gateway now pins Core `d3df806` and passes its full suite on it; see the
-> [upstream repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md). The text
-> below records the state on 28 October.
+> **Resolved later the same day.** Builder Core PR #55 made the port this review requires and
+> merged into `releases/m3` as `2134e29`. Core's own paid call now carries raw bodies, protocol
+> headers, response headers and returned HTTP errors (Core D56), and the SDK is on upstream
+> `2017a80`. The gateway now pins the later `releases/m3` commit `d3df806`, which includes it;
+> see the [upstream repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md). Paid
+> failover is kept rather than turned off with `LPB_MAX_PAID_ATTEMPTS=1` (item 4 below): under
+> `return_http_errors`, Core fails over a 503, 404 or 409 only while another runner can be
+> tried, and returns the answer it stops at unchanged, which settles the replay concern in
+> item 3. The review below is unchanged.
 
 The locked gateway remains the supported combination. Latest Builder Core M3 cannot yet
 replace it: an isolated run against `efb9c03f9eb4ed5b90cd4ee391c71025f62c126d` passed
