@@ -57,9 +57,21 @@ def test_bundle_identity_config_and_health_are_aligned(tmp_path, family):
         assert args[args.index("--served-model-name") + 1] == deployment.model.name
     if family == "vllm":
         assert "--enable-prompt-tokens-details" in runtime["command"]
+        # vLLM runs no more sequences than the node admits.
+        assert args[args.index("--max-num-seqs") + 1] == str(runner["Capacity"])
     if family == "sglang":
         assert "--enable-cache-report" in runtime["command"]
     assert advertised["endpoints"]["chat_completions"] == PROFILES["chat_completions"]
+
+
+def test_supported_vllm_manifest_renders_benchmarked_capacity(tmp_path):
+    path = BUNDLE / "runtimes" / "vllm" / "qwen3.8-27b-awq.json"
+    deployment = Deployment.model_validate(json.loads(path.read_text()))
+    render(deployment, tmp_path)
+    runner = tomllib.loads((tmp_path / "runners.toml").read_text())["Runners"][0]
+    args = json.loads((tmp_path / "compose.json").read_text())["services"]["runtime"]["command"]
+    assert runner["Capacity"] == 8 and args[args.index("--max-num-seqs") + 1] == "8"
+    assert deployment.model.revision == "e3a700906e6a73ba4290b1873dc2ba8198527ab5"
 
 
 def test_changed_configuration_invalidates_deployment_identity(tmp_path):

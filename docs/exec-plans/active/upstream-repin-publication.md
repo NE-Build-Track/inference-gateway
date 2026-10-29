@@ -32,9 +32,9 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 - [x] On-chain ticket terms are configurable; rendering rejects a face value below the capped
       redemption gas cost (the previous fixed values cost 9.6 times the ticket to redeem).
 - [ ] Pin the example orchestrator's vLLM image by digest, or mark it untested.
-- [ ] Choose the advertised runner capacity (8 for chat-like traffic, 4 for long prompts; see the
-      [capacity benchmark](../../../live-runner/tests/vllm-capacity-2026-10-29.md)) and validate it
-      with a short paid check through the gateway.
+- [x] Advertise capacity 8 in the supported vLLM manifest; the renderer sets `--max-num-seqs`
+      from capacity. A paid check passed at 8 concurrent streams; see the
+      [capacity benchmark](../../../live-runner/tests/vllm-capacity-2026-10-29.md).
 - [ ] Observe finality for the 29 October winning tickets held by the private paid node.
 
 ## Verification

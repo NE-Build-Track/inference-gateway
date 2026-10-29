@@ -54,3 +54,40 @@ early stops. Real traffic will differ in both directions. Each level ran once. T
 payment and gateway add per-request overhead that this direct test does not measure. After
 changing capacity, re-render the bundle, approve the new deployment revision, and run a
 short paid check at the chosen concurrency through the gateway.
+
+## Paid check at capacity 8
+
+The supported manifest, [qwen3.8-27b-awq.json](../runtimes/vllm/qwen3.8-27b-awq.json), was
+rendered with capacity 8. The renderer passed `--max-num-seqs 8`, and vLLM ran that exact
+command line. The node, payment stack, payer and tunnelled split-host topology matched the
+[repin run](m3-upstream-2026-10-29.md). The gateway image was rebuilt from commit `a316afc`
+(`sha256:526ccefc…`). The paid node used a new data volume and the repository's ticket
+defaults: a 0.0004 ETH face value, a one-in-1000 win probability and a 1 gwei redemption
+fee cap. The node accepted that configuration.
+
+Discovery advertised 8 available slots. Three rounds of 8 concurrent paid streams then ran,
+each after a discovery refresh. All 24 returned 200. Each made one paid attempt and received
+one exact retail charge; no request had a second attempt. First tokens arrived in 1.7–2.9 s
+(median 2.2 s), and streams completed within 4.5 s.
+
+An overflow burst of 10 sent all ten to the runner, because the fresh sample showed 8 free
+slots. Eight were served. Two were paid and refused with 503, and both carried
+`x-should-retry: false`, so default SDKs would not repeat them.
+
+All 34 signed payments reconciled: $0.034 of observed wholesale cost, matching the
+allocation's spend exactly. The node received 32 payments and charged 32 requests. The two
+refused requests were signed but never received. It accepted 64 tickets and none won, as
+expected at that probability.
+
+## Findings from the paid check
+
+**Gateway first-token latency.** The median first token took 2.2 s through the gateway with
+19-token prompts. The direct benchmark at the same concurrency took 0.7 s with 1,024-token
+prompts, so the overhead is at least 1.5 s. It covers the payment challenge, signing and
+authorization, the node, and the tunnel. This run does not separate those parts.
+
+**Ticket granularity.** Each request needed two tickets. The default expected value per
+ticket (4e11 wei) sits just below the $0.001 price, about 4.26e11 wei at the current ETH
+rate. Two tickets carry about 1.9 times the price in expected value. A smaller expected value
+per ticket, or one just above the price, would reduce that. Whether the node credits the
+surplus to later payments was not measured.

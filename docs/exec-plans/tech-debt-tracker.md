@@ -53,5 +53,8 @@ That run left four open items:
   `finish_reason: "tool_calls"` for a forced named tool and read Anthropic `thinking` blocks
   as tool calls. Native vLLM returns `stop` and Qwen3 emits thinking blocks. Decide per route
   which semantics each suite asserts.
+- Ticket granularity: the default 4e11 wei expected value per ticket is just below the $0.001
+  fixed price, so each request carries two tickets, about 1.9 times the price in expected
+  value. Choose a finer or price-matched value once node surplus handling is known.
 - Node image reproducibility: two builds from identical source and arguments gave different
   image IDs. Publish one build and pin its digest.

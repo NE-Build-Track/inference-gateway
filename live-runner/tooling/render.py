@@ -52,7 +52,11 @@ def render(deployment: Deployment, output: Path) -> dict:
             str(model.context_tokens),
         ]
         if name == "vllm":
-            command += ["--enable-prompt-tokens-details"]
+            command += [
+                "--enable-prompt-tokens-details",
+                "--max-num-seqs",
+                str(deployment.capacity),
+            ]
         else:
             command += ["--enable-cache-report"]
         if deployment.runtime.tool_parser:
