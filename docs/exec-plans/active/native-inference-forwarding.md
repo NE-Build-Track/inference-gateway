@@ -50,16 +50,17 @@ image build successfully. This image has not replaced a published release.
 Builder Core [NE PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55)
 merged into `releases/m3` as `2134e29` (28 October), rebuilt on Core's own paid runner call
 (D53, D56). SDK [NE PR #6](https://github.com/NE-Build-Track/livepeer-python-gateway/pull/6) is
-closed, superseded by it. The gateway pins Core `2134e29`, which pins the SDK to upstream
-`2017a80`, with no fork. `make check` passes 500 tests on that pin. Under `return_http_errors`,
-Core now fails over on 503, 404 and 409 like a default call, and returns only the answer it stops
+closed, superseded by it. The gateway now pins the later `releases/m3` commit `d3df806`, which
+includes it and pins the SDK to upstream `2017a80`, with no fork. Under `return_http_errors`,
+Core fails over on 503, 404 and 409 like a default call, and returns only the answer it stops
 at (D56).
 
-On that pin (28 October): Mike's startup guard and M3 review are kept, with their conclusions marked
+On 28 October: Mike's startup guard and M3 review are kept, with their conclusions marked
 resolved. Paid failover stays on, with `LPB_MAX_PAID_ATTEMPTS=2` set explicitly in Compose and
 `.env.example`. A job Core leaves `uncertain` is now a 502 on both validated and native routes, not a
-503 "unavailable" or "could not start". Batteries and node build from upstream `livepeer/*`. Combined
-GPU/payment acceptance on `2134e29` is still to run.
+503 "unavailable" or "could not start". Batteries and node build from upstream `livepeer/*`.
+Combined GPU/payment acceptance ran on 29 October on `d3df806`; see the
+[upstream repin plan](upstream-repin-publication.md).
 
 ## Decisions and remaining limits
 

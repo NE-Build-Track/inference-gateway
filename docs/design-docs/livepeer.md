@@ -5,8 +5,9 @@ OpenAI Chat Completions and Anthropic Messages into a runner's OpenAI chat contr
 Both interfaces therefore serve the configured Livepeer model; an Anthropic interface
 does not imply that the model is Claude.
 
-Builder Core is pinned to `2134e29e9fb4d06790c23fea9311945b01e9fb01` (`releases/m3`, with native HTTP).
-Core pins the Python gateway SDK to upstream `2017a80`, recorded in `uv.lock`; no fork is pinned.
+Builder Core is pinned to `releases/m3` at `d3df80657ef1b497d1b6dff90fb7e27d9e03bc58`, which
+includes the native HTTP merge `2134e29`. Core pins the Python gateway SDK to upstream `2017a80`,
+recorded in `uv.lock`; no fork is pinned.
 Only the backend and application composition import Livepeer packages.
 
 ## Configuration and ownership
@@ -126,6 +127,8 @@ for the copied configuration, trust pins, and existing-stack network overlay.
 
 HTTP errors include `x-should-retry: false`, which the tested OpenAI and Anthropic SDKs
 honor. This prevents their default status-code retries from repeating a paid request.
+Native routes add the header to every forwarded backend response with status 400 or above,
+leaving the backend's status and body unchanged.
 Other clients must disable automatic retries themselves. Connection failures can still
 trigger SDK retries; use `max_retries=0` when paid uncertainty must never cause a repeat.
 Request IDs provide correlation, not cross-request idempotency or result replay.

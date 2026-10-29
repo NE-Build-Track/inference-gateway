@@ -191,4 +191,8 @@ should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LI
 Related repository upgrades must preserve native transport. The
 [28 October compatibility review](docs/references/repository-compatibility-2026-10-28.md)
 found that native transport had to move into Core after M3 moved the paid call there. Core PR
-#55 did that, and the gateway pins its merge, `2134e29`. Use the locked dependencies.
+#55 did that and merged as `2134e29`. The gateway pins the later `releases/m3` commit
+`d3df806`, which includes it; Core pins the upstream Python SDK, and deployment images build
+Node and Clearinghouse Batteries from `livepeer/` `main`. The
+[29 October repin evidence](live-runner/tests/m3-upstream-2026-10-29.md) records the tested
+combination. Use the locked dependencies (`uv sync --locked`).

@@ -3,10 +3,12 @@ name: inference-gateway
 services:
   clearinghouse:
     profiles: [payment-stack]
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/clearinghouse:ca09e47
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-clearinghouse:${IMAGE_TAG:-d47d1ff}
     build:
-      context: https://github.com/livepeer/clearinghouse-batteries.git#ca09e47c067682fb48c3f15425546fb6aa5b6659
+      context: https://github.com/livepeer/clearinghouse-batteries.git#d47d1ff32b1fe373b6bd19de4402ea652de89af3
       dockerfile: examples/compose/Dockerfile
+      args:
+        COMMIT: d47d1ff32b1fe373b6bd19de4402ea652de89af3
     command: [serve, --config-file, /etc/clearinghouse.toml]
     volumes:
       - paid-state:/data
@@ -20,10 +22,12 @@ services:
 
   signer:
     profiles: [payment-stack]
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/node:406b248
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-node:${IMAGE_TAG:-a4b68ed}
     build:
-      context: https://github.com/livepeer/node.git#406b248f6cb8728e6e7eba1809901f589060bc6b
+      context: https://github.com/livepeer/node.git#a4b68ed1e6095d22cec5c16a0467ddc00afb7efc
       dockerfile: docker/Dockerfile
+      args:
+        COMMIT: a4b68ed1e6095d22cec5c16a0467ddc00afb7efc
     user: "0:0"  # dev only: lets the container read bind-mounted secrets regardless of host uid
     network_mode: service:clearinghouse  # Kafka and the webhook listen on this namespace's loopback
     entrypoint: ["/usr/local/bin/livepeer-signer"]
@@ -39,7 +43,7 @@ services:
 
   # Use the same image/Core revision as the gateway; the signer only signs payments.
   discovery:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/gateway:local
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway:${IMAGE_TAG:-local}
     build:
       context: ../../..
       dockerfile: deploy/livepeer/gateway/Dockerfile
@@ -64,7 +68,7 @@ services:
     restart: unless-stopped
 
   gateway:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/gateway:local
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway:${IMAGE_TAG:-local}
     build:
       context: ../../..
       dockerfile: deploy/livepeer/gateway/Dockerfile

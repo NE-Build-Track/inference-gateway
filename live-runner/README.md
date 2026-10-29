@@ -95,7 +95,8 @@ existing selection and output guarantees. Generated registrations stay idle unti
 acceptance and explicit promotion; metadata alone never grants native admission.
 
 No automatic production promotion or approval-writing command is provided. Readiness is
-not endpoint certification. The current integration pins NE-Build-Track review revisions;
+not endpoint certification. Node images build from `livepeer/node` `main`; the
+[29 October repin](tests/m3-upstream-2026-10-29.md) records the current candidate.
 Chain finality and production admission remain pending.
 
 ## Initial supported configuration

@@ -61,6 +61,8 @@ outcome is separate from the provider's generation outcome. Non-2xx backend resp
 their status/body and fail the underlying native job; they do not trigger a gateway retry.
 Builder Core still fails over a 503, 404 or 409 to another runner first, as for any job (its
 D52, at most `LPB_MAX_PAID_ATTEMPTS` paid attempts); only the answer it stops at is returned.
+Forwarded responses with status 400 or above carry `x-should-retry: false`, so default OpenAI
+and Anthropic SDK retries do not repeat a paid request.
 
 Deadlines include opening, consuming and delivering the response. Disconnects notify the
 backend before owned iterators close. Failures before response headers return a sanitized
@@ -94,12 +96,12 @@ idle until the operator has completed the required deployment acceptance.
 
 ## Dependency and release status
 
-The gateway pins Builder Core `2134e29`, the merge of
-[NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55) into
-`releases/m3`. Core pins the SDK to upstream `livepeer/livepeer-python-gateway` `2017a80`; the
-earlier SDK fork pin (`cd6ed5e`, NE PR #6) is gone. Node and Clearinghouse Batteries build from
-`livepeer/node` and `livepeer/clearinghouse-batteries`. No upstream Livepeer PR or push is part of
-this release chain.
+The gateway pins Builder Core `releases/m3` at `d3df806`, which includes `2134e29`, the merge of
+[NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55).
+Core pins the SDK to upstream `livepeer/livepeer-python-gateway` `2017a80`; the earlier SDK fork
+pin (`cd6ed5e`, NE PR #6) is gone. Deployment images build Node and Clearinghouse Batteries from
+`livepeer/` `main`. Image publication is restricted to NE-Build-Track infrastructure; no upstream
+Livepeer PR or push is part of this release chain.
 
 See the [runner bundle](../../live-runner/README.md) and
 [active plan](../exec-plans/active/native-inference-forwarding.md). Remaining acceptance
@@ -137,4 +139,5 @@ Native startup requires Core's raw-body, content-type, protocol-header and HTTP-
 request fields plus its response-header stream facade. An incompatible dependency
 installation fails before engine creation with a diagnostic to restore the locked
 versions. The [28 October review](../references/repository-compatibility-2026-10-28.md) found
-M3 `efb9c03` lacked them; Core `2134e29`, now pinned, has them.
+M3 `efb9c03` lacked them; the pinned Core `d3df806` has them (see the
+[29 October repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md)).

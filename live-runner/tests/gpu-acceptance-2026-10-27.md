@@ -11,8 +11,7 @@ GPU returned to 2 MiB used and persistent model volumes were retained.
 
 ## Deployment
 
-The remote host has an NVIDIA RTX 5090 with 32 GB VRAM, driver 580.178.04. The SSH
-account is `mazup`; the suggested `owkrs` account does not exist. The operator stopped
+The remote host has an NVIDIA RTX 5090 with 32 GB VRAM, driver 580.178.04. The operator stopped
 the pre-existing GPU workload before these tests. Only the test runtime containers use
 the GPU, one at a time. Unrelated services were left running.
 

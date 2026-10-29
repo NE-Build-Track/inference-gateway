@@ -28,5 +28,5 @@ Retained working pins. Full locked checks pass 506 tests. The
 Core PR #55 port, payment/failover decisions and exact upgrade acceptance work.
 
 Review and gateway guard are complete. The dependency upgrade was blocked on that Core port
-until Core PR #55 merged as `2134e29` the same day; the gateway now pins it (see the
-[native forwarding plan](../active/native-inference-forwarding.md)).
+until Core PR #55 merged as `2134e29` the same day. The gateway now pins the later `d3df806`,
+which includes it (see the [upstream repin plan](../active/upstream-repin-publication.md)).

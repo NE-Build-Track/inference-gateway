@@ -135,7 +135,7 @@ Native HTTP integration now passes `make check` with 465 tests, including origin
 forwarding for all three endpoints, registry accounting/job correlation, wholesale usage
 reporting, HTTP errors, failed/incomplete Responses, expiry, auth, deadline and ASGI
 disconnect cleanup. Subsequent GPU/paid evidence is recorded below. Builder Core
-PR #55 has since merged as `2134e29` (pinned), and SDK PR #6 is closed, superseded by it.
+PR #55 has since merged as `2134e29`, and SDK PR #6 is closed, superseded by it.
 
 The [27 October GPU run](../live-runner/tests/gpu-acceptance-2026-10-27.md) exercises real
 vLLM, SGLang and Ollama through an offchain local node and the native gateway. It found
@@ -169,7 +169,11 @@ checks pass; live GPU/payment acceptance of the new combined deployment remains 
 The [28 October M3 review](references/repository-compatibility-2026-10-28.md) found that
 Core `efb9c03` needed a new native port onto its engine-owned paid runner call: an isolated
 full gateway run passed 473 tests and failed 27 native tests. The startup guard rejects that
-installation before engine construction. Core PR #55 made the port and merged as `2134e29`;
-the gateway now pins it, with the SDK on upstream `2017a80`. On that pin the locked
-`make check` passes 512 tests, including the guard's missing-contract cases and both
-native/validated startup configurations. Live GPU/payment acceptance on `2134e29` has not run yet.
+installation before engine construction. Core PR #55 made the port and merged as `2134e29`.
+On 29 October the gateway moved to the later `releases/m3` commit `d3df806`, which includes it
+and brings the upstream SDK `2017a80`, and moved Node and Batteries builds to `livepeer/` `main`.
+Paid failover stays on (`LPB_MAX_PAID_ATTEMPTS=2`). `make check` passes 532 tests. Paid
+native vLLM acceptance passed on the rebuilt images with exact wholesale reconciliation; see the
+[repin evidence](../live-runner/tests/m3-upstream-2026-10-29.md). That topology had one
+orchestrator, so paid failover could not occur and is not yet exercised live. The repository's
+live suites still assume validated-route tool semantics that native vLLM does not meet.

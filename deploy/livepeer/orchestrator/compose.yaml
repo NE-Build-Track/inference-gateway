@@ -1,10 +1,12 @@
 name: inference-orchestrator
 services:
   orchestrator:
-    image: inference-gateway/orchestrator:b887ad0
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-node:${IMAGE_TAG:-a4b68ed}
     build:
-      context: https://github.com/livepeer/node.git#b887ad0354a8aeb239d7cd65a38cf8aa0246046a
+      context: https://github.com/livepeer/node.git#a4b68ed1e6095d22cec5c16a0467ddc00afb7efc
       dockerfile: docker/Dockerfile
+      args:
+        COMMIT: a4b68ed1e6095d22cec5c16a0467ddc00afb7efc
     # Bind-mounted operator secrets can be owner-only; host/container UID mapping is operator-owned.
     user: "0:0"
     command: [orchestrator, --config, /etc/livepeer/orchestrator.toml]

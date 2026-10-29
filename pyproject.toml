@@ -10,7 +10,7 @@ dependencies = [
     "uvicorn>=0.30,<1",
     "pydantic>=2.7,<3",
     "anyio>=4,<5",
-    "livepeer-builder @ git+https://github.com/NE-Build-Track/livepeer-builder-core.git@2134e29e9fb4d06790c23fea9311945b01e9fb01",
+    "livepeer-builder @ git+https://github.com/NE-Build-Track/livepeer-builder-core.git@d3df80657ef1b497d1b6dff90fb7e27d9e03bc58",
 ]
 
 [project.urls]

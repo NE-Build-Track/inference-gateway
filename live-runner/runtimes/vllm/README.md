@@ -10,6 +10,13 @@ to the runtime. Context limits come from the same manifest. Tool/reasoning parse
 explicit optional fields; choose parsers appropriate to the selected model and test them.
 The small example model is a configuration illustration, not a strict-tools benchmark.
 
+[qwen3.8-27b-awq.json](qwen3.8-27b-awq.json) is the supported configuration: Qwen3.8-27B AWQ
+at a pinned revision, with Chat, Responses and Messages and a capacity of 8. The
+[capacity benchmark](../../tests/vllm-capacity-2026-10-29.md) supports 8 for chat-sized
+requests on a 32 GB RTX 5090; lower it to 4 when long prompts are common. The renderer sets
+`--max-num-seqs` to the manifest's capacity, so vLLM never runs more requests than the node
+admits.
+
 The renderer enables `--enable-prompt-tokens-details` so Chat usage reports cached input
 tokens. Streaming clients must still request `stream_options.include_usage: true`.
 Absent or null optional detail objects count as no reported cached tokens; input/output

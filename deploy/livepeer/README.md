@@ -18,6 +18,12 @@ chmod 600 deploy/livepeer/gateway/.env
 scripts/build-images.sh
 ```
 
+To use published images instead of building, set `IMAGE_REGISTRY` and `IMAGE_TAG` in `.env`,
+then `docker compose -f deploy/livepeer/gateway/compose.yaml pull` and start services with
+`up --no-build`. Image names match the registry repositories: `inference-gateway`,
+`inference-node` (signer and orchestrator) and `inference-clearinghouse`. A single release
+tag covers all three; `--build` would overwrite that tag with a local build.
+
 Edit `.env` with your routing and payment settings. `GATEWAY_ACCOUNTING_DB=/data/gateway.db`
 enables registry authentication. Leave `GATEWAY_API_KEY` unset in this mode. The gateway uses
 one upstream application allocation; users and their retail charges remain separate.
@@ -116,8 +122,17 @@ python3 deploy/livepeer/orchestrator/render-config.py --mode onchain
 docker compose -f deploy/livepeer/orchestrator/compose.yaml up -d --build
 ```
 
-The generated configuration selects Arbitrum One and its ETH/USD feed. Review the generated
-ticket parameters and upstream node requirements before paid deployment. The keystore account
+The generated configuration selects Arbitrum One and its ETH/USD feed. Ticket terms come from
+`TICKET_FACE_VALUE_WEI`, `TICKET_EV_WEI` and `REDEEMER_MAX_FEE_PER_GAS_WEI`; the renderer derives
+the win probability as expected value / face value. A winning ticket must be worth more than
+redeeming it costs: rendering fails unless the face value covers the fee cap times 250,000 gas.
+A measured Arbitrum redemption used 191,870 gas. The defaults pay 0.0004 ETH with a
+one-in-20,000 chance, against a 0.00025 ETH worst-case redemption. Payers send whole tickets and
+a fixed-price request keeps no change, so the small 2e10 wei expected value limits overpayment
+on a $0.001 request to about 5%. The gateway's signer limits each ticket to
+1e11 wei of expected value and a fixed price to $0.01 (`config/signer.toml`), refusing
+coarser or costlier terms before payment. Review these and upstream node
+requirements before paid deployment. The keystore account
 needs gas; the gateway payer needs deposit/reserve. Rendering configuration never registers an
 orchestrator, funds accounts or moves money. Keep signing and orchestrator identities separate.
 The orchestrator container currently runs as root to read operator-owned 0600 secrets; restrict
