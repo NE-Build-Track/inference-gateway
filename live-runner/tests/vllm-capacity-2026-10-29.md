@@ -89,5 +89,5 @@ authorization, the node, and the tunnel. This run does not separate those parts.
 **Ticket granularity.** Each request needed two tickets. The default expected value per
 ticket (4e11 wei) sits just below the $0.001 price, about 4.26e11 wei at the current ETH
 rate. Two tickets carry about 1.9 times the price in expected value. A smaller expected value
-per ticket, or one just above the price, would reduce that. Whether the node credits the
-surplus to later payments was not measured.
+per ticket, or one just above the price, would reduce that. The surplus is lost to the payer:
+the node charges a fixed-price session once, and each request opens its own session.
