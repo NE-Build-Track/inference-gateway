@@ -21,8 +21,8 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 - [x] Repin Core to `d3df806`; the lock now resolves SDK `livepeer/…@2017a80`.
 - [x] Build Node `a4b68ed` and Batteries `d47d1ff` from `livepeer/`, passing `COMMIT`.
 - [x] Keep paid failover on (`LPB_MAX_PAID_ATTEMPTS=2`, decided on `main`); an interim
-      forced cap of 1 was dropped when merging `main`. Live paid failover across orchestrators
-      remains unexercised: the acceptance topology had one orchestrator.
+      forced cap of 1 was dropped when merging `main`. Live paid failover between two
+      orchestrators passed in the release candidate check.
 - [x] `make check` and gateway image smoke.
 - [x] Forwarded native errors carry `x-should-retry: false` (found during review; SDK contract tests).
 - [x] Paid remote GPU acceptance and cleanup; see the [evidence](../../../live-runner/tests/m3-upstream-2026-10-29.md).
@@ -34,7 +34,8 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
       select a published release.
 - [ ] Push three images under `m3-upstream-20261029` to `registry.livepeer.tools/ne-build-track/`:
       `inference-gateway` (local `inference-gateway:local`, `sha256:fd175fb0…`, built from the
-      merge with `main`; offline and smoke checks only, so run a short paid check first), `inference-node` (signer,
+      merge with `main`; the [release candidate check](../../../live-runner/tests/release-candidate-2026-10-29.md)
+      passed), `inference-node` (signer,
       orchestrator and runner bundle; local `inference-node:a4b68ed`) and
       `inference-clearinghouse` (local `inference-clearinghouse:d47d1ff`). Each local image ID
       becomes the published config digest; record the manifest digests. Leave `v0.0.1` unchanged.
