@@ -29,7 +29,7 @@ def main() -> None:
                 "ALL",
                 "--security-opt",
                 "no-new-privileges:true",
-                "inference-gateway/gateway:local",
+                "inference-gateway:local",
             ],
             check=True,
             capture_output=True,

@@ -25,7 +25,16 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 - [x] Forwarded native errors carry `x-should-retry: false` (found during review; SDK contract tests).
 - [x] Paid remote GPU acceptance and cleanup; see the [evidence](../../../live-runner/tests/m3-upstream-2026-10-29.md).
 - [ ] Commit, review and merge the gateway branch.
-- [ ] Push the four images to the NE registry under a dated candidate tag; record digests.
+- [x] Default ticket expected value 2e10 wei; signer caps tickets at 1e11 wei and fixed prices
+      at $0.01. Paid checks served at 2.9% overpayment and refused coarse or over-priced terms
+      before payment.
+- [x] Compose image names match the registry repositories; `IMAGE_REGISTRY` and `IMAGE_TAG`
+      select a published release.
+- [ ] Push three images under `m3-upstream-20261029` to `registry.livepeer.tools/ne-build-track/`:
+      `inference-gateway` (local `inference-gateway:local`), `inference-node` (signer,
+      orchestrator and runner bundle; local `inference-node:a4b68ed`) and
+      `inference-clearinghouse` (local `inference-clearinghouse:d47d1ff`). Each local image ID
+      becomes the published config digest; record the manifest digests. Leave `v0.0.1` unchanged.
 - [ ] Update `live-runner/images.lock.json` with the published node digest; regenerate
       bundles and issue approvals for the new deployment revision. Then update the node-lock
       statements in `docs/product-specs/native-inference.md` and `live-runner/contract/README.md`.

@@ -3,6 +3,7 @@
 import subprocess
 import sys
 import tomllib
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -65,8 +66,19 @@ def test_default_tickets_are_worth_more_than_capped_redemption_gas(tmp_path):
     face, fee_cap = int(config["TicketFaceValue"]), int(config["RedeemerMaxFeePerGas"])
     assert face == 400_000_000_000_000
     assert face >= fee_cap * 250_000
-    # Expected value per ticket stays 4e11 wei: a one-in-1000 chance at the face value.
-    assert int(config["TicketWinProb"]) == (2**256 - 1) * 400_000_000_000 // face
+    # 2e10 wei per ticket, a one-in-20,000 chance: a $0.001 request needs about 22 tickets,
+    # so whole-ticket rounding overpays by at most one small ticket.
+    assert int(config["TicketWinProb"]) == (2**256 - 1) * 20_000_000_000 // face
+
+
+def test_gateway_signer_bounds_tickets_and_accepts_default_terms(tmp_path):
+    signer = tomllib.loads((ROOT / "deploy/livepeer/gateway/config/signer.toml").read_text())
+    assert render_onchain(tmp_path).returncode == 0
+    config = tomllib.loads((tmp_path / "generated/orchestrator.toml").read_text())
+    ev = int(config["TicketWinProb"]) * int(config["TicketFaceValue"]) // (2**256 - 1)
+    # Third-party orchestrators set their own ticket terms and keep fixed-price surplus.
+    assert ev <= int(signer["MaxTicketEV"]) <= 100_000_000_000
+    assert Decimal(signer["MaxFixedPrice"]) <= Decimal("0.01")
 
 
 @pytest.mark.parametrize(

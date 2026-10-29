@@ -91,3 +91,22 @@ ticket (4e11 wei) sits just below the $0.001 price, about 4.26e11 wei at the cur
 rate. Two tickets carry about 1.9 times the price in expected value. A smaller expected value
 per ticket, or one just above the price, would reduce that. The surplus is lost to the payer:
 the node charges a fixed-price session once, and each request opens its own session.
+
+## Ticket terms and signer limits
+
+The orchestrator default expected value per ticket is now 2e10 wei, and the gateway's signer
+caps it at 1e11 wei (`MaxTicketEV`) and a fixed price at $0.01 (`MaxFixedPrice`). Three paid
+cases checked these limits through the gateway. Each used the same payer, signer and paid
+node, against a minimal local runtime with no model. Payment happens before the runtime is
+reached, so the runtime does not affect the result.
+
+| Case | Orchestrator terms | Result |
+| --- | --- | --- |
+| New defaults | 2e10 wei per ticket, $0.001 per request | 5 of 5 served; 22 tickets per request, 2.9% over the price; one charge each |
+| Coarse tickets | 4e11 wei per ticket, above the signer cap | Both refused with 503 before signing; `payment_refused`; nothing paid or charged |
+| Over-priced runner | $0.02 per request, above the signer cap | Both refused with 503 (signer status 481); nothing paid or charged |
+
+Refusals carried `x-should-retry: false`. Nothing was paid, so a gateway with more than one
+allowed attempt can try another orchestrator. The five served requests reconciled exactly:
+$0.005 of observed wholesale cost, matching the allocation's spend. None of the 110 tickets
+won, as expected at one in 20,000.

@@ -52,7 +52,7 @@ def main() -> None:
             parser.error("Set ORCHESTRATOR_ADDRESS for on-chain mode")
         int(address[2:], 16)
         face = int(values.get("TICKET_FACE_VALUE_WEI", "400000000000000"))
-        ev = int(values.get("TICKET_EV_WEI", "400000000000"))
+        ev = int(values.get("TICKET_EV_WEI", "20000000000"))
         fee_cap = int(values.get("REDEEMER_MAX_FEE_PER_GAS_WEI", "1000000000"))
         # The fee cap bounds redemption cost, so a ticket is never worth less than its gas.
         if fee_cap < 1 or face < fee_cap * REDEMPTION_GAS:

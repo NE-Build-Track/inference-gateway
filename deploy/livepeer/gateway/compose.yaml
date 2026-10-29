@@ -3,7 +3,7 @@ name: inference-gateway
 services:
   clearinghouse:
     profiles: [payment-stack]
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/clearinghouse:d47d1ff
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-clearinghouse:${IMAGE_TAG:-d47d1ff}
     build:
       context: https://github.com/livepeer/clearinghouse-batteries.git#d47d1ff32b1fe373b6bd19de4402ea652de89af3
       dockerfile: examples/compose/Dockerfile
@@ -22,7 +22,7 @@ services:
 
   signer:
     profiles: [payment-stack]
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/node:a4b68ed
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-node:${IMAGE_TAG:-a4b68ed}
     build:
       context: https://github.com/livepeer/node.git#a4b68ed1e6095d22cec5c16a0467ddc00afb7efc
       dockerfile: docker/Dockerfile
@@ -43,7 +43,7 @@ services:
 
   # Use the same image/Core revision as the gateway; the signer only signs payments.
   discovery:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/gateway:local
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway:${IMAGE_TAG:-local}
     build:
       context: ../../..
       dockerfile: deploy/livepeer/gateway/Dockerfile
@@ -68,7 +68,7 @@ services:
     restart: unless-stopped
 
   gateway:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway/gateway:local
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway:${IMAGE_TAG:-local}
     build:
       context: ../../..
       dockerfile: deploy/livepeer/gateway/Dockerfile

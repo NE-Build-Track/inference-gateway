@@ -1,7 +1,7 @@
 name: inference-orchestrator
 services:
   orchestrator:
-    image: inference-gateway/orchestrator:a4b68ed
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-node:${IMAGE_TAG:-a4b68ed}
     build:
       context: https://github.com/livepeer/node.git#a4b68ed1e6095d22cec5c16a0467ddc00afb7efc
       dockerfile: docker/Dockerfile

@@ -5,7 +5,10 @@ RPCURLFile = "/run/secrets/rpc-url"
 KeystoreFile = "/run/secrets/keystore.json"
 KeystorePasswordFile = "/run/secrets/keystore-password"
 MaxHourlyPrice = "100"
-MaxFixedPrice = "1"
+# Orchestrators set their own ticket terms and keep the surplus of a fixed-price request, so
+# bound both the price and each ticket's expected value (wei; about $0.0002 at $2,350/ETH).
+MaxFixedPrice = "0.01"
+MaxTicketEV = "100000000000"
 AuthWebhookFile = "/run/secrets/webhook-url"
 AuthWebhookHeadersFile = "/run/secrets/webhook-headers"
 # The signer only signs payments. Orchestrators are listed for builder-core's discovery service in
