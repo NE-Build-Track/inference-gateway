@@ -13,8 +13,8 @@ checks with the lockfile. These are behavior checks, not a claim of complete API
 | Packaging | Locked environment, wheel/source build, Docker image and offline container smoke | Release automation and deployment artifacts |
 | Observability | Correlated logs and response headers | Metrics, traces, operational SLOs |
 
-The fake provides deterministic fixtures, not inference quality, accurate token counts,
-or schema-based argument generation. Live verification used the configured Livepeer shared application allocation.
+The fake provides deterministic fixtures, not inference quality or accurate token counts. It
+generates schema examples only for strict tools and structured output. Live verification used the configured Livepeer shared application allocation.
 Request models define the supported schema; generated OpenAPI request-body coverage is
 tracked as debt. See the [debt tracker](exec-plans/tech-debt-tracker.md).
 
@@ -178,3 +178,8 @@ native vLLM acceptance passed on the rebuilt images with exact wholesale reconci
 [release candidate check](../live-runner/tests/release-candidate-2026-10-29.md) repeated it on
 the image built from `main` and exercised live paid failover between two orchestrators. The repository's
 live suites still assume validated-route tool semantics that native vLLM does not meet.
+
+System One and per-SDK model lists pass `make check` with 589 tests, including round trips and model
+lists through the real `typesafe-sdk`, OpenAI and Anthropic clients and one decision through Builder
+Core's real engine with a scripted transport. Verification is offline; no
+live Clef server or paid decision has run. See the [plan](exec-plans/active/system-one-route.md).

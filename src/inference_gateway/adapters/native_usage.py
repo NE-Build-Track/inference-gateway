@@ -27,7 +27,7 @@ def usage(endpoint: str, data: dict[str, Any]) -> Finished:
     if endpoint == "chat_completions":
         i, o = _count(u["prompt_tokens"]), _count(u["completion_tokens"])
         cached = _cached(u.get("prompt_tokens_details"))
-    elif endpoint == "responses":
+    elif endpoint in {"responses", "systemone"}:
         i, o = _count(u["input_tokens"]), _count(u["output_tokens"])
         cached = _cached(u.get("input_tokens_details"))
     else:
@@ -41,7 +41,7 @@ def usage(endpoint: str, data: dict[str, Any]) -> Finished:
 
 class UsageObserver:
     def __init__(self, endpoint: str, streaming: bool, limit: int = 1048576) -> None:
-        if endpoint not in {"chat_completions", "responses", "messages"}:
+        if endpoint not in {"chat_completions", "responses", "messages", "systemone"}:
             raise ValueError("Unknown endpoint")
         self.endpoint = endpoint
         self.streaming = streaming

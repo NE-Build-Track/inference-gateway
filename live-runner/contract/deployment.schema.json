@@ -115,7 +115,8 @@
         "enum": [
           "chat_completions",
           "responses",
-          "messages"
+          "messages",
+          "systemone"
         ],
         "type": "string"
       },

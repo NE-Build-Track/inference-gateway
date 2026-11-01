@@ -16,7 +16,10 @@ USAGES = {
     "chat_completions": {"prompt_tokens": 5, "completion_tokens": 3},
     "responses": {"input_tokens": 5, "output_tokens": 3},
     "messages": {"input_tokens": 5, "output_tokens": 3},
+    "systemone": {"input_tokens": 5, "output_tokens": 3},
 }
+# System One has its own contract and rejects streaming and images; see test_system_one.py.
+GENERATION = [endpoint for endpoint in PROFILES if endpoint != "systemone"]
 
 
 def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
@@ -109,7 +112,6 @@ async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata
             result = await client.post(PROFILES[endpoint]["path"], content=raw, headers=headers)
             assert result.status_code == 200, result.text
             assert result.content == raw_response and "set-cookie" not in result.headers
-            assert (await client.get("/v1/models", headers=headers)).json()["data"][0]["id"] == "m"
     request = engine.jobs.requests[0][1]
     assert request.raw_body == raw and request.payload is None
     assert request.capability == "native.http.v1" and request.return_http_errors
@@ -311,6 +313,9 @@ async def test_native_deadline_before_headers_returns_504():
         def models(self):
             return ("m",)
 
+        def supports(self, model, endpoint):
+            return True
+
         async def open(self, request):
             try:
                 await asyncio.Future()
@@ -389,7 +394,7 @@ async def test_asgi_disconnect_closes_native_stream_without_fabricated_events():
     assert len([m for m in sent if m["type"] == "http.response.body"]) == 1
 
 
-@pytest.mark.parametrize("endpoint", list(PROFILES))
+@pytest.mark.parametrize("endpoint", GENERATION)
 async def test_native_routes_work_through_provider_sdks(endpoint):
     from anthropic import AsyncAnthropic
     from openai import AsyncOpenAI
@@ -498,7 +503,7 @@ async def test_engine_failures_keep_timeout_and_availability_status(kind, paid, 
     assert "private backend detail" not in response.text
 
 
-@pytest.mark.parametrize("endpoint", list(PROFILES))
+@pytest.mark.parametrize("endpoint", GENERATION)
 @pytest.mark.parametrize("streaming", [False, True])
 async def test_native_image_input_preserves_bytes_and_accounts(endpoint, streaming, tmp_path):
     image = (

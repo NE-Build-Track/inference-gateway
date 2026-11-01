@@ -26,6 +26,7 @@ observed wholesale costs; on-chain winning-ticket redemption is tracked separate
 - [ ] Observe finality of all persisted winning-ticket redemptions.
 
 Evidence: [Qwen3.8 report](../../../live-runner/tests/qwen38-followup-2026-10-27.md).
-Corrected images are published under `native-gpu-20261027`; the node lock is updated.
+Corrected images were published under `native-gpu-20261027`; the node lock has since moved to
+`native-metadata-20261027`.
 GPU services are stopped and model volumes retained. The private paid node remains
 running with its inference runner idle; a bounded observer records redemption finality.

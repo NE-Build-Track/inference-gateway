@@ -7,6 +7,10 @@ from typing import Any
 from inference_gateway.adapters.runner_contract import PROFILES
 from inference_gateway.core.native import NativeRequest
 
+# SGLang opens local paths and fetches any URL in `images`, and drops the others, deciding
+# without them. Text state is the accepted input until media has its own evidence.
+SYSTEM_ONE_UNSUPPORTED = ("images", "videos", "assets", "media_kwargs")
+
 
 class InvalidNativeRequest(ValueError):
     pass
@@ -56,6 +60,10 @@ def envelope(
             if data.get("store") is not False or data.get("background", False) is not False:
                 raise ValueError()
             if "previous_response_id" in data or "conversation" in data:
+                raise ValueError()
+        if endpoint == "systemone":
+            # Decisions have no stream: SGLang would ignore the flag and answer with plain JSON.
+            if streaming or any(field in data for field in SYSTEM_ONE_UNSUPPORTED):
                 raise ValueError()
         if endpoint == "chat_completions" and streaming:
             options = data.get("stream_options")

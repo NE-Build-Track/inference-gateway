@@ -17,3 +17,11 @@ added as acceptance targets, not as automatic claims based on the runtime family
 
 The renderer enables `--enable-cache-report` to expose cached input tokens in usage.
 Streaming callers must still explicitly request usage under the chat endpoint profile.
+
+## Decision models
+
+[clef-flash.example.json](clef-flash.example.json) advertises only `systemone`, because Clef refuses
+chat and generation. Supply a real commit before rendering. SGLang's model card runs Clef with 32 GB
+of shared memory and `--ipc=host`, while the renderer sets 2 GB, so acceptance must confirm this
+configuration. Capacity is a placeholder until measured. See the
+[System One contract](../../../docs/product-specs/system-one.md).

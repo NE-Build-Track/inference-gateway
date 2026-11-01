@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import DiscoverySource, SelectionPolicy
 
-from inference_gateway.adapters.runner_contract import RunnerMetadata
+from inference_gateway.adapters.runner_contract import PROFILES, RunnerMetadata
 
 
 def origin(url: str) -> tuple[str, str, int]:
@@ -105,6 +105,24 @@ def model_name(runner: Runner) -> str | None:
     return value if isinstance(value, str) and value and value == value.strip() else None
 
 
+def declared_endpoints(runner: Runner) -> frozenset[str] | None:
+    """Endpoints in contract metadata, or None for the model-name-only form validated routes use."""
+    try:
+        metadata = json.loads(runner.metadata or "")
+    except (ValueError, TypeError):
+        return None
+    endpoints = metadata.get("endpoints") if isinstance(metadata, dict) else None
+    return frozenset(endpoints) if isinstance(endpoints, dict) else None
+
+
+def declares_path(runner: Runner, path: str) -> bool:
+    """Model-name-only metadata declares nothing, so only an explicit contract can exclude."""
+    declared = declared_endpoints(runner)
+    return declared is None or any(
+        name in PROFILES and PROFILES[name]["path"] == path for name in declared
+    )
+
+
 class ModelSelection:
     """Filter before the engine ranks/retries; never cross the requested app boundary."""
 
@@ -117,6 +135,7 @@ class ModelSelection:
             for r in candidates
             if r.app == request.app
             and model_name(r) == request.model
+            and declares_path(r, request.path)
             and (r.capacity_available is None or r.capacity_available > 0)
         ]
         ordered = self._inner.order(selected, request)

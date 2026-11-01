@@ -10,13 +10,14 @@ It does not mean every provider feature or every agent application is supported.
 | --- | --- | --- |
 | OpenAI Chat Completions | `POST /v1/chat/completions` | Bearer key when local authentication is enabled |
 | Anthropic Messages | `POST /v1/messages` | Requires `anthropic-version: 2023-06-01`; uses `x-api-key` when enabled |
-| OpenAI Models | `GET /v1/models` | Bearer authentication; available approved model catalog |
+| Model list | `GET /v1/models` | Format and contents follow the calling SDK; see [model lists](models-and-responses.md#model-lists) |
 | OpenAI Responses | `POST /v1/responses` | Stateless text/image/function subset; Bearer authentication |
+| System One | `POST /v1/systemone` | Native routes only; Bearer authentication; text state; see the [System One contract](system-one.md) |
 | Liveness | `GET /healthz` | Unauthenticated; returns `{"status":"ok"}` |
 | Readiness | `GET /readyz` | Backend/discovery readiness; 503 when unavailable |
 
-OpenAI uses `/v1` in the SDK base URL; Anthropic uses the server root.
-Both generation endpoints return `x-request-id` and `request-id` headers.
+OpenAI uses `/v1` in the SDK base URL; Anthropic and TypeSafe use the server root.
+Every inference endpoint returns `x-request-id` and `request-id` headers.
 The fake makes no upstream calls. Livepeer mode dispatches paid jobs through Builder Core.
 
 ## Supported inputs
@@ -79,8 +80,9 @@ The gateway never automatically retries a failed or partial generation.
 - Call IDs are deterministic and advance with the number of historical calls.
 - Input usage is zero; output usage counts characters. It is not token or billing data.
 - Text limits count characters and yield `length`/`max_tokens` when truncated.
-- Tool arguments are not truncated; temperature, descriptions, and schemas do not
-  influence fake generation. They remain available to replacement backends.
+- Tool arguments are not truncated; temperature and descriptions do not influence fake
+  generation, and schemas do so only for strict tools and structured output. They remain available
+  to replacement backends.
 
 ## Extended generation and deferred endpoints
 
@@ -88,7 +90,9 @@ Reasoning, sampling controls, structured output, citations, hosted search, inter
 tools, and image/audio contracts are implemented in the gateway and deterministic fake.
 See the [extended generation contract](extended-generation.md) for exact fields, limits,
 examples and gateway extensions. Livepeer routes can opt into structured output, reasoning on/off,
-stop controls and parallel tools. Other extended requests/history still fail before paid dispatch.
+stop controls and parallel tools, and into guarded sampling, reasoning effort/budget and media input
+controls that remain unverified live. Requests and history a route has not enabled still fail before
+paid dispatch.
 
 See [Models and Responses](models-and-responses.md) for their separate stateless contract.
 Embeddings, stored conversations, and customer payment collection remain outside this slice. Registry mode provides persistent usage and retail/wholesale accounting. The server's generated OpenAPI page lists routes but does not yet describe the
@@ -116,5 +120,5 @@ Native forwarding is an explicit per-model route mode, tested offline. Validated
 retain the compatibility guarantees above. In native mode the backend owns tools, schemas
 and generation controls; the gateway owns auth, admission, transport and usage accounting.
 See the [native contract](native-inference.md) for configuration, constraints and remaining
-live acceptance. Dependencies pin Builder Core `releases/m3`; Node, Clearinghouse Batteries
+live acceptance, and the [System One contract](system-one.md) for decision models. Dependencies pin Builder Core `releases/m3`; Node, Clearinghouse Batteries
 and the Python SDK come from `livepeer/` `main`.

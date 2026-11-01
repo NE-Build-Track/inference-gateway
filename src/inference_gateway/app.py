@@ -19,6 +19,14 @@ from inference_gateway.accounting import MeteredBackend, reconciliation_loop
 from inference_gateway.adapters import response_api
 from inference_gateway.adapters.http_stream import ManagedStreamingResponse
 from inference_gateway.adapters.ledger import SQLiteLedger
+from inference_gateway.adapters.model_catalog import (
+    FAMILY_ENDPOINTS,
+    TRANSLATED_ENDPOINTS,
+    UNKNOWN_DATE,
+    Listing,
+    caller_family,
+    render,
+)
 from inference_gateway.adapters.native_http import NativeHTTPResponse
 from inference_gateway.adapters.native_request import envelope
 from inference_gateway.adapters.reports import attach_reports
@@ -34,7 +42,7 @@ from inference_gateway.adapters.schemas import AnthropicRequest, OpenAIRequest
 from inference_gateway.adapters.translate import anthropic_request, openai_request
 from inference_gateway.backends.accounting import FakeAccounting, UnavailableAccounting
 from inference_gateway.backends.livepeer import LivepeerBackend
-from inference_gateway.config import LivepeerSettings, Settings
+from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.accounting import AccountingSource
 from inference_gateway.core.backend import Backend, BackendError
 from inference_gateway.core.models import Event
@@ -48,6 +56,12 @@ from inference_gateway.runtime import (
     load_settings,
 )
 from inference_gateway.testing import FakeBackend
+
+UNAVAILABLE_ON_ENDPOINT = "Model is not available on this endpoint"
+# Anthropic's model list pages; this one is always complete, so a cursor would be meaningless.
+UNSUPPORTED_LIST_QUERY = frozenset({"limit", "after_id", "before_id"})
+# Both the list and its error envelope depend on the caller's SDK headers.
+LIST_VARY = "anthropic-version, x-typesafe-sdk"
 
 
 class ClientDisconnected(Exception):
@@ -114,6 +128,18 @@ def failure(
     )
 
 
+def model_listing(name: str, routes: tuple[ModelRoute, ...]) -> Listing:
+    """Several routes can serve one model; each field takes the first value configured."""
+    named = [r for r in routes if r.name == name]
+    released = next((r.release_date for r in named if r.release_date), None)
+    return Listing(
+        name,
+        next((r.display_name for r in named if r.display_name), name),
+        next((r.description for r in named if r.description), ""),
+        released.isoformat() if released else UNKNOWN_DATE,
+    )
+
+
 async def deadline_stream(
     events: AsyncGenerator[Event, None], deadline: float
 ) -> AsyncGenerator[Event, None]:
@@ -147,10 +173,14 @@ def create_app(
         return GenerationService(MeteredBackend(selected, ledger) if ledger else selected)
 
     service = None if owns_engine else compose(selected_backend)
+    # Models the gateway translates. Native supply is listed separately, per endpoint.
     catalog: Callable[[], tuple[str, ...]] = (
-        selected_backend.models
+        selected_backend.validated_models
         if isinstance(selected_backend, LivepeerBackend)
         else lambda: ("fake-model",)
+    )
+    routes: tuple[ModelRoute, ...] = (
+        selected_backend.routes if isinstance(selected_backend, LivepeerBackend) else ()
     )
     source: AccountingSource = accounting_source or (
         FakeAccounting() if backend is None and not owns_engine else UnavailableAccounting()
@@ -164,7 +194,7 @@ def create_app(
 
     @asynccontextmanager
     async def resources(app: FastAPI) -> AsyncIterator[None]:
-        nonlocal service, ready, source, catalog, native
+        nonlocal service, ready, source, catalog, native, routes
         if ledger:
             ledger.recover()
 
@@ -195,7 +225,8 @@ def create_app(
                 native = live.native_backend
                 source = accounting_source or live.accounting
                 ready = live.ready
-                catalog = live.models
+                catalog = live.validated_models
+                routes = live.routes
                 try:
                     async with accounting_worker():
                         yield
@@ -204,6 +235,7 @@ def create_app(
                     service = None
                     ready = service_ready
                     catalog = tuple
+                    routes = ()
         else:
             async with accounting_worker():
                 yield
@@ -214,7 +246,7 @@ def create_app(
             async with resources(app):
                 yield
 
-    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.0", lifespan=lifespan)
 
     if ledger:
         attach_reports(app, ledger)
@@ -231,7 +263,11 @@ def create_app(
         return {"status": "ok"}
 
     async def generate(
-        request: Request, protocol: Protocol, *, responses_api: bool = False
+        request: Request,
+        protocol: Protocol,
+        *,
+        responses_api: bool = False,
+        native_only: bool = False,
     ) -> Response:
         request_id = "req_" + uuid4().hex
         started = time.monotonic()
@@ -264,8 +300,17 @@ def create_app(
                     headers=request.headers.items(),
                     query=request.scope.get("query_string", b""),
                 )
+                if not native.supports(raw.model, raw.endpoint):
+                    # Permanent until configuration changes, so unlike 503 it invites no retry.
+                    return failure(protocol, UNAVAILABLE_ON_ENDPOINT, 400, request_id)
                 if ledger and principal:
-                    ledger.begin(request_id, principal, raw.model, config.backend, protocol)
+                    ledger.begin(
+                        request_id,
+                        principal,
+                        raw.model,
+                        config.backend,
+                        "systemone" if native_only else protocol,
+                    )
                 return NativeHTTPResponse(
                     native,
                     raw,
@@ -273,6 +318,9 @@ def create_app(
                     deadline_seconds=config.timeout_seconds,
                     failure=lambda message, status: failure(protocol, message, status, request_id),
                 )
+            if native_only:
+                # Never fall through: a chat body posted here must not run as chat.
+                return failure(protocol, UNAVAILABLE_ON_ENDPOINT, 400, request_id)
             if protocol == "anthropic" and request.headers.get("anthropic-version") != "2023-06-01":
                 return failure(protocol, "Use anthropic-version: 2023-06-01", 400, request_id)
             include_usage = False
@@ -410,37 +458,43 @@ def create_app(
     @app.get("/v1/models")
     async def models(request: Request) -> JSONResponse:
         request_id = "req_" + uuid4().hex
+        family = caller_family(request.headers)
+        protocol: Protocol = "anthropic" if family == "anthropic" else "openai"
+
+        def refuse(message: str, status: int) -> JSONResponse:
+            refused = failure(protocol, message, status, request_id)
+            refused.headers["Vary"] = LIST_VARY
+            return refused
+
         key = request.headers.get("authorization", "").removeprefix("Bearer ")
+        if family == "anthropic":
+            key = request.headers.get("x-api-key", key)
         principal = ledger.authenticate(key) if ledger else None
         if (ledger and principal is None) or (
             config.api_key is not None
             and not hmac.compare_digest(key.encode(), config.api_key.encode())
         ):
-            return failure("openai", "Invalid API key", 401, request_id)
+            return refuse("Invalid API key", 401)
         if principal and not principal.permits("inference"):
-            return failure("openai", "Insufficient inference permission", 403, request_id)
-        names = (
-            tuple(sorted(set(catalog()) | set(native.models() if native else ())))
-            if service is not None
-            else ()
-        )
+            return refuse("Insufficient inference permission", 403)
+        if family == "anthropic" and UNSUPPORTED_LIST_QUERY & request.query_params.keys():
+            return refuse("Model list pagination is not supported", 400)
+        endpoints = FAMILY_ENDPOINTS[family]
+        names: set[str] = set()
+        if service is not None:
+            if TRANSLATED_ENDPOINTS.issuperset(endpoints):
+                names.update(catalog())
+            if native:
+                names.update(native.models_for(endpoints))
         if ledger:
-            priced = {p["model"] for p in ledger.prices() if p["active"]}
-            names = tuple(n for n in names if n in priced)
+            names &= {p["model"] for p in ledger.prices() if p["active"]}
         return JSONResponse(
-            {
-                "object": "list",
-                "data": [
-                    {
-                        "id": name,
-                        "object": "model",
-                        "created": 0,
-                        "owned_by": "livepeer" if config.backend == "livepeer" else "gateway",
-                    }
-                    for name in names
-                ],
-            },
-            headers={"x-request-id": request_id},
+            render(
+                family,
+                (model_listing(name, routes) for name in sorted(names)),
+                "livepeer" if config.backend == "livepeer" else "gateway",
+            ),
+            headers={"x-request-id": request_id, "Vary": LIST_VARY},
         )
 
     @app.post("/v1/responses", response_model=None)
@@ -454,5 +508,10 @@ def create_app(
     @app.post("/v1/messages", response_model=None)
     async def messages(request: Request) -> Response:
         return await generate(request, "anthropic")
+
+    @app.post("/v1/systemone", response_model=None)
+    async def systemone(request: Request) -> Response:
+        # System One clients send Bearer keys and parse this error envelope.
+        return await generate(request, "openai", native_only=True)
 
     return app

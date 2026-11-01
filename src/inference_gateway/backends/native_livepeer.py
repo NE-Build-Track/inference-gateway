@@ -16,6 +16,7 @@ from livepeer_builder import (
 )
 from livepeer_builder.api import JobStreamApi
 
+from inference_gateway.adapters.runner_contract import PROFILES
 from inference_gateway.backends.discovery import origin
 from inference_gateway.backends.native_selection import Admission, NativeSelection
 from inference_gateway.config import LivepeerSettings, ModelRoute
@@ -44,6 +45,7 @@ class LivepeerNativeBackend:
         self.engine = engine
         self.settings = settings
         self.routes = tuple(r for r in settings.routes if r.mode == "native")
+        self.approvals = approvals
         self.selection = NativeSelection(_PreserveOrder(), approvals)
         self.actor = ActorContext(
             actor_id=settings.actor_id,
@@ -76,9 +78,21 @@ class LivepeerNativeBackend:
         except NoCapacity:
             return False
 
-    def models(self) -> tuple[str, ...]:
-        from inference_gateway.adapters.runner_contract import PROFILES
+    def supports(self, model: str, endpoint: str) -> bool:
+        apps = {r.app for r in self.routes if r.name == model}
+        return any(
+            a.model == model and a.endpoint == endpoint and a.app in apps for a in self.approvals()
+        )
 
+    def models_for(self, endpoints: tuple[str, ...]) -> tuple[str, ...]:
+        def serves(name: str, endpoint: str) -> bool:
+            path = PROFILES[endpoint]["path"]
+            return any(self.eligible(r, path) for r in self.routes if r.name == name)
+
+        names = {r.name for r in self.routes}
+        return tuple(sorted(n for n in names if all(serves(n, e) for e in endpoints)))
+
+    def models(self) -> tuple[str, ...]:
         return tuple(
             sorted(
                 {

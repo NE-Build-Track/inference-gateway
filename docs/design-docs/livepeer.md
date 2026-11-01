@@ -1,9 +1,10 @@
 # Livepeer backend
 
-`GATEWAY_BACKEND=livepeer` embeds Builder Core in this process. The gateway translates
-OpenAI Chat Completions and Anthropic Messages into a runner's OpenAI chat contract.
-Both interfaces therefore serve the configured Livepeer model; an Anthropic interface
-does not imply that the model is Claude.
+`GATEWAY_BACKEND=livepeer` embeds Builder Core in this process. On validated routes, the gateway
+translates OpenAI and Anthropic requests into a runner's OpenAI contract. Both interfaces therefore
+serve the configured Livepeer model; an Anthropic interface does not imply that the model is Claude.
+[Native routes](../product-specs/native-inference.md), including System One, forward the original
+request instead. The rest of this page describes validated routes unless it says otherwise.
 
 Builder Core is pinned to `releases/m3` at `d3df80657ef1b497d1b6dff90fb7e27d9e03bc58`, which
 includes the native HTTP merge `2134e29`. Core pins the Python gateway SDK to upstream `2017a80`,
@@ -50,7 +51,9 @@ For multiple routes, configure:
 GATEWAY_MODEL_ROUTES='[{"name":"qwen3.8-27b","app":"blueclaw/chat/qwen3.8-27b","disable_thinking":true},{"name":"served-name","app":"team/other-chat","upstream_model":"served-name","disable_thinking":false}]'
 ```
 
-Unknown model names fail with 400 before engine dispatch. Routes must have unique model/app pairs, and names must match JSON metadata `model_name`.
+Unknown model names fail with 400 before engine dispatch, as does a native model with no approval
+for the requested endpoint. Routes can also set `display_name`, `description` and `release_date`
+for [model lists](../product-specs/models-and-responses.md#model-lists). Routes must have unique model/app pairs, and names must match JSON metadata `model_name`.
 Missing metadata excludes runners. See [model routing and Responses](../product-specs/models-and-responses.md)
 for capacity selection, the injected selection policy, and native Responses transport.
 Discovery is filtered to configured apps and, when supplied, approved origins including
@@ -60,7 +63,7 @@ Routes for other runners can omit that extension with `disable_thinking=false`.
 ## Request and response path
 
 The backend borrows the public `ActorApi`. Each generation becomes one `JobRequest`
-to `/v1/chat/completions`, with a server-generated request ID as `operation_ref`.
+to `/v1/chat/completions`, or `/v1/responses` with `upstream_api: responses`, with a server-generated request ID as `operation_ref`.
 That ID joins the public request header to the engine job in gateway logs. It is not
 client idempotency: another HTTP request receives another operation reference.
 
@@ -126,7 +129,7 @@ No funded signer or paid inference request is needed. See [deployment](../../dep
 for the copied configuration, trust pins, and existing-stack network overlay.
 
 HTTP errors include `x-should-retry: false`, which the tested OpenAI and Anthropic SDKs
-honor. This prevents their default status-code retries from repeating a paid request.
+honor and the [TypeSafe SDK does not](../product-specs/system-one.md#configure-the-typesafe-sdk). This prevents their default status-code retries from repeating a paid request.
 Native routes add the header to every forwarded backend response with status 400 or above,
 leaving the backend's status and body unchanged.
 Other clients must disable automatic retries themselves. Connection failures can still
@@ -145,13 +148,15 @@ application allocation. No accounting retry dispatches a new job.
 ## Extended capability status
 
 Routes may opt into `structured_output`, `reasoning`, `stop`, and `parallel_tools` using their
-`capabilities` array. It defaults to empty. The [extended contract](../product-specs/extended-generation.md#livepeer-route-capabilities)
+`capabilities` array, along with the guarded `sampling`, `reasoning_budget` and `media_input`, which
+remain unverified live. The array defaults to empty. The [extended contract](../product-specs/extended-generation.md#livepeer-route-capabilities)
 defines the precise supported controls, signatures, stop evidence, and streaming behavior.
 Requirements are checked against the selected route before paid dispatch, including history.
-Other extended features remain guarded. Unexpected/invalid output returns `unsupported_response`
+Features a route has not enabled fail before dispatch. Unexpected/invalid output returns `unsupported_response`
 with the public message `Unsupported Response`; operational failures retain their classifications.
 
-Reasoning on/off uses the Qwen/vLLM chat-template switch; effort and token budgets are not enabled.
+Reasoning on/off uses the Qwen/vLLM chat-template switch. Effort and token budgets reach the runner
+only on routes that enable them.
 The adapter accepts both reasoning delta names, emits empty Anthropic signatures, and forwards
 unsigned reasoning history. Stop handling requests the marker, strips it across chunk boundaries,
 and preserves actual runner usage. Structured output is independently checked by the core service

@@ -11,6 +11,11 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Full protocol semantics | Expand the compatibility matrix and fixture coverage as client requirements appear |
 | Schema compatibility | Strict OpenAI tools and structured text validate locally, including non-recursive local references. Recursive/external references and other unsupported JSON Schema keywords remain rejected; Anthropic strict tools remain outside the contract. |
 | Client idempotency | Requests are distinct paid operations; add a replay/duplicate-request contract before enabling transparent retries |
+| System One acceptance | Offline only. Run the paid cases in [the plan](active/system-one-route.md) on a real Clef runner, including whether the locked SGLang image and 2 GB `shm_size` serve it, before describing the route as accepted |
+| SGLang local media paths | SGLang's image loader opens `file://` and `/path` values, and `--allowed-media-domains` covers only HTTP(S). System One rejects `images`, but native chat bodies are not inspected, so an SGLang vision route may have the same exposure; this path has not been traced end to end. Test and restrict it before admitting one |
+| Per-call wholesale versus per-token retail | Decisions are short, so a flat wholesale price can exceed retail at ordinary input rates. Price from real token counts; add a per-call fee only if rates cannot cover it |
+| Native request logs | Native and System One requests write no per-request log records, unlike validated routes. Add outcome and elapsed-time records, without bodies, before relying on logs to operate them |
+| Discovery process test timing | `test_discovery_process_preserves_native_runner_identity` failed once in a full local run and passed when repeated; the cause is unknown. It allows about 5 seconds for a subprocess to start. Widen the window if it recurs |
 | Reporting scale | Reports cap authorized requests at 10,000 per window; introduce indexed SQL aggregation/export when measured demand exceeds this |
 | Accounting operations | Automate backups and reconciliation alerts; incomplete usage remains explicit and may require an operator adjustment |
 | Additional endpoints | Specify the next capability; add a port and adapters where needed |
@@ -22,7 +27,7 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Live route availability and model variability | Two configured US-central origins failed TLS verification; excluded locally pending investigation. One parallel-call acceptance assertion failed before a successful follow-up; retain evidence and avoid deterministic tool-selection claims |
 
 Models/Responses: live Gemma acceptance remains pending runner access with `metadata.model_name`.
-Stored Responses, Anthropic model-list formatting and automatic cross-app retry are not
+Stored Responses, Anthropic model-list pagination and automatic cross-app retry are not
 implemented. Native routes now use endpoint capability metadata with independent approval. See the [contract](../product-specs/models-and-responses.md).
 
 Native forwarding is opt-in, with offline, bounded Qwen3.8 GPU and paid accounting evidence.

@@ -18,6 +18,12 @@ chmod 600 deploy/livepeer/gateway/.env
 scripts/build-images.sh
 ```
 
+Set `IMAGE_TAG` to name a release, for example `IMAGE_TAG=v0.2.0 scripts/build-images.sh`. The script
+builds locally and never publishes. Node and Clearinghouse images come from the commits pinned in
+Compose, so a new tag on them does not imply a source change. Rebuilding them installs current
+`apt` packages and produces different bytes, so when only the gateway changed, build it alone and
+retag the images already tested with `docker tag`.
+
 To use published images instead of building, set `IMAGE_REGISTRY` and `IMAGE_TAG` in `.env`,
 then `docker compose -f deploy/livepeer/gateway/compose.yaml pull` and start services with
 `up --no-build`. Image names match the registry repositories: `inference-gateway`,
@@ -106,10 +112,17 @@ loopback by default. Configure `ORCHESTRATOR_BIND` and `ORCHESTRATOR_SERVICE_URL
 access, with a TLS reverse proxy for public deployment. The advertised address must be
 reachable from gateway/discovery containers; their `localhost` is not the host machine.
 
-For gateway routing to this runner, set `GATEWAY_CHAT_APP=inference/chat/default`, the desired
-public `GATEWAY_MODEL_NAME`, and `GATEWAY_UPSTREAM_MODEL=gateway-model`. Configure discovery
-origins to reach this orchestrator. The existing gateway payment backend
-still requires its normal engine/signer configuration even when the runner is free.
+For gateway routing to this runner, set `GATEWAY_CHAT_APP=inference/chat/default` and
+`GATEWAY_MODEL_NAME` to the orchestrator's `SERVED_MODEL_NAME`, which defaults to `gateway-model`.
+The renderer advertises that name as runner metadata, and the gateway routes by it, so the two must
+match. Leave `GATEWAY_UPSTREAM_MODEL` empty. Configure discovery origins to reach this orchestrator.
+The existing gateway payment backend still requires its normal engine/signer configuration even
+when the runner is free.
+
+This stack serves vLLM through a validated route. For native routes and decision models, render a
+runner from the [live-runner bundle](../../live-runner/README.md) and add its route and approvals to
+the gateway's `.env`. See the [native contract](../../docs/product-specs/native-inference.md) and the
+[System One deployment steps](../../docs/product-specs/system-one.md#deploy).
 
 ### Paid on-chain configuration
 
@@ -140,8 +153,9 @@ host access and map ownership if changing its runtime UID.
 
 ## Verification and operations
 
-`make check` is offline. `make test-live` exercises both SDKs against a running gateway using
-`GATEWAY_TEST_URL`, `GATEWAY_MODEL_NAME` and `GATEWAY_API_KEY`. The accounting black-box suite is:
+`make check` is offline. `make test-live` exercises the OpenAI and Anthropic SDKs against a running
+gateway using `GATEWAY_TEST_URL`, `GATEWAY_MODEL_NAME` and `GATEWAY_API_KEY`. No live suite covers
+System One yet. The accounting black-box suite is:
 
 ```sh
 make test-accounting-live

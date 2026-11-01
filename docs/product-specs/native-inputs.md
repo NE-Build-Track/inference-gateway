@@ -46,6 +46,12 @@ backend and requires backend egress/domain restrictions; the image acceptance fi
 inline PNG bytes, not arbitrary remote URLs. vLLM documents `--allowed-media-domains` and
 `VLLM_MEDIA_URL_ALLOW_REDIRECTS=0` for controlling those fetches.
 
+SGLang needs more care, because its image loader also opens local files. Its
+`--allowed-media-domains` flag restricts HTTP(S) URLs only: it allows every domain when unset,
+does not block private addresses and does not cover `file://` or `/path` values. The System One
+route rejects `images` for this reason. Check this path before admitting an SGLang vision route; see
+the [debt tracker](../exec-plans/tech-debt-tracker.md).
+
 ## Other inputs
 
 | Input | Representation and current boundary |

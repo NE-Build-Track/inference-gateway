@@ -20,7 +20,7 @@ from livepeer_builder import (
     ProviderUnavailable,
 )
 
-from inference_gateway.backends.discovery import model_name, origin
+from inference_gateway.backends.discovery import declared_endpoints, model_name, origin
 from inference_gateway.backends.livepeer_accounting import LivepeerAccounting
 from inference_gateway.backends.livepeer_request import runner_payload
 from inference_gateway.backends.native_responses import ResponsesDecoder
@@ -68,13 +68,23 @@ class LivepeerBackend:
         self.accounting = LivepeerAccounting(engine, self._actor)
         self._logger = logging.getLogger("inference_gateway.livepeer")
 
-    def models(self) -> tuple[str, ...]:
+    @property
+    def routes(self) -> tuple[ModelRoute, ...]:
+        return self._routes
+
+    def validated_models(self) -> tuple[str, ...]:
         health = self._engine.health()
         if not health.ready or not health.discovery_fresh:
             return ()
         return tuple(
+            sorted({r.name for r in self._routes if r.mode == "validated" and self._eligible(r)})
+        )
+
+    def models(self) -> tuple[str, ...]:
+        """Every model servable on at least one endpoint; readiness depends on this."""
+        return tuple(
             sorted(
-                {r.name for r in self._routes if r.mode == "validated" and self._eligible(r)}
+                set(self.validated_models())
                 | set(self.native_backend.models() if self.native_backend else ())
             )
         )
@@ -84,6 +94,10 @@ class LivepeerBackend:
         available = []
         for runner in self._engine.discovery.candidates(route.app):
             if model_name(runner) != route.name:
+                continue
+            # A decision runner refuses chat even if its route forgot `mode: native`.
+            declared = declared_endpoints(runner)
+            if declared is not None and route.upstream_api not in declared:
                 continue
             if approved:
                 try:

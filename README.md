@@ -4,7 +4,7 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-OpenAI- and Anthropic-compatible APIs with pluggable backends, multi-user access,
+OpenAI-, Anthropic- and System One-compatible APIs with pluggable backends, multi-user access,
 and separate retail and wholesale accounting.
 
 ## Motivation
@@ -13,14 +13,38 @@ Agent applications should be able to change inference infrastructure without rep
 all their client integrations. Operators also need to know who used the service, what
 they charged that user, and what the backend charged them. Those are different records.
 
-Inference Gateway provides both API formats over a shared generation contract. It ships
-with a deterministic fake for development and a Livepeer Builder Core adapter for paid
+Inference Gateway provides the OpenAI and Anthropic formats over a shared generation contract,
+and forwards native requests, including System One decisions, to runners that speak them directly.
+It ships with a deterministic fake for development and a Livepeer Builder Core adapter for paid
 inference. Using the Anthropic interface does not imply that the underlying model is Claude;
-both interfaces use the configured backend and model route.
+each interface uses the configured backend and model route.
+
+## Supported APIs and SDKs
+
+| SDK | Base URL | Inference endpoints | Authentication | Live evidence |
+| --- | --- | --- | --- | --- |
+| OpenAI (`openai` 2.54.0) | `http://host/v1` | `POST /v1/chat/completions`, `POST /v1/responses` | `Authorization: Bearer` | Paid, on vLLM |
+| Anthropic (`anthropic` 0.125.0) | `http://host` | `POST /v1/messages` (requires `anthropic-version`) | `x-api-key` | Paid, on vLLM |
+| TypeSafe System One (`typesafe-sdk` 0.7.5) | `http://host` | `POST /v1/systemone` | `Authorization: Bearer` | Offline only |
+
+The versions are the ones the test suite runs against, recorded in `uv.lock`. Each API supports a
+[documented subset](docs/product-specs/compatibility.md) of its provider's features. System One is
+for decision models such as Cloudflare Clef, which answer typed questions with probabilities and
+generate no text. It works only on [native routes](docs/product-specs/system-one.md), so the fake
+backend rejects it.
+
+| Other endpoints | Purpose | Access |
+| --- | --- | --- |
+| `GET /v1/models` | Lists only the models the calling SDK can use, in its format; see [model lists](docs/product-specs/models-and-responses.md#model-lists) | Any inference key |
+| `GET /healthz`, `GET /readyz` | Liveness and backend readiness | None |
+| `GET /v1/organization/usage/completions`, `GET /v1/organization/costs` | OpenAI-shaped reports | Registry mode; see [accounting](docs/design-docs/accounting.md) |
+| `GET /v1/organizations/usage_report/messages`, `GET /v1/organizations/cost_report` | Anthropic-shaped reports | Registry mode |
+| `GET /v1/gateway/requests`, `/usage`, `/costs`, `/wholesale` | Gateway reports | Registry mode |
 
 ## Capabilities and limits
 
-- Text, SSE streaming, tool calls and tool-result follow-ups through both APIs.
+- Text, SSE streaming, tool calls and tool-result follow-ups through the OpenAI and Anthropic APIs.
+- Decision models through the System One API, with text input.
 - Multiple users and scoped API keys, administered through a local CLI.
 - Versioned retail rates, cached-input accounting, append-only charges and adjustments.
 - Backend wholesale evidence, correlated jobs and durable accounting reconciliation.
@@ -33,8 +57,8 @@ for native fields and gateway extensions. Livepeer routes can explicitly enable 
 reasoning on/off, stop controls and parallel tools. Additional guarded adapter paths cover sampling,
 reasoning effort/budgets and media input; they remain unverified and disabled locally. Citations,
 hosted search and media output have fake contracts only.
-A [stateless Responses subset and model catalog](docs/product-specs/models-and-responses.md) are
-also implemented. Livepeer model routing now requires runner metadata `model_name`.
+A [stateless Responses subset and per-SDK model lists](docs/product-specs/models-and-responses.md)
+are also implemented. Livepeer model routing now requires runner metadata `model_name`.
 The gateway does not execute tools,
 collect customer payments or replay generated responses. See the
 [compatibility contract](docs/product-specs/compatibility.md).
@@ -44,12 +68,15 @@ collect customer payments or replay generated responses. See the
 Native routes support **vLLM, Ollama and SGLang** through original-body forwarding,
 metadata-aware admission and read-only usage accounting. Enable them explicitly per model;
 existing routes default to validated generation. Native strictness belongs to the backend.
+[System One decisions](docs/product-specs/system-one.md) use this path, and an operator approves
+each runner per endpoint.
 
 The [native contract](docs/product-specs/native-inference.md) describes configuration and
 limits. The [live-runner bundle](live-runner/README.md) supplies candidate manifests,
 pinned images and readiness checks. The [Qwen3.8 acceptance report](live-runner/tests/qwen38-followup-2026-10-27.md)
 records GPU tests on all three engines and four paid calls with reconciled wholesale costs.
-Chain finality and production admission remain pending. Dependencies pin NE-Build-Track review revisions.
+Chain finality and production admission remain pending. Builder Core is pinned to NE-Build-Track
+`releases/m3`; Node, Clearinghouse Batteries and the Python SDK come from `livepeer/`.
 
 ## Quick start
 
@@ -100,15 +127,38 @@ name for live inference. SDK retries are disabled here because another HTTP requ
 start another paid generation. For OpenAI streaming usage, pass
 `stream_options={"include_usage": True}`.
 
+Decision models need a native route and these TypeSafe settings. That SDK ignores the gateway's
+`x-should-retry` header, and the gateway rejects its compressed bodies:
+
+```python
+from typesafe_sdk import Noul, RetryPolicy, TypeSafeClient
+
+decisions = TypeSafeClient(
+    base_url="https://your-gateway",
+    api_key="your-gateway-key",
+    model="Cloudflare/clef-flash",
+    retry=RetryPolicy(max_retries=0),
+    compression=False,
+)
+result = decisions.system_one(
+    state="The parcel arrived damaged.",
+    questions={"needs_help": Noul(instructions="Does the customer need help?")},
+)
+print(result.nouls["needs_help"].noul)
+```
+
 ## Architecture
 
 ```mermaid
 flowchart LR
     O[OpenAI clients] --> H[HTTP authentication and protocol adapters]
     A[Anthropic clients] --> H
+    T[TypeSafe clients] --> H
     H --> G[Generation service]
+    H --> V[Native forwarding]
     G --> F[Fake backend]
     G --> L[Livepeer adapter / Builder Core]
+    V --> L
     H --> R[Gateway identity and retail ledger]
     L --> N[Orchestrator and inference runner]
     L --> W[Backend wholesale accounting]
@@ -120,7 +170,9 @@ flowchart LR
 One gateway process owns a durable SQLite identity/retail database. Builder Core owns
 its separate job/payment database. Retail charges use configured price versions;
 wholesale costs retain backend evidence and uncertainty. Reconciliation never retries
-inference. See [architecture](ARCHITECTURE.md) and [accounting](docs/design-docs/accounting.md).
+inference. Validated routes translate requests through the generation service; native routes
+forward the original bytes and only read usage. See [architecture](ARCHITECTURE.md) and
+[accounting](docs/design-docs/accounting.md).
 
 ## Configuration
 
@@ -129,7 +181,9 @@ inference. See [architecture](ARCHITECTURE.md) and [accounting](docs/design-docs
 | `GATEWAY_BACKEND` | `fake` locally; `livepeer` in deployment |
 | `GATEWAY_ACCOUNTING_DB` | Enables registry authentication and durable retail accounting |
 | `GATEWAY_API_KEY` | Optional legacy shared key; cannot be combined with registry mode |
-| `GATEWAY_MODEL_ROUTES` | Public model names mapped to backend applications/models |
+| `GATEWAY_MODEL_ROUTES` | Public model names mapped to backend applications, with `mode` and optional list details |
+| `GATEWAY_NATIVE_APPROVALS` | Operator approvals for native routes, per runner and endpoint |
+| `GATEWAY_MODEL_NAME`, `GATEWAY_CHAT_APP` | Single-route settings used when `GATEWAY_MODEL_ROUTES` is empty |
 | `GATEWAY_TIMEOUT_SECONDS` | Generation deadline; defaults to 300 seconds |
 | `GATEWAY_APPROVED_ORCHESTRATORS` | Allowed discovery origins for Livepeer |
 | `LPB_DISCOVERY_URL` | Required runner inventory endpoint; separate from the signer |
@@ -156,8 +210,11 @@ reconciliation redrive. See [operations](docs/OPERATIONS.md) and the
 ```sh
 make check
 uv build
-scripts/build-images.sh gateway
+scripts/build-images.sh gateway              # inference-gateway:local
+IMAGE_TAG=v0.2.0 scripts/build-images.sh     # All three images under one release tag
 ```
+
+The script builds locally and never publishes.
 
 Two independent Compose deployments live under [deploy/livepeer](deploy/livepeer/README.md):
 

@@ -42,6 +42,17 @@ class NativeBackend(Protocol):
     def accepts(self, model: str) -> bool: ...
     def models(self) -> tuple[str, ...]: ...
 
+    def supports(self, model: str, endpoint: str) -> bool:
+        """Whether an operator ever approved this model for this endpoint.
+
+        False is permanent until configuration changes, so callers must not suggest a retry.
+        """
+        ...
+
+    def models_for(self, endpoints: tuple[str, ...]) -> tuple[str, ...]:
+        """Models with eligible supply right now for every one of these endpoints."""
+        ...
+
     async def report_usage(self, job_id: str, usage: Finished) -> None: ...
 
     async def open(self, request: NativeRequest) -> NativeStream:

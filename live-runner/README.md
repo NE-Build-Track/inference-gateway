@@ -37,8 +37,9 @@ The templates intentionally contain invalid revision placeholders; the renderer 
 them rather than substituting a mutable model branch or claiming a fake pin.
 
 Set the exact model name, capacity, context limit and required tool/reasoning parsers.
-Do not claim an endpoint because the family supports it in another version. Templates
-request only the chat profile; add other profiles only to a candidate being tested.
+Do not claim an endpoint because the family supports it in another version. Each
+`manifest.example.json` requests only the chat profile, and the Clef template requests only
+`systemone`; add other profiles only to a candidate being tested.
 
 ```sh
 uv run python live-runner/tooling/render.py \
@@ -95,8 +96,9 @@ existing selection and output guarantees. Generated registrations stay idle unti
 acceptance and explicit promotion; metadata alone never grants native admission.
 
 No automatic production promotion or approval-writing command is provided. Readiness is
-not endpoint certification. Node images build from `livepeer/node` `main`; the
-[29 October repin](tests/m3-upstream-2026-10-29.md) records the current candidate.
+not endpoint certification. This bundle's node is pinned in the [image lock](images.lock.json) and
+moves when the next node image is published. The Compose deployments build `livepeer/node` at
+`a4b68ed`, the candidate recorded in the [29 October repin](tests/m3-upstream-2026-10-29.md).
 Chain finality and production admission remain pending.
 
 ## Initial supported configuration
