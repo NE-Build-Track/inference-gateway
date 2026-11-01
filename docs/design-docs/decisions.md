@@ -127,3 +127,18 @@ routing logic or self-certified trust. Keep livepeer-node inference-agnostic. Th
 [native inference design](native-inference-routing.md) supersedes the assumption that all
 future inference must pass through the normalized generation contract, but does not remove
 existing compatibility guarantees or authorize silent accounting/storage changes.
+
+## System One and per-SDK model lists
+
+Accepted 1 November 2026. Serve decision models by forwarding `POST /v1/systemone` natively, since
+they generate no text and nothing can translate them to chat. Start with text state: SGLang opens
+local paths and fetches any URL in `images`. Revisit when a client needs images and inline `data:`
+URLs have acceptance evidence.
+
+Choose each `GET /v1/models` response from request headers, because all three SDKs call the same
+path and parse different formats. A model appears only if it serves every endpoint the caller's SDK
+can reach, which keeps a decision model away from chat clients and the reverse. For OpenAI this
+means both chat and Responses, so a chat-only native model is callable but unlisted. Revisit if
+chat-only runners become a supported target; the alternative is to list them and accept a 400 for
+Responses clients. `X-TypeSafe-SDK` is an SDK detail rather than a protocol field. If TypeSafe
+renames it, that SDK receives the OpenAI format and fails loudly, so it never shows a wrong model.

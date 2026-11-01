@@ -13,7 +13,7 @@ are shown only when issued or rotated. They are not saved in the database or log
 
 | Permission | Access |
 | --- | --- |
-| `inference` | Generate through both API formats |
+| `inference` | Call the OpenAI, Anthropic and System One inference endpoints and list models |
 | `reports` | Read the owner's requests, usage and retail charges across their keys |
 | `admin` | Inference and reporting across users, including wholesale observations |
 
@@ -34,7 +34,8 @@ Retail charges use the gateway's price version captured before dispatch. Input, 
 input, and output rates are per million tokens. Missing cached rates use the input rate.
 A later price change never changes an existing request's rate. Cached input is a subset
 of total input, not an additional token count. Missing cache details are treated as no
-reported cache discount. Thinking output is not supported by the current inference contract.
+reported cache discount. Thinking output has no separate rate: a runner's completion tokens, which
+can include it, are charged at the output rate.
 
 The charge is:
 

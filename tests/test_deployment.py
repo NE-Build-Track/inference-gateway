@@ -41,6 +41,36 @@ def test_orchestrator_config_rendering(tmp_path, mode):
     assert ("Network" in config) == (mode == "onchain")
 
 
+@pytest.mark.parametrize(
+    "extra,expected",
+    [("", "gateway-model"), ("SERVED_MODEL_NAME=team/model:v1\n", "team/model:v1")],
+)
+def test_rendered_runner_declares_the_model_the_gateway_routes_by(tmp_path, extra, expected):
+    from livepeer_builder.testing import runner
+
+    from inference_gateway.backends.discovery import model_name
+
+    env = tmp_path / ".env"
+    env.write_text(extra)
+    output = tmp_path / "generated"
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "deploy/livepeer/orchestrator/render-config.py"),
+            "--env-file",
+            str(env),
+            "--output",
+            str(output),
+            "--mode",
+            "offchain",
+        ],
+        check=True,
+    )
+    rendered = tomllib.loads((output / "runners.toml").read_text())["Runners"][0]
+    # Model routing excludes a runner without this; the gateway reads it through discovery.
+    assert model_name(runner("app", metadata=rendered["Metadata"])) == expected
+
+
 def render_onchain(tmp_path, extra=""):
     env = tmp_path / ".env"
     env.write_text("ORCHESTRATOR_ADDRESS=0x" + "1" * 40 + "\n" + extra)

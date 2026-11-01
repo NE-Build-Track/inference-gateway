@@ -2,8 +2,9 @@
 
 The gateway and deterministic fake implement the contracts below. This is a tested subset,
 not full OpenAI or Anthropic parity. The Livepeer adapter also supports structured output,
-reasoning on/off, stop sequences and parallel tools when explicitly enabled per route.
-Other capabilities still fail before dispatch. A runner probe is evidence about one route
+reasoning on/off, stop sequences and parallel tools when explicitly enabled per route, plus
+[guarded controls](#livepeer-route-capabilities) that remain unverified live. Anything a route has
+not enabled still fails before dispatch. A runner probe is evidence about one route
 at one time, not permission to enable a feature globally.
 
 ## Feature matrix

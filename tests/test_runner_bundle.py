@@ -160,6 +160,26 @@ def test_native_endpoint_metadata_is_explicit(tmp_path):
     assert meta["admission"] == "candidate"  # Configuration is never certification.
 
 
+def test_clef_example_advertises_only_system_one(tmp_path):
+    raw = json.loads((BUNDLE / "runtimes/sglang/clef-flash.example.json").read_text())
+    raw["model"]["revision"] = "a" * 40
+    meta = render(Deployment.model_validate(raw), tmp_path)
+    assert meta["endpoints"] == {"systemone": PROFILES["systemone"]}
+    assert meta["model_name"] == "Cloudflare/clef-flash"
+
+
+@pytest.mark.parametrize("family", ["vllm", "ollama"])
+def test_system_one_requires_sglang(family):
+    with pytest.raises(ValidationError, match="Only SGLang"):
+        Deployment.model_validate({**manifest(family), "endpoints": ["systemone"]})
+
+
+def test_every_endpoint_fits_the_metadata_limit(tmp_path):
+    raw = manifest("sglang")
+    raw["endpoints"] = list(PROFILES)
+    assert set(render(Deployment.model_validate(raw), tmp_path)["endpoints"]) == set(PROFILES)
+
+
 def test_metadata_schema_matches_code():
     assert (
         json.loads((BUNDLE / "contract/metadata.schema.json").read_text())

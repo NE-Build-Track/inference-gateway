@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -50,6 +51,10 @@ class ModelRoute(BaseModel):
         frozenset()
     )
     input_media: frozenset[Literal["image", "audio"]] = frozenset()
+    # Shown in model lists. Runners self-report metadata, so these stay operator-owned.
+    display_name: str | None = Field(default=None, min_length=1)
+    description: str | None = Field(default=None, min_length=1)
+    release_date: date | None = None
 
     @model_validator(mode="after")
     def coherent_capabilities(self) -> "ModelRoute":
@@ -71,7 +76,7 @@ class NativeApproval(BaseModel):
     app: str = Field(min_length=1)
     model: str = Field(min_length=1)
     deployment_revision: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
-    endpoint: Literal["chat_completions", "responses", "messages"]
+    endpoint: Literal["chat_completions", "responses", "messages", "systemone"]
     expires_at: float = Field(gt=0)
 
 

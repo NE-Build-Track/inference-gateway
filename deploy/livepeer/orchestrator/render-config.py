@@ -83,6 +83,11 @@ def main() -> None:
                 'ID = "vllm"',
                 'RunnerURL = "http://vllm:8000"',
                 "App = " + json.dumps(values.get("RUNNER_APP", "inference/chat/default")),
+                # The gateway routes by this name and excludes runners without it.
+                "Metadata = "
+                + json.dumps(
+                    json.dumps({"model_name": values.get("SERVED_MODEL_NAME", "gateway-model")})
+                ),
                 'Mode = "single-shot"',
                 'Status = "ready"',
                 f"Capacity = {capacity}",

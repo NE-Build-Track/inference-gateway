@@ -27,6 +27,12 @@ PROFILES = {
         "usage": "messages.events.v1",
         "stream_usage": "terminal",
     },
+    "systemone": {
+        "path": "/v1/systemone",
+        "profile": "typesafe.systemone.v1",
+        "usage": "systemone.final.v1",
+        "stream_usage": "unsupported",
+    },
 }
 
 
@@ -53,7 +59,9 @@ class Deployment(ContractModel):
     app: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
     runtime: Runtime
     model: Model
-    endpoints: list[Literal["chat_completions", "responses", "messages"]] = Field(min_length=1)
+    endpoints: list[Literal["chat_completions", "responses", "messages", "systemone"]] = Field(
+        min_length=1
+    )
     capacity: int = Field(ge=1, le=10000)
     public_url: str
     # Scaffolds are offchain and unpublished until operator acceptance.
@@ -74,6 +82,8 @@ class Deployment(ContractModel):
             raise ValueError("public_url must be an HTTP(S) origin without credentials")
         if len(self.endpoints) != len(set(self.endpoints)):
             raise ValueError("Duplicate endpoint")
+        if "systemone" in self.endpoints and self.runtime.name != "sglang":
+            raise ValueError("Only SGLang serves the System One endpoint")
         if self.runtime.name == "ollama":
             if not self.model.revision.startswith("sha256:"):
                 raise ValueError("Ollama requires the installed model manifest digest")
@@ -95,7 +105,7 @@ class EndpointProfile(ContractModel):
     path: str
     profile: str
     usage: str
-    stream_usage: Literal["include_usage_required", "terminal"]
+    stream_usage: Literal["include_usage_required", "terminal", "unsupported"]
 
 
 class Limits(ContractModel):

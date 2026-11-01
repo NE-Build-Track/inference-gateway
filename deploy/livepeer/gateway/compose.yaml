@@ -93,6 +93,8 @@ services:
       GATEWAY_UPSTREAM_MODEL: ${GATEWAY_UPSTREAM_MODEL:-}
       # Empty selects the single-model settings above; JSON can configure multiple routes.
       GATEWAY_MODEL_ROUTES: ${GATEWAY_MODEL_ROUTES:-}
+      # Operator evidence for native routes, including System One; an empty array admits none.
+      GATEWAY_NATIVE_APPROVALS: ${GATEWAY_NATIVE_APPROVALS:-[]}
       SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/pinned
     ports: ["127.0.0.1:${GATEWAY_PORT:-8000}:8000"]
     volumes:

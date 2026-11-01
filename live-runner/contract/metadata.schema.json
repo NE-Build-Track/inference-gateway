@@ -18,7 +18,8 @@
         "stream_usage": {
           "enum": [
             "include_usage_required",
-            "terminal"
+            "terminal",
+            "unsupported"
           ],
           "title": "Stream Usage",
           "type": "string"

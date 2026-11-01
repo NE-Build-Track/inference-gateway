@@ -1,7 +1,7 @@
 # Add a backend
 
 This is the existing translated/validated generation port. The opt-in
-[native forwarding port](native-inference-routing.md) will preserve opaque protocol payloads
+[native forwarding port](native-inference-routing.md) preserves opaque protocol payloads
 separately; see the [native contract](../product-specs/native-inference.md) for implementation and limits.
 
 Implement `Backend.stream(Generate) -> AsyncGenerator[Event, None]` using core types.

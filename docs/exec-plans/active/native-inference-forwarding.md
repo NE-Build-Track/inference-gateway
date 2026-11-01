@@ -1,10 +1,11 @@
 # Native inference forwarding
 
-Status: offline checks and limited offchain GPU acceptance verified; release-artifact
-acceptance, paid-path acceptance and review remain open.
+Status: offline checks, limited offchain GPU acceptance and paid vLLM acceptance verified. The
+released runner bundle remains open; image publication is tracked in the
+[upstream repin plan](upstream-repin-publication.md).
 Supported backend families are vLLM, Ollama and SGLang. The user has authorized isolated
-GPU acceptance on a remote RTX 5090, with the runner/node and gateway local. Paid-path
-acceptance remains deferred. The existing development stack stays stopped. Publish only to NE-Build-Track
+GPU acceptance on a remote RTX 5090, with the runner/node and gateway local.
+The existing development stack stays stopped. Publish only to NE-Build-Track
 forks; do not push branches or create PRs in upstream Livepeer repositories.
 
 ## Acceptance and implementation
@@ -17,10 +18,10 @@ forks; do not push branches or create PRs in upstream Livepeer repositories.
 - [x] Read-only unary/SSE usage observation and wholesale usage reporting without replaying inference.
 - [x] Errors, incomplete/failed responses, deadline, cancellation and generator cleanup.
 - [x] Existing validated routes retain their default behavior.
-- [ ] Review/merge NE dependency and gateway PRs; repin accepted revisions as needed.
+- [x] Review/merge NE dependency and gateway PRs; repin accepted revisions as needed.
 - [x] Limited offchain GPU matrix for three runtime families, using a patched local node.
-- [ ] Publish/repin the node discovery fix and verify the complete released runner bundle.
-- [ ] Paid-path acceptance, still deferred.
+- [ ] Verify the complete released runner bundle. The node discovery fix is no longer needed.
+- [x] Paid-path acceptance on vLLM; see the [release candidate check](../../../live-runner/tests/release-candidate-2026-10-29.md).
 
 GPU acceptance compares direct runtime calls with calls through the local node, real
 Builder Core/SDK transport and gateway. It checks catalog identity, unary/SSE usage,

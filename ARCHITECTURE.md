@@ -1,13 +1,16 @@
 # Architecture
 
-The gateway translates two external conversation protocols into a small generation
-contract. It owns no conversation history. Clients submit history on every request.
+On validated routes, the gateway translates the OpenAI and Anthropic conversation protocols into
+a small generation contract. On native routes, it forwards the original request and only observes
+usage. System One decisions always use native routes. The gateway owns no conversation history;
+clients submit history on every request.
 
 ```text
 OpenAI clients ────┐
-                  ├─ HTTP boundary → protocol translators → GenerationService → Backend
-Anthropic clients ┘                                                          │
-                                                          FakeBackend or LivepeerBackend ──┘
+                   ├─ HTTP boundary ─┬─ protocol translators → GenerationService → Fake or LivepeerBackend
+Anthropic clients ─┤                 │
+                   │                 └─ native forwarding → LivepeerNativeBackend → Builder Core
+TypeSafe clients ──┘
 ```
 
 The generation context is the project's core capability. Protocol translation is
@@ -27,8 +30,13 @@ application. Identity and retail accounting have durable state in a separate gat
 | `adapters/schemas.py` | Supported external request shapes | Pydantic, core JSON type |
 | `adapters/translate.py` | Convert requests and validate tool-result references | Schemas, core |
 | `adapters/responses.py` | JSON and SSE wire encoders | Core, standard library |
+| `adapters/model_catalog.py` | Per-SDK model visibility and list formats | Standard library |
 | `testing.py` | Reusable deterministic fake | Core, standard library |
-| `backends/` | Encode runner requests, decode SSE, call Builder Core, filter discovery | Core, configuration, public Livepeer API |
+| `core/native.py` | Opaque native transport port | Core models |
+| `native.py` | Native forwarding lifecycle and usage observation | Core, native usage adapter |
+| `adapters/native_request.py`, `native_usage.py`, `native_http.py` | Inspect the routing envelope, read usage, deliver over ASGI | Core, runner contract |
+| `adapters/runner_contract.py` | Endpoint profiles and runner metadata | Pydantic, standard library |
+| `backends/` | Encode runner requests, decode SSE, call Builder Core, filter discovery | Core, configuration, runner contract, public Livepeer API |
 | `config.py` | Frozen gateway and routing settings | Standard library, Pydantic |
 | `runtime.py` | Load environment, construct/start/stop the engine | Configuration, backends, public Livepeer API |
 | `app.py` | Own lifespan, authenticate, enforce deadlines, route and log | All layers |
@@ -52,7 +60,8 @@ stop reading and preserve the engine's outcome; no application reply is saved.
 The inbound adapters protect the core from external vocabulary changes. This costs
 translation code and contract tests, but allows either interface to evolve independently.
 New endpoint families should get their own command, port where needed, and adapters;
-do not force embeddings or stored responses through `Generate`.
+do not force embeddings or stored responses through `Generate`. System One decisions follow this
+rule: they use native forwarding and never touch `Generate`.
 
 See [decisions](docs/design-docs/decisions.md), [backend ownership](docs/design-docs/backends.md),
 and the [compatibility contract](docs/product-specs/compatibility.md).

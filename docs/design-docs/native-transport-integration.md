@@ -55,22 +55,20 @@ CI also verifies PostgreSQL storage and its container. The gateway package and l
 image build successfully. That initial offline slice did not start live inference; later
 GPU/paid probes are recorded in quality status.
 
-Remaining work is deployment acceptance and release review: review/merge the NE dependency
-PRs, repin to accepted revisions as needed, test exact GPU/model/parser configurations,
-verify node metadata/header propagation and real paid settlement, then promote accepted
-runner revisions. Approval automation, hot revocation, shared-capacity multi-model layouts,
+The dependency PRs have merged and the gateway is repinned. Paid acceptance has passed on vLLM; see
+the [release candidate check](../../live-runner/tests/release-candidate-2026-10-29.md). Remaining work
+is to test each other exact GPU/model/parser configuration and promote accepted runner revisions. Approval automation, hot revocation, shared-capacity multi-model layouts,
 compressed payload observation and stateful APIs remain outside the current native profile.
 
 The [cross-repository review](../references/repository-compatibility-2026-10-27.md) verifies
 current M3 plus native patches and restores the separate discovery service in Compose.
-Do not substitute an unpatched default branch for the native dependency pins.
+Use the locked dependency revisions, because native startup depends on them.
 
 Node PR #1 is no longer required: gateway discovery normalizes runner identity from
-validated metadata and rejects conflicting IDs. SDK/Core native transport patches remain
-required. See the [identity contract](../../live-runner/contract/README.md#runner-identity-without-a-node-patch).
+validated metadata and rejects conflicting IDs. See the [identity contract](../../live-runner/contract/README.md#runner-identity-without-a-node-patch).
 
 The [28 October review](../references/repository-compatibility-2026-10-28.md) superseded
 that overlay result for newer M3: Core now owns the paid runner call, so PR #55 had to port
 native behavior onto that implementation. It did, and merged as `2134e29`, which the pinned
-`d3df806` includes. Native startup still rejects an installed Core that lacks the required request
+`d3df806` includes, so the upstream SDK is used unpatched. Native startup still rejects an installed Core that lacks the required request
 fields or response-header facade.

@@ -32,3 +32,4 @@ and tests together when behavior changes. Verification status is in [Quality](QU
 - [Native inference contract](product-specs/native-inference.md): explicit route mode, admission, forwarding and accounting.
 
 - [Native model inputs](product-specs/native-inputs.md): image request examples and modality limits.
+- [System One decisions](product-specs/system-one.md): decision models, SDK settings, rejected inputs and pricing.

@@ -1,0 +1,22 @@
+{
+  "contract_version": 1,
+  "runner_id": "sglang-clef-flash",
+  "app": "inference/sglang-clef",
+  "runtime": {
+    "name": "sglang",
+    "tool_parser": null,
+    "reasoning_parser": null
+  },
+  "model": {
+    "name": "Cloudflare/clef-flash",
+    "source": "Cloudflare/clef-flash",
+    "revision": "REPLACE_WITH_HF_COMMIT",
+    "context_tokens": 32768
+  },
+  "endpoints": [
+    "systemone"
+  ],
+  "capacity": 1,
+  "public_url": "http://127.0.0.1:8935",
+  "admission": "candidate"
+}

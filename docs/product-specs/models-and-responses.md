@@ -2,8 +2,7 @@
 
 This contract adds OpenAI-compatible `GET /v1/models` and `POST /v1/responses`.
 It is a documented subset, not the entire OpenAI Responses service. Existing Chat Completions
-and Anthropic Messages remain available. The model-list endpoint uses OpenAI authentication
-and response formatting; Anthropic model-list pagination/authentication is not implemented.
+and Anthropic Messages remain available.
 
 ## Model identity and routing
 
@@ -26,20 +25,54 @@ An injected Builder Core `SelectionPolicy` filters candidates by exact model met
 retry candidate within the chosen app. No cross-app retry is introduced, and paid attempts retain
 the engine's existing retry restrictions. Builder Core itself is unchanged.
 
-Endpoint and feature support remain explicit operator declarations per model/app route. Metadata
-`model_name` alone does not advertise Responses, tools or vision. Every matching runner within a
-route must satisfy its declared contract. Heterogeneous endpoint capabilities within one model/app
-pair require a future capability metadata contract; do not group incompatible runners together.
+On validated routes, endpoint and feature support remain explicit operator declarations per
+model/app route. Metadata `model_name` alone does not advertise Responses, tools or vision, and every
+matching runner within a route must satisfy its declared contract. Do not group incompatible runners
+together. Native routes declare their endpoints in runner metadata instead; see the
+[native contract](native-inference.md).
 
-The authenticated model catalog contains approved models with fresh eligible supply. Registry
-mode additionally requires an active retail price; the key must have inference permission.
-Listing does not dispatch paid jobs. Models are deduplicated and sorted. `created: 0` means the
-creation timestamp is unknown; no timestamp is inferred from discovery. Readiness is true when
-at least one approved model has eligible supply; an unavailable model returns 503 independently.
+## Model lists
 
-```json
-{"object":"list","data":[{"id":"gemma4:26b","object":"model","created":0,"owned_by":"livepeer"}]}
-```
+Every SDK calls `GET /v1/models`, and each should see only the models it can use. The gateway reads
+the request headers to choose which models to list and which format to return:
+
+| Caller | Detected by | Native models must serve | Format |
+| --- | --- | --- | --- |
+| Anthropic SDK | `anthropic-version` | `messages` | `{"data":[{type,id,display_name,created_at}],"has_more":false,first_id,last_id}` |
+| TypeSafe SDK | `X-TypeSafe-SDK` | `systemone` | `{"models":[{name,description,release_date}]}` |
+| Anything else | Default | `chat_completions` and `responses` | `{"object":"list","data":[{id,object,created,owned_by}]}` |
+
+A native model serves an endpoint when a runner advertises it, an operator approved it, and supply
+is fresh with free capacity. A runner's claim alone never adds a model to a list. A model at full
+capacity leaves the lists until capacity returns.
+
+The OpenAI row requires both endpoints because one SDK covers chat and Responses, and a list
+request does not say which the caller will use. A chat-only native model therefore leaves the
+OpenAI list but stays callable by name.
+
+Validated routes appear for OpenAI and Anthropic, because the gateway translates them, and never
+for System One. If a runner's contract metadata does not declare the route's upstream endpoint, the
+gateway ignores that runner for the route, both when listing and when selecting a runner to pay. A
+Clef route that forgets `mode: native` therefore serves nobody, rather than appearing to chat clients.
+
+The list is a point-in-time filter on API compatibility, not a feature guarantee: a text-only model
+can be listed for a client that later sends images. Calling a model on an endpoint with no approval
+returns 400 before payment. See the [System One contract](system-one.md).
+
+Registry mode also requires an active retail price, and the key needs inference permission in every
+view. Listing dispatches no paid jobs. Models are deduplicated and sorted. The headers select a view
+and cannot widen access, because a forged header only reshapes what the key may already see.
+Responses, including errors, carry `Vary: anthropic-version, x-typesafe-sdk`.
+
+The Anthropic view accepts `x-api-key` or Bearer and uses Anthropic's error envelope. It returns one
+complete page: `limit`, `after_id` and `before_id` fail with 400. Other views use Bearer.
+
+Routes can supply `display_name`, `description` and `release_date` (`YYYY-MM-DD`). Without them, the
+display name is the model name, the description is empty and the date is `1970-01-01`, which, like
+`created: 0`, means unknown. No value is inferred from discovery.
+
+Readiness is true when at least one approved model can serve at least one endpoint; an unavailable
+model returns 503 independently.
 
 ## Request subset
 

@@ -17,7 +17,7 @@ Authentication is disabled only when both identity settings are unset. Registry 
 enforces user/key isolation. TLS termination, rate limiting and request-size caps remain
 deployment concerns. Do not put real secrets in committed files.
 
-The process entry point enables application logs with JSON payloads. Records contain
+The process entry point enables application logs with JSON payloads. Validated-route records contain
 a request ID, outcome, protocol where available, and elapsed time for completed work.
 They exclude prompt bodies, tool arguments/results, keys, and raw upstream errors.
 HTTP headers return the ID for correlation. Logs are ephemeral unless the operator
@@ -33,8 +33,8 @@ clients must not treat partial content as a completed response.
 
 Run `make check` to exercise SDK contracts, network streaming, fault handling, and
 architecture rules. `GET /healthz` proves process liveness only; it does not probe upstream availability. Livepeer mode has an engine-owned database that migrates on startup and must be retained.
-`GET /readyz` checks engine discovery freshness and candidates for every configured route;
-it does not check payment balance. Run one engine process per database.
+`GET /readyz` reports ready when discovery is fresh and at least one model can serve at least one
+endpoint, so one healthy route can hide another with no supply. It does not check payment balance. Run one engine process per database.
 
 Use the [Livepeer guide](design-docs/livepeer.md) for backend selection and configuration,
 and the [deployment guide](../deploy/README.md) for Compose, certificate trust, and reusing
@@ -42,8 +42,11 @@ the standalone payment stack. The CLI does not implicitly load `deploy/livepeer/
 loads it. For host execution, supply environment variables with signer/Batteries URLs that
 are reachable from the host.
 
-Gateway logs connect `request_id` to `job_id` through `livepeer_job_started` and
-`livepeer_job_closed`. `livepeer_usage_report_failed` retains counts for reconciliation;
+On validated routes, gateway logs connect `request_id` to `job_id` through `livepeer_job_started`
+and `livepeer_job_closed`. Native routes, including System One, write no per-request log records.
+Correlate them through the `x-request-id` header, the registry's request record and Builder Core's
+matching operation reference. `livepeer_usage_report_failed` retains counts for reconciliation, while
+the native `native_usage_report_failed` records only the request ID;
 network cost stays in the engine and may arrive later. A 503 indicates unavailable capacity
 or payment infrastructure; a 409 means the operation was already dispatched. The gateway
 does not retry inference. Registry mode retries accounting work separately; inspect
@@ -129,13 +132,15 @@ legacy aliases and different `upstream_model` values are no longer accepted.
 Build a candidate without replacing the published v0.0.1 image:
 
 ```sh
-docker build -f deploy/livepeer/gateway/Dockerfile -t inference-gateway/gateway:models-responses .
+IMAGE_TAG=models-responses scripts/build-images.sh gateway
 ```
 
-Use that tag in an isolated deployment with a separate engine ID/database and port while retaining
+Set the same `IMAGE_TAG` in an isolated deployment with a separate engine ID/database and port while retaining
 approved TLS trust. Readiness requires eligible model metadata. A 200 empty `/v1/models` list can
 mean no approved available supply or no retail price; 401/403 indicates authentication/scope issues.
-The endpoint uses Bearer authentication, including for clients that otherwise use Anthropic Messages.
+Bearer authentication works for every caller; Anthropic clients can also use `x-api-key`. The
+contents depend on the caller: see [model lists](product-specs/models-and-responses.md#model-lists).
+To serve decision models, follow the [System One deployment steps](product-specs/system-one.md#deploy).
 
 After configuring an inference key, save it in a private key file and run the opt-in acceptance:
 

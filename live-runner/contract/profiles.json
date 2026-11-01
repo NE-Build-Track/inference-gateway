@@ -16,5 +16,11 @@
     "profile": "anthropic.messages.v1",
     "usage": "messages.events.v1",
     "stream_usage": "terminal"
+  },
+  "systemone": {
+    "path": "/v1/systemone",
+    "profile": "typesafe.systemone.v1",
+    "usage": "systemone.final.v1",
+    "stream_usage": "unsupported"
   }
 }

@@ -13,13 +13,15 @@ A model cannot mix modes across its routes. Native strict tools, schema referenc
 reasoning, sampling and generation-specific extensions belong to the backend; the gateway
 does not inspect or enforce their schemas. This is a different guarantee from validated mode.
 
-Native routes support the fixed paths `/v1/chat/completions`, `/v1/responses` and
-`/v1/messages` only when the runner's metadata and independent operator approval name the
+Native routes support the fixed paths `/v1/chat/completions`, `/v1/responses`, `/v1/messages`
+and [`/v1/systemone`](system-one.md) only when the runner's metadata and independent operator approval name the
 requested endpoint profile. App names are not model identities. Selection checks the
 configured app, `model_name`, origin, runner ID, deployment revision, positive capacity,
 discovery freshness and approval expiry before dispatch. The same policy is installed in
-Builder Core selection, so ranking/failover cannot widen eligibility. Model catalogs include
-eligible native models and retain retail-price filtering in registry mode.
+Builder Core selection, so ranking/failover cannot widen eligibility. Each SDK's
+[model list](models-and-responses.md#model-lists) includes only the native models eligible for its
+endpoints and retains retail-price filtering in registry mode. Calling a model on an endpoint it
+has no approval for returns 400 before payment; a temporary shortage stays 503.
 
 The gateway authenticates and authorizes before dispatch, snapshots the retail price, then
 forwards original JSON bytes through Builder Core. Unknown generation fields and protocol
@@ -30,6 +32,8 @@ extension events survive unchanged. Only routing/accounting/state fields are ins
   adds it silently.
 - Responses requires explicit `store: false`. Background requests, previous-response IDs
   and conversation state are rejected. Backend stateless configuration still requires acceptance.
+- System One rejects `stream: true`, `images`, `videos`, `assets` and `media_kwargs`, because
+  SGLang would mishandle or ignore them. See its [contract](system-one.md).
 - Duplicate JSON keys, non-finite JSON numbers, encoded request bodies and query parameters
   are rejected. No query extension profile is currently admitted.
 
@@ -39,7 +43,7 @@ Native Anthropic version values are backend-owned; validated mode retains its ex
 version check. Response status and body are preserved, including backend HTTP errors.
 Only approved public response headers pass; gateway request IDs remain authoritative.
 Compressed backend responses fail closed because usage observers currently require identity
-encoding. The SDK requests identity encoding. Unary response bodies are bounded to 8 MiB;
+encoding. Builder Core requests identity encoding. Unary response bodies are bounded to 8 MiB;
 SSE observations have bounded frame storage. No wildcard management API is exposed.
 
 ## Accounting and lifecycle
@@ -50,8 +54,8 @@ Messages streams use final cumulative input/cache counts from `message_delta` wh
 present, retaining `message_start` fields only when not updated. Malformed detail objects
 or token counts still fail usage validation. Runner configuration
 enables cache reporting where supported; the gateway does not infer unreported savings.
-Read-only observers extract unary or streamed usage for all three protocols, including cached
-input. Measured retail usage is recorded once, and completed transport usage is reported to
+Read-only observers extract unary or streamed usage for the three generation protocols, including
+cached input, and unary usage for System One, where zero output tokens is valid. Measured retail usage is recorded once, and completed transport usage is reported to
 Builder Core. Wholesale reconciliation remains separate and does not rerun inference.
 
 Missing or malformed usage does not become a successful measured generation or an invented
@@ -62,7 +66,8 @@ their status/body and fail the underlying native job; they do not trigger a gate
 Builder Core still fails over a 503, 404 or 409 to another runner first, as for any job (its
 D52, at most `LPB_MAX_PAID_ATTEMPTS` paid attempts); only the answer it stops at is returned.
 Forwarded responses with status 400 or above carry `x-should-retry: false`, so default OpenAI
-and Anthropic SDK retries do not repeat a paid request.
+and Anthropic SDK retries do not repeat a paid request. The TypeSafe SDK ignores that header, so its
+clients must [disable retries](system-one.md#configure-the-typesafe-sdk).
 
 Deadlines include opening, consuming and delivering the response. Disconnects notify the
 backend before owned iterators close. Failures before response headers return a sanitized
@@ -85,7 +90,7 @@ JSON array of operator-owned evidence records with these fields:
 | `orchestrator` | Exact HTTP(S) origin, also subject to the configured origin allowlist |
 | `runner_id`, `app`, `model` | Accepted supply identity; `model` equals metadata.model_name |
 | `deployment_revision` | Exact SHA-256 revision generated by the runner bundle |
-| `endpoint` | `chat_completions`, `responses` or `messages` |
+| `endpoint` | `chat_completions`, `responses`, `messages` or `systemone` |
 | `expires_at` | Finite future UTC Unix timestamp |
 
 An empty approval array admits no native traffic. Approvals are loaded at startup; revocation
@@ -132,8 +137,9 @@ field; the renderer rejects oversized declarations rather than truncating them.
 Node PR #1 is not required. The node lock now pins unmodified source commit `dfcf033`.
 Deploy the updated gateway before advertising the new metadata: older gateway contracts
 reject the new field. Regenerate runner configuration, then issue approvals for its new
-deployment revision; old revisions are not automatically promoted. Use matching
-`native-metadata-20261027` gateway/node candidates, not the older native-vllm gateway image.
+deployment revision; old revisions are not automatically promoted. The bundle's node comes from
+the [image lock](../../live-runner/images.lock.json). The gateway must understand every profile a
+runner advertises, so `systemone` needs v0.2.0 or later.
 
 Native startup requires Core's raw-body, content-type, protocol-header and HTTP-error
 request fields plus its response-header stream facade. An incompatible dependency
