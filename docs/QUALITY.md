@@ -174,6 +174,7 @@ On 29 October the gateway moved to the later `releases/m3` commit `d3df806`, whi
 and brings the upstream SDK `2017a80`, and moved Node and Batteries builds to `livepeer/` `main`.
 Paid failover stays on (`LPB_MAX_PAID_ATTEMPTS=2`). `make check` passes 532 tests. Paid
 native vLLM acceptance passed on the rebuilt images with exact wholesale reconciliation; see the
-[repin evidence](../live-runner/tests/m3-upstream-2026-10-29.md). That topology had one
-orchestrator, so paid failover could not occur and is not yet exercised live. The repository's
+[repin evidence](../live-runner/tests/m3-upstream-2026-10-29.md). The
+[release candidate check](../live-runner/tests/release-candidate-2026-10-29.md) repeated it on
+the image built from `main` and exercised live paid failover between two orchestrators. The repository's
 live suites still assume validated-route tool semantics that native vLLM does not meet.

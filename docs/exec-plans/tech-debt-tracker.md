@@ -43,8 +43,9 @@ Builder Core M3 upgrade: done on 29 October (Core `d3df806`, which includes the 
 `2134e29`; upstream SDK; `livepeer/` Node and Batteries); see the
 [repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md). Paid failover is kept: Core
 may fail a paid 503, 404 or 409 over to another orchestrator, at most `LPB_MAX_PAID_ATTEMPTS` (2)
-paid attempts; set it to `1` to turn paid failover off. The acceptance topology had one
-orchestrator, so paid failover is not yet exercised live. That run left these open items:
+paid attempts; set it to `1` to turn paid failover off. Live paid failover between two
+orchestrators passed in the [release candidate check](../../live-runner/tests/release-candidate-2026-10-29.md).
+The repin run left these open items:
 
 - Capacity cost: after a cancelled stream, the next request can be paid and then refused
   with 503 while discovery still advertises a full slot. Each occurrence wastes one ticket.

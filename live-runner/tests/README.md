@@ -30,6 +30,8 @@ gateway acceptance, signer discovery identity, final candidate images and cleanu
 The [upstream repin run](m3-upstream-2026-10-29.md) repeats paid native vLLM acceptance on
 Core `releases/m3` and `livepeer/` Node, Batteries and SDK, with exact wholesale reconciliation.
 The [capacity benchmark](vllm-capacity-2026-10-29.md) measures concurrency limits for the vLLM runner.
+The [release candidate check](release-candidate-2026-10-29.md) repeats paid acceptance on the image
+built from `main` and exercises paid failover between two orchestrators.
 
 
 ## Opt-in image acceptance
