@@ -2,13 +2,19 @@
 
 import importlib.util
 import json
+import re
 import tomllib
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from inference_gateway.adapters.runner_contract import PROFILES, Deployment, RunnerMetadata
+from inference_gateway.adapters.runner_contract import (
+    DIGEST,
+    PROFILES,
+    Deployment,
+    RunnerMetadata,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT / "live-runner"
@@ -160,18 +166,50 @@ def test_native_endpoint_metadata_is_explicit(tmp_path):
     assert meta["admission"] == "candidate"  # Configuration is never certification.
 
 
-def test_clef_example_advertises_only_system_one(tmp_path):
-    raw = json.loads((BUNDLE / "runtimes/sglang/clef-flash.example.json").read_text())
-    raw["model"]["revision"] = "a" * 40
-    meta = render(Deployment.model_validate(raw), tmp_path)
-    assert meta["endpoints"] == {"systemone": PROFILES["systemone"]}
-    assert meta["model_name"] == "Cloudflare/clef-flash"
+CLEF = BUNDLE / "runtimes/clef"
 
 
-@pytest.mark.parametrize("family", ["vllm", "ollama"])
-def test_system_one_requires_sglang(family):
-    with pytest.raises(ValidationError, match="Only SGLang"):
-        Deployment.model_validate({**manifest(family), "endpoints": ["systemone"]})
+def clef_images():
+    """Each service's image from the Compose file; no YAML library is a project dependency."""
+    found, service = {}, None
+    for line in (CLEF / "compose.yaml").read_text().splitlines():
+        if match := re.fullmatch(r"  ([a-z-]+):", line):
+            service = match.group(1)
+        elif match := re.fullmatch(r"    image: (\S+)", line):
+            found[service] = match.group(1)
+    return found
+
+
+def test_clef_configs_are_pinned_by_digest():
+    images = clef_images()
+    assert {"sglang", "vllm", "ollama", "llamacpp"} <= set(images)
+    assert all(re.fullmatch(DIGEST, image) for image in images.values())
+
+
+def test_clef_metadata_examples_match_the_contract_and_their_images():
+    examples = json.loads((CLEF / "metadata.examples.json").read_text())
+    images = clef_images()
+    assert set(examples) == {"sglang", "vllm", "ollama", "llamacpp"}
+    for backend, metadata in examples.items():
+        parsed = RunnerMetadata.model_validate(metadata)
+        assert parsed.runtime.image == images[backend]
+        assert parsed.endpoints.keys() == {"systemone"}  # Clef refuses chat.
+        assert len(json.dumps(metadata, separators=(",", ":")).encode()) <= 1024
+
+
+@pytest.mark.parametrize("family", ["vllm", "ollama", "sglang"])
+def test_system_one_is_not_limited_to_one_runtime(family):
+    Deployment.model_validate({**manifest(family), "endpoints": ["systemone"]})
+
+
+def test_llamacpp_is_admitted_from_metadata_but_not_rendered():
+    examples = json.loads((CLEF / "metadata.examples.json").read_text())
+    assert RunnerMetadata.model_validate(examples["llamacpp"]).runtime.name == "llamacpp"
+    # The renderer has no command line for it, so it must not produce one silently.
+    raw = manifest("sglang")
+    raw["runtime"]["name"] = "llamacpp"
+    with pytest.raises(ValidationError):
+        Deployment.model_validate(raw)
 
 
 def test_every_endpoint_fits_the_metadata_limit(tmp_path):

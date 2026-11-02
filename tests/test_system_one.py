@@ -1,5 +1,6 @@
 """System One forwarding and per-SDK model lists, through the real client libraries."""
 
+import base64
 import json
 import time
 from dataclasses import dataclass
@@ -15,8 +16,10 @@ from livepeer_builder.testing import FakeEngine, Reply, runner
 from openai import AsyncOpenAI
 from typesafe_sdk import (
     AsyncTypeSafeClient,
+    Image,
     Noul,
     RetryPolicy,
+    TypeSafeBadRequestError,
     TypeSafeInternalServerError,
     TypeSafeUnprocessableEntityError,
 )
@@ -204,20 +207,100 @@ async def test_response_bytes_are_unchanged():
     assert response.headers["x-request-id"].startswith("req_")
 
 
+def inline(raw, media="png"):
+    return f"data:image/{media};base64,{base64.b64encode(raw).decode()}"
+
+
+def bare(raw):
+    return base64.b64encode(raw).decode()
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 24
+JPEG = b"\xff\xd8\xff\xe0" + b"\0" * 24
+GIF = b"GIF89a" + b"\0" * 24
+WEBP = b"RIFF\x10\0\0\0WEBPVP8 " + b"\0" * 16
+WAV = b"RIFF\x10\0\0\0WAVEfmt " + b"\0" * 16
+assert bare(JPEG).startswith("/9j/")  # SGLang reads this form as a path; see the JPEG case below.
+
+
+@pytest.mark.parametrize(
+    "images",
+    [
+        [inline(PNG)],
+        [inline(JPEG, "jpeg")],
+        [inline(GIF, "gif")],
+        [inline(WEBP, "webp")],
+        [{"url": inline(PNG)}],
+        [{"url": inline(PNG), "detail": "high"}],
+        [bare(PNG)],  # Ollama accepts only this form.
+        [bare(JPEG)],  # Inert: no base64 text can leave the nonexistent /9j/ directory.
+        [{"url": bare(PNG)}],  # The form SGLang's documentation shows.
+        [inline(PNG), inline(JPEG, "jpeg")],
+        [],
+    ],
+)
+async def test_inline_images_are_forwarded_unchanged(images):
+    app, engine, _, _ = gateway(
+        Supply("clef", (SYSTEM_ONE,)), replies={SYSTEM_ONE: decision_reply()}
+    )
+    raw = json.dumps({**REQUEST, "images": images}, indent=1).encode()
+    async with app.router.lifespan_context(app):
+        async with http_client(app) as client:
+            response = await client.post(
+                PATH, content=raw, headers={"content-type": "application/json"}
+            )
+    assert response.status_code == 200
+    assert engine.jobs.requests[0][1].raw_body == raw
+
+
 @pytest.mark.parametrize(
     "field",
     [
-        {"stream": True},  # SGLang ignores it and answers JSON the SSE observer cannot read.
-        {"images": ["/etc/hostname"]},  # SGLang opens local paths and fetches any URL.
+        {"stream": True},  # Ignored by three backends, which answer JSON the SSE observer rejects.
+        # Anything a backend would open or fetch.
+        {"images": ["/etc/hostname"]},
+        {"images": ["/verify/red.png"]},
         {"images": ["file:///etc/hostname"]},
         {"images": ["http://metadata.internal/"]},
-        {"images": [{"url": "data:image/png;base64,AAAA"}]},  # Text only until accepted.
-        {"videos": ["https://example.com/a.mp4"]},  # SGLang drops these three.
-        {"assets": {"a": "b"}},
+        {"images": ["https://example.com/a.png"]},
+        {"images": [{"url": "http://metadata.internal/"}]},
+        {"images": [{"url": "/etc/hostname"}]},
+        {"images": [inline(PNG), "http://metadata.internal/"]},  # Every entry must qualify.
+        {"images": ["/9j/../../etc/hostname"]},  # Starts like a JPEG; `.` is not base64.
+        # Lookalikes of an inline image.
+        {"images": ["data:image/png,not-base64"]},
+        {"images": ["data:text/plain;base64,iVBORw0KGgo="]},
+        {"images": ["data:image/svg+xml;base64," + bare(b"<svg xmlns='x'/>" * 2)]},
+        # llama.cpp hears audio sent through `images`, whatever the field is called.
+        {"images": ["data:audio/wav;base64," + bare(WAV)]},
+        {"images": [bare(WAV)]},
+        {"images": [inline(WAV)]},
+        {"images": [inline(b"not an image at all")]},
+        {"images": [bare(b"not an image at all!")]},
+        {"images": ["data:image/png;base64,"]},
+        {"images": [inline(PNG) + "\n"]},
+        {"images": ["DATA:image/png;base64," + bare(PNG)]},
+        {"images": [" " + inline(PNG)]},
+        {"images": [""]},
+        # Shapes no backend documents.
+        {"images": inline(PNG)},
+        {"images": None},
+        {"images": [None]},
+        {"images": [7]},
+        {"images": [[inline(PNG)]]},
+        {"images": [{"detail": "high"}]},
+        {"images": [{"url": inline(PNG), "cache": True}]},
+        {"images": [{"url": inline(PNG), "detail": 3}]},
+        {"images": [{"type": "image_url", "image_url": {"url": inline(PNG)}}]},
+        # Fetched by some backends, or ignored by others so the decision would not use them.
+        {"videos": ["https://example.com/a.mp4"]},
+        {"audio": ["http://metadata.internal/a.wav"]},
+        {"files": ["http://metadata.internal/a.png"]},
+        {"assets": {"a": {"type": "image", "data_base64": bare(PNG)}}},
         {"media_kwargs": {"fps": 1}},
     ],
 )
-async def test_unsupported_inputs_fail_before_dispatch(field):
+async def test_unsafe_or_ignored_media_fail_before_dispatch(field):
     app, engine, _, _ = gateway(
         Supply("clef", (SYSTEM_ONE,)), replies={SYSTEM_ONE: decision_reply()}
     )
@@ -225,6 +308,33 @@ async def test_unsupported_inputs_fail_before_dispatch(field):
         async with http_client(app) as client:
             response = await client.post(PATH, json={**REQUEST, **field})
     assert response.status_code == 400 and response.headers["x-should-retry"] == "false"
+    assert not engine.jobs.requests
+
+
+async def test_sdk_extra_body_sends_an_image_the_gateway_forwards(tmp_path):
+    app, engine, ledger, secret = gateway(
+        Supply("clef", (SYSTEM_ONE,)), replies={SYSTEM_ONE: decision_reply()}, tmp_path=tmp_path
+    )
+    async with app.router.lifespan_context(app):
+        async with decisions_sdk(app, secret) as client:
+            result = await client.system_one(
+                state="See the photo.",
+                questions={"needs_help": Noul(instructions="Is it damaged?")},
+                extra_body={"images": [inline(PNG)]},
+            )
+    assert result.nouls["needs_help"].noul == 0.91
+    assert json.loads(engine.jobs.requests[0][1].raw_body)["images"] == [inline(PNG)]
+    assert charges(ledger) == 1
+
+
+async def test_sdk_image_helper_is_refused_because_no_backend_takes_multipart():
+    app, engine, _, _ = gateway(
+        Supply("clef", (SYSTEM_ONE,)), replies={SYSTEM_ONE: decision_reply()}
+    )
+    async with app.router.lifespan_context(app):
+        async with decisions_sdk(app) as client:
+            with pytest.raises(TypeSafeBadRequestError):
+                await client.system_one(state=Image(PNG), questions={"q": Noul(instructions="q?")})
     assert not engine.jobs.requests
 
 
@@ -491,6 +601,12 @@ async def test_real_engine_selects_pays_and_records_a_decision():
 
 
 # -- Envelope and usage units ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("value", [PNG, JPEG, GIF, WEBP])
+def test_envelope_accepts_each_supported_image_signature(value):
+    body = json.dumps({**REQUEST, "images": [inline(value), bare(value)]}).encode()
+    assert envelope(body, path=PATH, request_id="r").endpoint == SYSTEM_ONE
 
 
 def test_envelope_inspects_only_what_it_must():

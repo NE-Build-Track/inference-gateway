@@ -1,8 +1,8 @@
 # System One route and per-SDK model lists
 
 Decision models such as Cloudflare Clef answer typed questions with probabilities instead of
-generating text. SGLang serves them at `POST /v1/systemone`, the shape of TypeSafe's System One
-API. Clef refuses chat and generation requests, so no existing gateway route can reach it.
+generating text. SGLang, vLLM, llama.cpp and Ollama serve them at `POST /v1/systemone`, the shape of
+TypeSafe's System One API. Clef refuses chat and generation requests, so no existing gateway route can reach it.
 
 Adding a third API family also breaks `GET /v1/models`. Today every caller gets the same
 OpenAI-shaped list of every eligible model, so a Clef model would appear to chat clients and a
@@ -16,10 +16,12 @@ can use, in the format it parses.
 - A native route forwards the original bytes, then records `usage.input_tokens` and
   `usage.output_tokens` once. Zero output tokens is valid; retail charges input only.
 - Authentication, permissions, price snapshot, approval and deadlines match other native routes.
-- These fail with 400 before dispatch: `stream: true`, because SGLang would ignore it and answer
-  with JSON the gateway would read as a broken stream; `images`, because SGLang opens local paths
-  and fetches any URL given there; `videos`, `assets` and `media_kwargs`, because SGLang drops
-  them and would decide without them; compressed bodies.
+- `images` passes when every entry is a `data:image/...;base64,` string, bare base64, or an object
+  holding either, and the bytes decode to a PNG, JPEG, GIF or WebP. The body is forwarded unchanged.
+- These fail with 400 before dispatch: `stream: true`, because a backend that ignores it answers
+  with JSON the gateway would read as a broken stream; any other `images` value, because SGLang opens
+  local paths and SGLang and vLLM fetch URLs; `audio`, `videos`, `files`, `assets` and `media_kwargs`,
+  because some backends ignore them and would decide without them; compressed bodies.
 - A model without a native route gets 400. A chat-shaped body posted here never runs as chat.
 - A backend 400 or 422 keeps its status and body, carries `x-should-retry: false` and costs the
   customer nothing. A 200 without valid usage is a 502 with no charge.
@@ -64,8 +66,9 @@ expired approval, stays 503.
   callable by name. The supported vLLM manifest advertises all three endpoints, so it stays listed.
 - **Display fields live in route configuration.** Runners self-report metadata, and four endpoints
   already use 920 of its 1,024 bytes.
-- **Text only at first.** See the acceptance list. Inline `data:` images can follow once they have
-  acceptance evidence.
+- **Inline images, on any backend.** Evidence from all four backends replaced the first text-only
+  rule and the rule that only SGLang serves this route; see
+  [the decision](../../design-docs/decisions.md#system-one-and-per-sdk-model-lists).
 
 ## Work
 
@@ -75,6 +78,9 @@ expired approval, stays 503.
 - [x] Per-family model listing, formats and route display fields.
 - [x] SDK contract tests with `typesafe-sdk` as a dev dependency.
 - [x] Compatibility, native inference, runner contract and operations documents.
+- [x] Inline image rule, and metadata that admits vLLM, Ollama and llama.cpp runners.
+- [x] Per-backend configuration in `live-runner/runtimes/clef`.
+- [x] [Offchain acceptance on all four backends](../../../live-runner/tests/clef-backends-2026-11-02.md).
 - [ ] Paid acceptance on a real Clef runner.
 
 ## Rollout
@@ -86,16 +92,18 @@ an unknown profile.
 
 ## Verification
 
-`make check`: 589 passed, plus lint, formatting, strict typing and documentation checks. Live
-acceptance needs one paid request per case on a Clef runner: decision round
-trip, exact input-only retail charge, wholesale reconciliation, backend 422, each list view and
-concurrent capacity. Nothing here has run against a live Clef server yet.
+`make check`: 638 passed, plus lint, formatting, strict typing and documentation checks.
+
+The [backend comparison](../../../live-runner/tests/clef-backends-2026-11-02.md) ran decision round
+trips, images, exact input-only retail charges, backend refusals and each list view on all four
+backends through the v0.2.1 image, with the node offchain. Paid acceptance still needs a Clef runner
+reachable by a paying gateway, and it must show wholesale reconciliation for a decision.
 
 ## Unresolved
 
-- Whether the locked SGLang 0.5.22 image and its 2 GB `shm_size` serve Clef. The model card uses
-  32 GB and `--ipc=host`.
-- Concurrent capacity; the model card reports latency only.
-- Retail and wholesale rates, which need real token counts per request.
+- Concurrent capacity. Four decisions at once work on every backend, but no limit has been measured.
+- Retail and wholesale rates. Real token counts now exist: 151 to 153 for a short text decision, and
+  203 to 218 with one image.
+- How backends other than SGLang handle `state` that is too long.
 - `live-runner/tests/probe_vision.py` waits for its model in the OpenAI list, so it now stops
   before any payment on a runner that does not advertise both chat and Responses.

@@ -44,7 +44,7 @@ backend rejects it.
 ## Capabilities and limits
 
 - Text, SSE streaming, tool calls and tool-result follow-ups through the OpenAI and Anthropic APIs.
-- Decision models through the System One API, with text input.
+- Decision models through the System One API, with text and inline images.
 - Multiple users and scoped API keys, administered through a local CLI.
 - Versioned retail rates, cached-input accounting, append-only charges and adjustments.
 - Backend wholesale evidence, correlated jobs and durable accounting reconciliation.
@@ -54,8 +54,9 @@ This is a documented compatibility subset. The gateway and deterministic fake al
 reasoning, additional sampling controls, structured output, citations, simulated hosted search,
 interleaved tool calls and image/audio fixtures. See the [extended feature contract](docs/product-specs/extended-generation.md)
 for native fields and gateway extensions. Livepeer routes can explicitly enable structured output,
-reasoning on/off, stop controls and parallel tools. Additional guarded adapter paths cover sampling,
-reasoning effort/budgets and media input; they remain unverified and disabled locally. Citations,
+reasoning on/off, stop controls and parallel tools. Image input has passed paid checks on a vLLM
+route. Additional guarded adapter paths cover sampling, reasoning effort/budgets and audio input; they
+remain unverified and disabled locally. Citations,
 hosted search and media output have fake contracts only.
 A [stateless Responses subset and per-SDK model lists](docs/product-specs/models-and-responses.md)
 are also implemented. Livepeer model routing now requires runner metadata `model_name`.
@@ -211,7 +212,7 @@ reconciliation redrive. See [operations](docs/OPERATIONS.md) and the
 make check
 uv build
 scripts/build-images.sh gateway              # inference-gateway:local
-IMAGE_TAG=v0.2.0 scripts/build-images.sh     # All three images under one release tag
+IMAGE_TAG=v0.2.1 scripts/build-images.sh     # All three images under one release tag
 ```
 
 The script builds locally and never publishes.

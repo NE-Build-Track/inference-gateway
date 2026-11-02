@@ -37,5 +37,5 @@ Use a short task note for small edits.
 
 - [Metadata runner identity](completed/metadata-runner-identity.md): native admission without node PR #1.
 - [M3 payment compatibility](completed/m3-payment-compatibility.md): latest Core review and startup guard; the native port it needed merged as Core `2134e29`.
-- [System One route](active/system-one-route.md): decision models and per-SDK model lists; offline verified, paid acceptance pending.
+- [System One route](active/system-one-route.md): decision models and per-SDK model lists; verified offchain on four backends, paid acceptance pending.
 - [Upstream repin and publication](active/upstream-repin-publication.md): Core M3 and `livepeer/` dependencies accepted; image publication pending.

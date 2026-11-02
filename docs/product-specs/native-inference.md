@@ -139,7 +139,8 @@ Deploy the updated gateway before advertising the new metadata: older gateway co
 reject the new field. Regenerate runner configuration, then issue approvals for its new
 deployment revision; old revisions are not automatically promoted. The bundle's node comes from
 the [image lock](../../live-runner/images.lock.json). The gateway must understand every profile a
-runner advertises, so `systemone` needs v0.2.0 or later.
+runner advertises, so `systemone` needs v0.2.0 or later on SGLang and v0.2.1 or later on any other
+runtime.
 
 Native startup requires Core's raw-body, content-type, protocol-header and HTTP-error
 request fields plus its response-header stream facade. An incompatible dependency

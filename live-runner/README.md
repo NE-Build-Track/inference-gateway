@@ -17,6 +17,7 @@ enter discovery as usable supply. Existing gateway traffic is unchanged.
 - [images.lock.json](images.lock.json): immutable runtime, readiness and node image references.
 - [vLLM](runtimes/vllm/README.md), [Ollama](runtimes/ollama/README.md),
   [SGLang](runtimes/sglang/README.md): model/parser configuration and limitations.
+- [Clef-Flash](runtimes/clef/README.md): a decision model on each backend, configured by hand.
 - [render.py](tooling/render.py): validates a manifest and emits a self-contained bundle.
 - [readiness.py](tooling/readiness.py): observes model availability without proxying generation.
 - [orchestrator](orchestrator/README.md): node configuration and admission boundary.

@@ -181,5 +181,9 @@ live suites still assume validated-route tool semantics that native vLLM does no
 
 System One and per-SDK model lists pass `make check` with 589 tests, including round trips and model
 lists through the real `typesafe-sdk`, OpenAI and Anthropic clients and one decision through Builder
-Core's real engine with a scripted transport. Verification is offline; no
-live Clef server or paid decision has run. See the [plan](exec-plans/active/system-one-route.md).
+Core's real engine with a scripted transport. See the [plan](exec-plans/active/system-one-route.md).
+
+The [backend comparison](../live-runner/tests/clef-backends-2026-11-02.md) ran Clef-Flash decisions, with
+and without images, through the v0.2.1 image on SGLang, vLLM, llama.cpp and Ollama, and each passed all
+37 checks, including one exact retail charge per decision. The node ran offchain, so no decision has been
+paid for. `make check` passes 638 tests.

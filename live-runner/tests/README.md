@@ -32,6 +32,8 @@ Core `releases/m3` and `livepeer/` Node, Batteries and SDK, with exact wholesale
 The [capacity benchmark](vllm-capacity-2026-10-29.md) measures concurrency limits for the vLLM runner.
 The [release candidate check](release-candidate-2026-10-29.md) repeats paid acceptance on the image
 built from `main` and exercises paid failover between two orchestrators.
+The [Clef backend comparison](clef-backends-2026-11-02.md) runs decisions and images through the gateway
+on four backends, offchain, and records what each backend does with audio and video.
 
 
 ## Opt-in image acceptance

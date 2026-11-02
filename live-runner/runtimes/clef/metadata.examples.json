@@ -1,0 +1,90 @@
+{
+  "sglang": {
+    "inference_contract": 1,
+    "runner_id": "clef-flash-sglang",
+    "model_name": "Cloudflare/clef-flash",
+    "runtime": {
+      "name": "sglang",
+      "image": "lmsysorg/sglang@sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae"
+    },
+    "deployment_revision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "endpoints": {
+      "systemone": {
+        "path": "/v1/systemone",
+        "profile": "typesafe.systemone.v1",
+        "usage": "systemone.final.v1",
+        "stream_usage": "unsupported"
+      }
+    },
+    "limits": {
+      "context_tokens": 17000
+    },
+    "admission": "candidate"
+  },
+  "vllm": {
+    "inference_contract": 1,
+    "runner_id": "clef-flash-vllm",
+    "model_name": "Cloudflare/clef-flash",
+    "runtime": {
+      "name": "vllm",
+      "image": "vllm/vllm-openai@sha256:d825baf9ce4b1b6bfc5ecc7b79880c7e6748c65a72d697ce3d47607aafa84c6e"
+    },
+    "deployment_revision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "endpoints": {
+      "systemone": {
+        "path": "/v1/systemone",
+        "profile": "typesafe.systemone.v1",
+        "usage": "systemone.final.v1",
+        "stream_usage": "unsupported"
+      }
+    },
+    "limits": {
+      "context_tokens": 16384
+    },
+    "admission": "candidate"
+  },
+  "ollama": {
+    "inference_contract": 1,
+    "runner_id": "clef-flash-ollama",
+    "model_name": "clef-flash:9b",
+    "runtime": {
+      "name": "ollama",
+      "image": "ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8"
+    },
+    "deployment_revision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "endpoints": {
+      "systemone": {
+        "path": "/v1/systemone",
+        "profile": "typesafe.systemone.v1",
+        "usage": "systemone.final.v1",
+        "stream_usage": "unsupported"
+      }
+    },
+    "limits": {
+      "context_tokens": 16384
+    },
+    "admission": "candidate"
+  },
+  "llamacpp": {
+    "inference_contract": 1,
+    "runner_id": "clef-flash-llamacpp",
+    "model_name": "Cloudflare/clef-flash",
+    "runtime": {
+      "name": "llamacpp",
+      "image": "ghcr.io/ggml-org/llama.cpp@sha256:0a9f6c7cfe5a6b90b6c048b7a86865bf55a88af34bada927482eab2ef5f25b4a"
+    },
+    "deployment_revision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "endpoints": {
+      "systemone": {
+        "path": "/v1/systemone",
+        "profile": "typesafe.systemone.v1",
+        "usage": "systemone.final.v1",
+        "stream_usage": "unsupported"
+      }
+    },
+    "limits": {
+      "context_tokens": 16384
+    },
+    "admission": "candidate"
+  }
+}

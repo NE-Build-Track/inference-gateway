@@ -131,9 +131,21 @@ existing compatibility guarantees or authorize silent accounting/storage changes
 ## System One and per-SDK model lists
 
 Accepted 1 November 2026. Serve decision models by forwarding `POST /v1/systemone` natively, since
-they generate no text and nothing can translate them to chat. Start with text state: SGLang opens
-local paths and fetches any URL in `images`. Revisit when a client needs images and inline `data:`
-URLs have acceptance evidence.
+they generate no text and nothing can translate them to chat.
+
+Accepted 2 November 2026. Admit `images` only when each entry carries the image itself, because SGLang
+opens local paths and SGLang and vLLM fetch URLs. Accept both inline forms, a `data:` string and bare
+base64, and leave the choice to the client: backends disagree about which they take, and Ollama takes
+only the bare form. One rule then covers every backend, with no per-backend logic in the gateway. Check
+that the bytes are an image, because llama.cpp passes audio sent through `images` to a model that can
+hear it.
+
+Keep refusing `audio`, `videos`, `files` and `assets`. SGLang, Ollama and llama.cpp answer as if
+`audio` were absent, so a customer would pay for a decision that never heard it, and no check on the
+request can tell. Revisit with a per-route setting once a deployment has proved its model uses them.
+
+Do not limit System One to one runtime. The earlier rule that only SGLang serves it was wrong: all four
+tested backends do.
 
 Choose each `GET /v1/models` response from request headers, because all three SDKs call the same
 path and parse different formats. A model appears only if it serves every endpoint the caller's SDK

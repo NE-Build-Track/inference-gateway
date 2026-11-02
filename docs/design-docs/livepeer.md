@@ -148,8 +148,8 @@ application allocation. No accounting retry dispatches a new job.
 ## Extended capability status
 
 Routes may opt into `structured_output`, `reasoning`, `stop`, and `parallel_tools` using their
-`capabilities` array, along with the guarded `sampling`, `reasoning_budget` and `media_input`, which
-remain unverified live. The array defaults to empty. The [extended contract](../product-specs/extended-generation.md#livepeer-route-capabilities)
+`capabilities` array, along with the guarded `sampling`, `reasoning_budget` and `media_input`. Of those
+three, only images through `media_input` have been verified live. The array defaults to empty. The [extended contract](../product-specs/extended-generation.md#livepeer-route-capabilities)
 defines the precise supported controls, signatures, stop evidence, and streaming behavior.
 Requirements are checked against the selected route before paid dispatch, including history.
 Features a route has not enabled fail before dispatch. Unexpected/invalid output returns `unsupported_response`

@@ -24,7 +24,7 @@ this renderer does not create them.
 | `chat_completions` | `/v1/chat/completions` | Prompt/completion usage; cached input subset; streaming requires `stream_options.include_usage` |
 | `responses` | `/v1/responses` | Input/output/cache usage from terminal response events; stateless profile only |
 | `messages` | `/v1/messages` | Combine message-start/message-delta usage by protocol semantics, without double counting |
-| `systemone` | `/v1/systemone` | Input/output usage from the unary response; zero output is valid; no streaming; SGLang only |
+| `systemone` | `/v1/systemone` | Input/output usage from the unary response; zero output is valid; no streaming |
 
 These profiles define test targets, not claims that a declared runtime passes. Native
 requests retain backend validation semantics. Profiles do not promise every provider
@@ -59,4 +59,5 @@ Deploy the updated gateway before advertising the new metadata: older gateway co
 reject the new field. Regenerate runner configuration, then issue approvals for its new
 deployment revision; old revisions are not automatically promoted. The bundle's node comes from
 the [image lock](../images.lock.json). The gateway must understand every profile a runner
-advertises, so `systemone` needs v0.2.0 or later.
+advertises, so `systemone` needs v0.2.0 or later on SGLang and v0.2.1 or later on any other
+runtime.

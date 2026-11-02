@@ -20,8 +20,5 @@ Streaming callers must still explicitly request usage under the chat endpoint pr
 
 ## Decision models
 
-[clef-flash.example.json](clef-flash.example.json) advertises only `systemone`, because Clef refuses
-chat and generation. Supply a real commit before rendering. SGLang's model card runs Clef with 32 GB
-of shared memory and `--ipc=host`, while the renderer sets 2 GB, so acceptance must confirm this
-configuration. Capacity is a placeholder until measured. See the
-[System One contract](../../../docs/product-specs/system-one.md).
+Do not render a decision model from this bundle. The tested Clef configuration uses 32 GB of shared
+memory, `--ipc=host` and memory limits that the renderer does not set. Use [Run Clef-Flash](../clef/README.md) instead.
