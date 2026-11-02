@@ -6,12 +6,12 @@ from livepeer_builder.services.discovery import MostCapacityFirst
 from livepeer_builder.testing import runner
 from pydantic import ValidationError
 
-from inference_gateway.adapters.capability_contract import (
+from inference_gateway.adapters.runner_contract import PROFILES
+from inference_gateway.adapters.runner_contract_v2 import (
     MEDIA_PROFILES,
-    CapabilityMetadata,
+    RunnerMetadataV2,
     parse_metadata,
 )
-from inference_gateway.adapters.runner_contract import PROFILES
 from inference_gateway.backends.discovery import normalize_native_identity
 from inference_gateway.backends.native_selection import Admission, NativeSelection
 
@@ -32,7 +32,7 @@ def declaration(endpoint="images_generations"):
 def test_media_declaration_has_shared_capacity_without_context_token_limit():
     raw = declaration()
     parsed = parse_metadata(raw)
-    assert isinstance(parsed, CapabilityMetadata) and parsed.limits == {}
+    assert isinstance(parsed, RunnerMetadataV2) and parsed.limits == {}
     assert parsed.capacity_group.id == "host-gpu0"
     for key, value in (("slots", 0), ("id", "")):
         invalid = declaration()

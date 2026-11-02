@@ -7,8 +7,8 @@ from urllib.parse import urlsplit
 from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import DiscoverySource, SelectionPolicy
 
-from inference_gateway.adapters.capability_contract import CapabilityMetadata, parse_metadata
 from inference_gateway.adapters.runner_contract import PROFILES, RunnerMetadata
+from inference_gateway.adapters.runner_contract_v2 import RunnerMetadataV2, parse_metadata
 
 
 def origin(url: str) -> tuple[str, str, int]:
@@ -66,7 +66,7 @@ class FilteredDiscovery:
         return tuple(selected)
 
 
-def native_runner_id(runner: Runner, metadata: RunnerMetadata | CapabilityMetadata) -> str | None:
+def native_runner_id(runner: Runner, metadata: RunnerMetadata | RunnerMetadataV2) -> str | None:
     """Resolve a declaration, not an authorization; never infer identity from a URL."""
     if metadata.runner_id is not None:
         if runner.runner_id and runner.runner_id != metadata.runner_id:

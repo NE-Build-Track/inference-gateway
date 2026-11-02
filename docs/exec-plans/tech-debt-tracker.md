@@ -5,12 +5,13 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Item | Trigger / next action |
 | --- | --- |
 | Live operational coverage | The inference and multi-user accounting black-box suites pass; load, live disconnects, and provider-failure drills remain outside that matrix |
-| Media API acceptance | Complete response/event schemas, paid media accounting, shared live/batch admission and all-nine-model immutable-image acceptance; see the [active plan](active/comfystream-capabilities.md) |
+| OpenAPI media contracts | Conversational request bodies are described; complete media request/response and error schemas before media release |
 | Production resource controls | Before shared hosting: request-body limits, per-tenant concurrency quotas, proxy TLS |
 | Observability | Define SLOs, then add metrics, tracing, and validation/failure counters |
 | Full protocol semantics | Expand the compatibility matrix and fixture coverage as client requirements appear |
 | Schema compatibility | Strict OpenAI tools and structured text validate locally, including non-recursive local references. Recursive/external references and other unsupported JSON Schema keywords remain rejected; Anthropic strict tools remain outside the contract. |
-| Client idempotency | Requests are distinct paid operations; add a replay/duplicate-request contract before enabling transparent retries |
+| Client idempotency | Synchronous media batches replay saved responses with tenant-scoped keys; conversation requests remain distinct paid operations |
+| Network media acceptance | Verify media-unit pricing, paid orchestrator dispatch, limits/disconnect matrices and v2 deployment rendering; registry billing refuses media until pricing is implemented |
 | System One acceptance | [Verified offchain on four backends](../../live-runner/tests/clef-backends-2026-11-02.md). No decision has been paid for. Run the paid cases in [the plan](active/system-one-route.md) on a real Clef runner before describing the route as accepted |
 | System One audio and video | The gateway refuses `audio`, `videos` and `files`, because [some backends ignore them](../../live-runner/tests/clef-backends-2026-11-02.md#audio-and-video) and return a normal answer. Add a per-route setting, as `media_input` does for validated routes, when a deployment proves its model uses them |
 | Decision state limits | SGLang cuts long `state` without warning. Other backends are unmeasured. Measure them before relying on long state |

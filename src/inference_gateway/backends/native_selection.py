@@ -9,8 +9,8 @@ from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import SelectionPolicy
 from pydantic import ValidationError
 
-from inference_gateway.adapters.capability_contract import parse_metadata
 from inference_gateway.adapters.runner_contract import PROFILES
+from inference_gateway.adapters.runner_contract_v2 import MEDIA_PROFILES, parse_metadata
 from inference_gateway.backends.discovery import native_runner_id, origin
 
 
@@ -44,7 +44,10 @@ class NativeSelection:
         self._now = now
 
     def order(self, candidates: Sequence[Runner], request: JobRequest) -> Sequence[Runner]:
-        endpoint = next((k for k, p in PROFILES.items() if p["path"] == request.path), None)
+        endpoint = next(
+            (k for k, p in {**PROFILES, **MEDIA_PROFILES}.items() if p["path"] == request.path),
+            None,
+        )
         if endpoint is None or request.method != "POST":
             raise NoCapacity("No admitted native endpoint")
         approvals, now = self._approvals(), self._now()

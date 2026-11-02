@@ -3,10 +3,11 @@
 Version 1 remains unchanged. [Version 2 metadata](metadata-v2.schema.json) and
 [profiles](profiles-v2.json) add ComfyStream media operations and explicit shared
 capacity identity without requiring a context-token limit. They are generated from
-the [capability contract](../../src/inference_gateway/adapters/capability_contract.py).
+the [remote runner contract](../../src/inference_gateway/adapters/runner_contract_v2.py).
 Discovery accepts either version; native conversational selection still requires
-the existing independent approval. Paid media dispatch, the v2 deployment renderer
-and complete shared-capacity enforcement remain candidate work, not certification.
+the existing independent approval. Synchronous media uses the same admitted network
+transport. The v2 deployment renderer, media retail pricing and complete runner-side
+shared-capacity enforcement remain candidate work, not certification.
 
 [deployment.schema.json](deployment.schema.json) describes operator input;
 [metadata.schema.json](metadata.schema.json) describes the compact advertisement.

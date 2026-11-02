@@ -4,23 +4,20 @@ Status: implemented subset, verified against the SDK versions in `uv.lock`.
 Compatibility means the listed request and response flows work with those SDKs.
 It does not mean every provider feature or every agent application is supported.
 
-The optional ComfyStream candidate adds image generation/editing, WAV speech,
-JSON/text transcription, video lifecycle, image transformations, music, meshes,
-durable jobs and authenticated artifacts. Its [active acceptance plan](../exec-plans/active/comfystream-capabilities.md)
-tracks the remaining media response/event schemas, GPU/profile acceptance and
-paid-media work. Model features are explicitly rejected until their adapter supports
-them; local Qwen currently supports plain text without tools or reasoning controls.
+The optional `batch` extra adds synchronous network media methods when
+`GATEWAY_BATCH_DATABASE` is configured. Requests use admitted Livepeer runners through
+Builder Engine. SQLite stores request receipts, correlated network job IDs and
+idempotency records; `GATEWAY_BATCH_ARTIFACT_DIR` stores the returned response artifacts
+under opaque, authenticated IDs. `GATEWAY_BATCH_RETENTION_SECONDS` defaults to 86400.
+There is no embedded model runtime, local generation queue or direct runner-address
+configuration in the gateway. Incomplete network outcomes are retained and never
+automatically resubmitted. Standard synchronous routes return provider response bodies.
 
-Use `GATEWAY_CAPABILITY_WORKSPACE` for local execution, or configure
-`GATEWAY_CAPABILITY_RUNNERS` as a JSON mapping of `media`/`chat` profiles to private
-ComfyStream HTTP origins with `GATEWAY_CAPABILITY_RUNNER_TOKEN`. Both profiles must
-match the installed catalog. They share staged-input/output and GPU-admission volumes;
-the gateway owns a separate SQLite jobs database and opaque artifact IDs under
-`GATEWAY_CAPABILITY_STATE_DIR`. Retention defaults to 86400 seconds and is configured
-with `GATEWAY_CAPABILITY_RETENTION_SECONDS`; the bounded queue defaults to 16.
-Uploaded files are tenant-owned, limited to 25 MiB, and expire; remote media URLs
-are unsupported. Completed jobs survive restart, interrupted jobs fail without replay,
-and tenant-scoped idempotency keys reject changed inputs.
+Image generation/editing, speech, transcription and transformation/music/mesh batch
+extensions are candidate network methods. Async video/job lifecycle forwarding and
+media retail pricing still need acceptance. Registry billing refuses media requests
+until media-unit pricing is configured; media is never charged as invented tokens.
+The [network-runner plan](../exec-plans/active/comfystream-capabilities.md) tracks release gates.
 
 ## Interfaces
 
@@ -113,8 +110,7 @@ Guarded sampling, reasoning effort/budget and audio input controls remain unveri
 paid dispatch.
 
 See [Models and Responses](models-and-responses.md) for their separate stateless contract.
-Embeddings, stored conversations, and customer payment collection remain outside this slice. Registry mode provides persistent usage and retail/wholesale accounting. The server's generated OpenAPI page lists routes but does not yet describe the
-manually parsed request bodies; this document and request models define the contract.
+Embeddings, stored conversations, and customer payment collection remain outside this slice. Registry mode provides persistent usage and retail/wholesale accounting. Generated OpenAPI describes conversational request bodies, authentication and streaming responses. Complete media schemas remain a release gate; this document and request models define the supported subset.
 
 ## Livepeer backend
 

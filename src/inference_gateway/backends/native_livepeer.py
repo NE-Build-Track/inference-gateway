@@ -17,6 +17,7 @@ from livepeer_builder import (
 from livepeer_builder.api import JobStreamApi
 
 from inference_gateway.adapters.runner_contract import PROFILES
+from inference_gateway.adapters.runner_contract_v2 import MEDIA_PROFILES
 from inference_gateway.backends.discovery import origin
 from inference_gateway.backends.native_selection import Admission, NativeSelection
 from inference_gateway.config import LivepeerSettings, ModelRoute
@@ -86,7 +87,7 @@ class LivepeerNativeBackend:
 
     def models_for(self, endpoints: tuple[str, ...]) -> tuple[str, ...]:
         def serves(name: str, endpoint: str) -> bool:
-            path = PROFILES[endpoint]["path"]
+            path = {**PROFILES, **MEDIA_PROFILES}[endpoint]["path"]
             return any(self.eligible(r, path) for r in self.routes if r.name == name)
 
         names = {r.name for r in self.routes}
@@ -98,7 +99,9 @@ class LivepeerNativeBackend:
                 {
                     r.name
                     for r in self.routes
-                    if any(self.eligible(r, p["path"]) for p in PROFILES.values())
+                    if any(
+                        self.eligible(r, p["path"]) for p in {**PROFILES, **MEDIA_PROFILES}.values()
+                    )
                 }
             )
         )

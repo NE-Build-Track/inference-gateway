@@ -1,26 +1,5 @@
 {
   "$defs": {
-    "CapabilityRuntime": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "const": "comfystream",
-          "title": "Name",
-          "type": "string"
-        },
-        "image": {
-          "pattern": "^[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}$",
-          "title": "Image",
-          "type": "string"
-        }
-      },
-      "required": [
-        "name",
-        "image"
-      ],
-      "title": "CapabilityRuntime",
-      "type": "object"
-    },
     "CapacityGroup": {
       "additionalProperties": false,
       "properties": {
@@ -76,6 +55,27 @@
       ],
       "title": "EndpointProfile",
       "type": "object"
+    },
+    "RuntimeIdentityV2": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "comfystream",
+          "title": "Name",
+          "type": "string"
+        },
+        "image": {
+          "pattern": "^[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}$",
+          "title": "Image",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "image"
+      ],
+      "title": "RuntimeIdentityV2",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -98,7 +98,7 @@
       "type": "string"
     },
     "runtime": {
-      "$ref": "#/$defs/CapabilityRuntime"
+      "$ref": "#/$defs/RuntimeIdentityV2"
     },
     "deployment_revision": {
       "pattern": "^sha256:[0-9a-f]{64}$",
@@ -139,6 +139,6 @@
     "capacity_group",
     "admission"
   ],
-  "title": "CapabilityMetadata",
+  "title": "RunnerMetadataV2",
   "type": "object"
 }

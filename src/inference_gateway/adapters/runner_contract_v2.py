@@ -1,4 +1,4 @@
-"""Version two declarations for workflow-backed media runners; v1 is unchanged."""
+"""Version-two declarations for remote Livepeer runners; v1 is unchanged."""
 
 from typing import Any, Literal, Self
 
@@ -32,7 +32,7 @@ MEDIA_PROFILES = {
 }
 
 
-class CapabilityRuntime(ContractModel):
+class RuntimeIdentityV2(ContractModel):
     name: Literal["comfystream"]
     image: str = Field(pattern=DIGEST)
 
@@ -42,11 +42,11 @@ class CapacityGroup(ContractModel):
     slots: int = Field(ge=1)
 
 
-class CapabilityMetadata(ContractModel):
+class RunnerMetadataV2(ContractModel):
     inference_contract: Literal[2]
     runner_id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,62}$")
     model_name: str = Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
-    runtime: CapabilityRuntime
+    runtime: RuntimeIdentityV2
     deployment_revision: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
     endpoints: dict[str, EndpointProfile] = Field(min_length=1)
     capacity_group: CapacityGroup
@@ -65,7 +65,7 @@ class CapabilityMetadata(ContractModel):
         return self
 
 
-def parse_metadata(value: dict[str, Any]) -> RunnerMetadata | CapabilityMetadata:
+def parse_metadata(value: dict[str, Any]) -> RunnerMetadata | RunnerMetadataV2:
     if value.get("inference_contract") == 2:
-        return CapabilityMetadata.model_validate(value)
+        return RunnerMetadataV2.model_validate(value)
     return RunnerMetadata.model_validate(value)
