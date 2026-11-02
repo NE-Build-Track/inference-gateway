@@ -25,6 +25,7 @@ from inference_gateway.core.backend import (
     BackendDeadline,
     BackendError,
     BackendUnavailable,
+    QuotaExhausted,
 )
 from inference_gateway.core.models import Finished
 from inference_gateway.core.native import NativeRequest
@@ -150,6 +151,8 @@ class LivepeerNativeBackend:
                 raise BackendDeadline("Native job deadline exceeded") from None
             if exc.job.state == "uncertain":  # may have run and been charged: not "could not start"
                 raise BackendError("Native job outcome unknown") from None
+            if exc.job.failure and exc.job.failure.reason == "allowance_exhausted":  # Core D58
+                raise QuotaExhausted("Native job allowance exhausted") from None
             raise BackendUnavailable("Native job could not start") from None
         except EngineError:
             raise BackendUnavailable("Native job could not start") from None

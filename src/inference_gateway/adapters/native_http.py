@@ -7,7 +7,7 @@ from starlette.responses import Response
 from starlette.types import Receive, Scope, Send
 
 from inference_gateway.adapters.ledger import SQLiteLedger
-from inference_gateway.core.backend import BackendError
+from inference_gateway.core.backend import BackendError, QuotaExhausted
 from inference_gateway.core.native import NativeBackend, NativeRequest
 from inference_gateway.native import forward
 
@@ -114,7 +114,9 @@ class NativeHTTPResponse(Response):
                 else 502
             )
             message = (
-                "Generation deadline exceeded"
+                exc.public_message
+                if isinstance(exc, QuotaExhausted)
+                else "Generation deadline exceeded"
                 if status == 504
                 else "Native backend unavailable"
                 if status == 503

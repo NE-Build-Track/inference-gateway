@@ -122,6 +122,47 @@ async def test_usage_reporting_retries_do_not_repeat_generation():
         assert len(await engine.jobs.list_jobs(actor)) == 1
 
 
+async def test_a_repeat_after_a_refused_payment_is_the_job_accounting_finds():
+    """A job the signer refused never reached a runner, so the engine dispatches a repeat of its
+    request id as a new job (builder-core D57). Both carry the id; accounting reads the newer
+    one."""
+    from livepeer_builder import EngineSupply, JobFailed, JobRequest, RunnerCallError
+    from livepeer_builder.testing import ScriptedTransport, make_engine
+
+    app = "chat/test"
+    actor = ActorContext(
+        actor_id="a",
+        application_id="app",
+        permissions=frozenset({"jobs.run", "jobs.read", "costs.read"}),
+    )
+    refused = RunnerCallError(
+        "payment",
+        "signer refused",
+        payment_sent=False,
+        status_code=402,
+        reason="allowance_exhausted",
+    )
+    transport = ScriptedTransport(steps=[refused, ScriptedTransport.ok()])
+    async with make_engine(
+        runners=[runner(app, metadata='{"model_name":"test"}')],
+        supply=EngineSupply(transport=transport),
+        allocation_mode="per_application",
+        shared_payment_key="fixture-key",
+        shared_allocation_id="fixture-allocation",
+    ) as engine:
+        request = JobRequest(app=app, path="/", operation_ref="req_r")
+        try:
+            await engine.jobs.run(actor, request)
+        except JobFailed as exc:
+            first = exc.job
+        else:
+            raise AssertionError("the refused payment should fail the first job")
+        second = (await engine.jobs.run(actor, request)).job
+        assert second.id != first.id
+        observed = await LivepeerAccounting(engine, actor).observe("req_r", None, None)
+        assert observed.job_id == str(second.id)
+
+
 async def test_cached_usage_roundtrips_through_anthropic_stream_sdk():
     import httpx
     from anthropic import AsyncAnthropic

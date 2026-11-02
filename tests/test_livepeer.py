@@ -417,6 +417,42 @@ async def test_engine_failures_map_to_safe_http_errors(protocol, kind, paid, sta
     assert len(engine.jobs.requests) == 1
 
 
+@pytest.mark.parametrize("protocol", ["openai", "anthropic"])
+@pytest.mark.parametrize("paid", [False, True])
+async def test_an_exhausted_allowance_is_insufficient_quota_not_unavailable(protocol, paid):
+    """The signer refuses a spent allowance with 402 (Core D58). Retrying cannot help, so it is
+    OpenAI's 429 insufficient_quota rather than a retryable 503, also after a paid failover."""
+    engine = FakeEngine(
+        streaming=True,
+        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
+        replies={
+            (APP, PATH): Fails(
+                kind="payment",
+                message="upstream private secret",
+                status_code=402,
+                payment_sent=paid,
+                reason="allowance_exhausted",
+            )
+        },
+    )
+    app = create_app(LivepeerBackend(engine, OPTIONS))
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as c:
+        path = "/v1/chat/completions" if protocol == "openai" else "/v1/messages"
+        body = {"model": "qwen", "messages": [{"role": "user", "content": "hello"}], "stream": True}
+        if protocol == "anthropic":
+            body["max_tokens"] = 100
+        response = await c.post(path, json=body, headers={"anthropic-version": "2023-06-01"})
+    assert response.status_code == 429
+    assert response.headers["x-should-retry"] == "false"
+    error = response.json()["error"]
+    assert error["code"] == "insufficient_quota"
+    assert error["type"] == ("insufficient_quota" if protocol == "openai" else "rate_limit_error")
+    assert error["message"] == "Generation allowance exhausted"
+    assert "upstream private secret" not in response.text
+
+
 async def test_no_capacity_failover_is_owned_by_engine_only():
     transport = ScriptedStreamTransport(
         opens=[
