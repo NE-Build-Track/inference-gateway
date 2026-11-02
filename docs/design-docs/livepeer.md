@@ -6,8 +6,10 @@ serve the configured Livepeer model; an Anthropic interface does not imply that 
 [Native routes](../product-specs/native-inference.md), including System One, forward the original
 request instead. The rest of this page describes validated routes unless it says otherwise.
 
-Builder Core is pinned to `releases/m3` at `d3df80657ef1b497d1b6dff90fb7e27d9e03bc58`, which
-includes the native HTTP merge `2134e29`. Core pins the Python gateway SDK to upstream `2017a80`,
+Builder Core is pinned to `releases/m3` at `15142129ebbf51103658f8ad48fd5adae052c56d`, the M3
+merge, which includes the native HTTP merge `2134e29`. Since M3 a job that never reached a runner,
+such as one whose payment the signer refused, is dispatched again by a repeat of its request id
+(Core D57); both jobs carry the id, and accounting reads the newer one. Core pins the Python gateway SDK to upstream `2017a80`,
 recorded in `uv.lock`; no fork is pinned.
 Only the backend and application composition import Livepeer packages.
 
