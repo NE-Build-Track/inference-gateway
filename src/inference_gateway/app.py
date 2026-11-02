@@ -112,6 +112,8 @@ def failure(
         401: "authentication_error",
         403: "permission_error",
         409: "invalid_request_error",
+        # OpenAI's quota error; Anthropic has no quota type at 429. x-should-retry stops either SDK.
+        429: "insufficient_quota" if protocol != "anthropic" else "rate_limit_error",
         499: "api_error",
         502: "api_error",
         503: "api_error",

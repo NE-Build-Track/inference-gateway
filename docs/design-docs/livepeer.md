@@ -111,8 +111,8 @@ Only Builder Core retries. It fails a job over to another runner when the runner
 (503, 404, 409, or a refused payment), also after payment, but then only to another orchestrator
 and at most `LPB_MAX_PAID_ATTEMPTS` times (Core D52, D55). The gateway never retries a paid or
 partial job itself. Pre-header errors map to 400 for unknown models, 409 for operation conflicts,
-503 for unavailable capacity/payment infrastructure, 504 for timeouts, or 502 for other backend
-failures. A job Builder Core leaves `uncertain` (it may have run and been charged) is a 502, never a
+503 for unavailable capacity/payment infrastructure, 429 `insufficient_quota` for a spent
+allowance (the signer's 402, Core D58), 504 for timeouts, or 502 for other backend failures. A job Builder Core leaves `uncertain` (it may have run and been charged) is a 502, never a
 503: a 503 says nothing ran, so a retry is safe. Native routes follow the same rule. After headers commit, an error frame ends the response without a success terminator.
 Underlying messages and response bodies are not copied into public errors.
 

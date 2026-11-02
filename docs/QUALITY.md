@@ -174,7 +174,8 @@ On 29 October the gateway moved to the later `releases/m3` commit `d3df806`, whi
 and brings the upstream SDK `2017a80`, and moved Node and Batteries builds to `livepeer/` `main`.
 Paid failover stays on (`LPB_MAX_PAID_ATTEMPTS=2`). `make check` passes 532 tests. On 2 November
 the gateway moved to the M3 merge `1514212` (repeat rules D57, payment failure reasons D58, paged
-job history D59); `make check` passes 639 tests, and paid acceptance has not been repeated on it. Paid
+job history D59), and a spent allowance became 429 `insufficient_quota`; `make check` passes 644
+tests. Paid
 native vLLM acceptance passed on the rebuilt images with exact wholesale reconciliation; see the
 [repin evidence](../live-runner/tests/m3-upstream-2026-10-29.md). The
 [release candidate check](../live-runner/tests/release-candidate-2026-10-29.md) repeated it on
