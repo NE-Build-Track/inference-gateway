@@ -1,15 +1,50 @@
 """Inspect only the routing/accounting envelope; retain the original request bytes."""
 
+import base64
 import json
+import re
 from collections.abc import Iterable
 from typing import Any
 
 from inference_gateway.adapters.runner_contract import PROFILES
 from inference_gateway.core.native import NativeRequest
 
-# SGLang opens local paths and fetches any URL in `images`, and drops the others, deciding
-# without them. Text state is the accepted input until media has its own evidence.
-SYSTEM_ONE_UNSUPPORTED = ("images", "videos", "assets", "media_kwargs")
+# Backends ignore or fetch these depending on the backend and model. An ignored field still returns
+# an answer and a charge, so a decision would silently not use the media it was sent.
+SYSTEM_ONE_UNSUPPORTED = ("videos", "audio", "files", "assets", "media_kwargs")
+DATA_IMAGE = re.compile(r"data:image/[a-z0-9.+-]+;base64,")
+IMAGE_SIGNATURES = (b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a")
+
+
+def _inline_image(value: Any) -> bool:
+    """Bytes in the request, never a location: some backends open paths and fetch URLs in `images`.
+
+    Which inline form works is the backend's call, so both forms pass. Base64 text cannot contain
+    `.`, so even a bare JPEG, which SGLang reads as a path under `/9j/`, cannot reach a real file.
+    """
+    if not isinstance(value, str):
+        return False
+    prefix = DATA_IMAGE.match(value)
+    try:
+        raw = base64.b64decode(value[prefix.end() :] if prefix else value, validate=True)
+    except ValueError:
+        return False
+    return raw.startswith(IMAGE_SIGNATURES) or (raw[:4] == b"RIFF" and raw[8:12] == b"WEBP")
+
+
+def _inline_images(images: Any) -> bool:
+    if not isinstance(images, list):
+        return False
+    for image in images:
+        if isinstance(image, dict):
+            if not image.keys() <= {"url", "detail"} or not isinstance(
+                image.get("detail", ""), str
+            ):
+                return False
+            image = image.get("url")
+        if not _inline_image(image):
+            return False
+    return True
 
 
 class InvalidNativeRequest(ValueError):
@@ -62,8 +97,10 @@ def envelope(
             if "previous_response_id" in data or "conversation" in data:
                 raise ValueError()
         if endpoint == "systemone":
-            # Decisions have no stream: SGLang would ignore the flag and answer with plain JSON.
+            # Decisions have no stream: some backends ignore the flag and answer with plain JSON.
             if streaming or any(field in data for field in SYSTEM_ONE_UNSUPPORTED):
+                raise ValueError()
+            if "images" in data and not _inline_images(data["images"]):
                 raise ValueError()
         if endpoint == "chat_completions" and streaming:
             options = data.get("stream_options")

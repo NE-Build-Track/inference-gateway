@@ -12,7 +12,7 @@ It does not mean every provider feature or every agent application is supported.
 | Anthropic Messages | `POST /v1/messages` | Requires `anthropic-version: 2023-06-01`; uses `x-api-key` when enabled |
 | Model list | `GET /v1/models` | Format and contents follow the calling SDK; see [model lists](models-and-responses.md#model-lists) |
 | OpenAI Responses | `POST /v1/responses` | Stateless text/image/function subset; Bearer authentication |
-| System One | `POST /v1/systemone` | Native routes only; Bearer authentication; text state; see the [System One contract](system-one.md) |
+| System One | `POST /v1/systemone` | Native routes only; Bearer authentication; text and inline images; see the [System One contract](system-one.md) |
 | Liveness | `GET /healthz` | Unauthenticated; returns `{"status":"ok"}` |
 | Readiness | `GET /readyz` | Backend/discovery readiness; 503 when unavailable |
 
@@ -90,8 +90,8 @@ Reasoning, sampling controls, structured output, citations, hosted search, inter
 tools, and image/audio contracts are implemented in the gateway and deterministic fake.
 See the [extended generation contract](extended-generation.md) for exact fields, limits,
 examples and gateway extensions. Livepeer routes can opt into structured output, reasoning on/off,
-stop controls and parallel tools, and into guarded sampling, reasoning effort/budget and media input
-controls that remain unverified live. Requests and history a route has not enabled still fail before
+stop controls and parallel tools, and into image input, which has passed paid checks on a vLLM route.
+Guarded sampling, reasoning effort/budget and audio input controls remain unverified live. Requests and history a route has not enabled still fail before
 paid dispatch.
 
 See [Models and Responses](models-and-responses.md) for their separate stateless contract.

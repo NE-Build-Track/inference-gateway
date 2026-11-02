@@ -82,8 +82,6 @@ class Deployment(ContractModel):
             raise ValueError("public_url must be an HTTP(S) origin without credentials")
         if len(self.endpoints) != len(set(self.endpoints)):
             raise ValueError("Duplicate endpoint")
-        if "systemone" in self.endpoints and self.runtime.name != "sglang":
-            raise ValueError("Only SGLang serves the System One endpoint")
         if self.runtime.name == "ollama":
             if not self.model.revision.startswith("sha256:"):
                 raise ValueError("Ollama requires the installed model manifest digest")
@@ -97,7 +95,8 @@ class Deployment(ContractModel):
 
 
 class RuntimeIdentity(ContractModel):
-    name: Literal["vllm", "ollama", "sglang"]
+    # Wider than Runtime: a runner can run what the bundle has no command line to render.
+    name: Literal["vllm", "ollama", "sglang", "llamacpp"]
     image: str = Field(pattern=DIGEST)
 
 

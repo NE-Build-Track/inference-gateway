@@ -57,7 +57,8 @@
           "enum": [
             "vllm",
             "ollama",
-            "sglang"
+            "sglang",
+            "llamacpp"
           ],
           "title": "Name",
           "type": "string"

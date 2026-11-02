@@ -1,0 +1,108 @@
+# Clef-Flash on each backend, with the images and settings tested on a 24 GB GPU.
+# Run one at a time: each needs most of the GPU.   docker compose --profile vllm up -d
+#
+# See README.md for what each backend accepts and the evidence behind these settings.
+# Every server listens on loopback only. Clients and an orchestrator need a route you control.
+#
+# Prepare the volumes once:
+#   docker volume create clef-hf; docker volume create clef-ollama
+#   SGLang, vLLM: Cloudflare/clef-flash downloads into clef-hf on first start, without a token.
+#   Ollama: docker compose --profile ollama-pull run --rm ollama-pull
+#   llama.cpp: put Clef-Flash-BF16.gguf and mmproj-Clef-Flash-BF16.gguf from ggml-org/Clef-Flash-GGUF
+#              in a gguf/ directory inside clef-hf.
+#   Set CLEF_HF_VOLUME and CLEF_OLLAMA_VOLUME to reuse volumes with other names.
+name: clef-backends
+
+services:
+  # About 50 s to ready. Without these limits it crashes at startup on a 24 GB card.
+  # Reads local paths and fetches URLs placed in `images`, so never expose it directly.
+  sglang:
+    profiles: [sglang]
+    image: lmsysorg/sglang@sha256:e3a4f06001a29542fc4a8638536d9ffc5eb9c9942b08603c09b19a56eae4a1ae
+    entrypoint: [python3, -m, sglang.launch_server]
+    command:
+      - --model-path=Cloudflare/clef-flash
+      - --revision=fb4417d31c1d0f9e7e77f1141b40aaede7491e00
+      - --host=127.0.0.1
+      - --port=30001
+      - --context-length=17000
+      - --max-total-tokens=68000
+      - --max-running-requests=4
+      - --mem-fraction-static=0.95
+    network_mode: host
+    ipc: host
+    shm_size: 32g
+    gpus: all
+    volumes: [clef-hf:/root/.cache/huggingface]
+
+  # About 105 s to ready. Needs 0.33 or later; 0.32 has the route but no Clef.
+  # Fetches URLs placed in `images`, so add --allowed-media-domains before exposing it (not tested here).
+  vllm:
+    profiles: [vllm]
+    image: vllm/vllm-openai@sha256:d825baf9ce4b1b6bfc5ecc7b79880c7e6748c65a72d697ce3d47607aafa84c6e
+    command:
+      - --model=Cloudflare/clef-flash
+      - --revision=fb4417d31c1d0f9e7e77f1141b40aaede7491e00
+      - --max-model-len=16384
+      - --host=127.0.0.1
+      - --port=30002
+    network_mode: host
+    gpus: all
+    volumes: [clef-hf:/root/.cache/huggingface]
+
+  # Ready at once; the first request loads the model, which took about 35 s. Send model clef-flash:9b.
+  ollama:
+    profiles: [ollama]
+    image: ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8
+    environment:
+      OLLAMA_HOST: 127.0.0.1:30003
+      OLLAMA_NUM_PARALLEL: "8"
+    network_mode: host
+    gpus: all
+    volumes: [clef-ollama:/root/.ollama]
+
+  ollama-pull:
+    profiles: [ollama-pull]
+    image: ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8
+    entrypoint: [sh, -c, "ollama serve & sleep 6; ollama pull clef-flash:9b"]
+    environment:
+      OLLAMA_HOST: 127.0.0.1:30013
+    network_mode: host
+    volumes: [clef-ollama:/root/.ollama]
+
+  # About 15 s to ready. Build 12033.
+  llamacpp:
+    profiles: [llamacpp]
+    image: ghcr.io/ggml-org/llama.cpp@sha256:0a9f6c7cfe5a6b90b6c048b7a86865bf55a88af34bada927482eab2ef5f25b4a
+    command:
+      # llama.cpp refuses short options written as -m=value, so each value is its own argument.
+      - -m
+      - /data/gguf/Clef-Flash-BF16.gguf
+      - --mmproj
+      - /data/gguf/mmproj-Clef-Flash-BF16.gguf
+      - --host
+      - 127.0.0.1
+      - --port
+      - "30004"
+      - -ngl
+      - "999"
+      - -c
+      - "16384"
+      - -b
+      - "16384"
+      - -ub
+      - "16384"
+      - -np
+      - "1"
+    network_mode: host
+    gpus: all
+    volumes: [clef-hf:/data:ro]
+
+volumes:
+  # External, so removing the stack cannot delete a large download.
+  clef-hf:
+    external: true
+    name: ${CLEF_HF_VOLUME:-clef-hf}
+  clef-ollama:
+    external: true
+    name: ${CLEF_OLLAMA_VOLUME:-clef-ollama}

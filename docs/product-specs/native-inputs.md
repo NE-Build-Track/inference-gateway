@@ -48,9 +48,10 @@ inline PNG bytes, not arbitrary remote URLs. vLLM documents `--allowed-media-dom
 
 SGLang needs more care, because its image loader also opens local files. Its
 `--allowed-media-domains` flag restricts HTTP(S) URLs only: it allows every domain when unset,
-does not block private addresses and does not cover `file://` or `/path` values. The System One
-route rejects `images` for this reason. Check this path before admitting an SGLang vision route; see
-the [debt tracker](../exec-plans/tech-debt-tracker.md).
+does not block private addresses and does not cover `file://` or `/path` values. For this reason the
+[System One route](system-one.md#send-an-image) admits only inline images. Chat routes do not have
+that check, so check this path before admitting an SGLang vision route; see the
+[debt tracker](../exec-plans/tech-debt-tracker.md).
 
 ## Other inputs
 
@@ -64,7 +65,8 @@ the [debt tracker](../exec-plans/tech-debt-tracker.md).
 | PDFs and other files | Extract text or render pages into images in the client/application, or use a separately verified backend file-content API. Generic PDFs, uploaded file IDs and document parsing are not part of this gateway contract. |
 | Precomputed embeddings/tensors | Backend-specific advanced input formats; not certified. The gateway has no native `/v1/embeddings` endpoint or tensor-upload service. |
 
-Only Chat Completions, Responses and Messages are admitted native generation endpoints.
+Only Chat Completions, Responses and Messages are admitted native generation endpoints. System One
+decisions have [their own input rules](system-one.md), which refuse audio and video.
 Passing an unknown JSON field unchanged does not certify that a backend understands it.
 Endpoint approval remains separate from feature/modality evidence; automatic modality-aware
 selection is not implemented. Bind evidence to the exact deployed model, runtime and revision.
