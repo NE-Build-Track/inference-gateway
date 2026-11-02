@@ -17,6 +17,9 @@ dependencies = [
 Homepage = "https://github.com/NE-Build-Track/inference-gateway"
 Issues = "https://github.com/NE-Build-Track/inference-gateway/issues"
 
+[project.optional-dependencies]
+capabilities = ["jsonschema>=4.23,<5", "python-multipart>=0.0.20", "stream-pack @ git+https://github.com/livepeer/ComfyUI-Stream-Pack.git@6a305c4d86aa0176e4818b6534c12f1b8f11006e"]
+
 [project.scripts]
 gateway = "inference_gateway.cli:main"
 
@@ -30,6 +33,8 @@ dev = [
     "openai>=1.60,<3",
     "anthropic>=0.45,<1",
     "typesafe-sdk>=0.7.5,<0.8",
+    "types-jsonschema>=4.23",
+    "stream-pack @ git+https://github.com/livepeer/ComfyUI-Stream-Pack.git@6a305c4d86aa0176e4818b6534c12f1b8f11006e",
 ]
 
 [build-system]

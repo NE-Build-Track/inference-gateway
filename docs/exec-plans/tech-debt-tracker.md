@@ -5,7 +5,7 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Item | Trigger / next action |
 | --- | --- |
 | Live operational coverage | The inference and multi-user accounting black-box suites pass; load, live disconnects, and provider-failure drills remain outside that matrix |
-| OpenAPI request bodies | Expose request schemas with protocol-specific validation errors preserved |
+| Media API acceptance | Complete response/event schemas, paid media accounting, shared live/batch admission and all-nine-model immutable-image acceptance; see the [active plan](active/comfystream-capabilities.md) |
 | Production resource controls | Before shared hosting: request-body limits, per-tenant concurrency quotas, proxy TLS |
 | Observability | Define SLOs, then add metrics, tracing, and validation/failure counters |
 | Full protocol semantics | Expand the compatibility matrix and fixture coverage as client requirements appear |

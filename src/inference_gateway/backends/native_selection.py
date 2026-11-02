@@ -1,5 +1,6 @@
 """Operator-owned native admission, applied before Builder Core ranks or pays."""
 
+import json
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -8,7 +9,8 @@ from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import SelectionPolicy
 from pydantic import ValidationError
 
-from inference_gateway.adapters.runner_contract import PROFILES, RunnerMetadata
+from inference_gateway.adapters.capability_contract import parse_metadata
+from inference_gateway.adapters.runner_contract import PROFILES
 from inference_gateway.backends.discovery import native_runner_id, origin
 
 
@@ -58,7 +60,7 @@ class NativeSelection:
             if len(raw.encode()) > 1024:
                 continue
             try:
-                meta = RunnerMetadata.model_validate_json(raw)
+                meta = parse_metadata(json.loads(raw))
                 address = origin(runner.orchestrator_url or "")
             except (ValueError, ValidationError):
                 continue

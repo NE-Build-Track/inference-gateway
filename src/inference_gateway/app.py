@@ -8,7 +8,9 @@ import time
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager, nullcontext, suppress
 from dataclasses import replace
-from typing import Any
+from importlib import import_module
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -29,6 +31,7 @@ from inference_gateway.adapters.model_catalog import (
 )
 from inference_gateway.adapters.native_http import NativeHTTPResponse
 from inference_gateway.adapters.native_request import envelope
+from inference_gateway.adapters.openapi import attach_conversation_schemas
 from inference_gateway.adapters.reports import attach_reports
 from inference_gateway.adapters.responses import (
     Protocol,
@@ -41,6 +44,7 @@ from inference_gateway.adapters.responses import (
 from inference_gateway.adapters.schemas import AnthropicRequest, OpenAIRequest
 from inference_gateway.adapters.translate import anthropic_request, openai_request
 from inference_gateway.backends.accounting import FakeAccounting, UnavailableAccounting
+from inference_gateway.backends.comfystream import ComfyStreamBackend
 from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.accounting import AccountingSource
@@ -56,6 +60,9 @@ from inference_gateway.runtime import (
     load_settings,
 )
 from inference_gateway.testing import FakeBackend
+
+if TYPE_CHECKING:
+    from inference_gateway.adapters.capability_jobs import Jobs
 
 UNAVAILABLE_ON_ENDPOINT = "Model is not available on this endpoint"
 # Anthropic's model list pages; this one is always complete, so a cursor would be meaningless.
@@ -161,9 +168,41 @@ def create_app(
     engine_factory: EngineFactory | None = None,
     accounting_source: AccountingSource | None = None,
     native_backend: NativeBackend | None = None,
+    capability_jobs: "Jobs | None" = None,
 ) -> FastAPI:
     """Borrow injected backends; own configured Builder Core through ASGI lifespan."""
     config = settings if settings is not None else load_settings()
+    local_client = None
+    if capability_jobs is None and (config.capability_workspace or config.capability_runners):
+        from inference_gateway.adapters.capability_jobs import Jobs
+
+        state = Path(config.capability_state_dir).resolve()
+        if config.capability_runners:
+            local_client = import_module("comfystream.remote_client").RemoteCapabilityClient(
+                dict(config.capability_runners),
+                token=config.capability_runner_token,
+            )
+        else:
+            local_client = import_module("comfystream.capability_client").CapabilityClient(
+                workspace=config.capability_workspace,
+                input_dir=str(state / "inputs"),
+                output_dir=str(state / "outputs"),
+                capacity_file=config.capability_capacity_file or str(state / "gpu.capacity"),
+                gpu=config.capability_gpu,
+                queue_limit=config.capability_queue_limit,
+            )
+        capability_jobs = Jobs(
+            str(state / "jobs.sqlite"),
+            str(state / "artifacts"),
+            local_client,
+            import_module("stream_pack.catalog").load_catalog(),
+            output_root=str(state / "outputs"),
+            retention=config.capability_retention_seconds,
+            queue_limit=config.capability_queue_limit,
+            timeout=config.timeout_seconds,
+        )
+        if backend is None and config.backend == "fake":
+            backend = ComfyStreamBackend(local_client, timeout=config.timeout_seconds)
     owns_engine = backend is None and config.backend == "livepeer"
     ledger = SQLiteLedger(config.accounting_db) if config.accounting_db else None
     native = native_backend
@@ -176,7 +215,7 @@ def create_app(
     # Models the gateway translates. Native supply is listed separately, per endpoint.
     catalog: Callable[[], tuple[str, ...]] = (
         selected_backend.validated_models
-        if isinstance(selected_backend, LivepeerBackend)
+        if isinstance(selected_backend, (LivepeerBackend, ComfyStreamBackend))
         else lambda: ("fake-model",)
     )
     routes: tuple[ModelRoute, ...] = (
@@ -244,9 +283,50 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         with ledger.server_lock() if ledger else nullcontext():
             async with resources(app):
-                yield
+                try:
+                    if local_client and config.capability_runners:
+                        await local_client.start()
+                    if capability_jobs:
+                        await capability_jobs.start()
+                    yield
+                finally:
+                    if capability_jobs:
+                        await capability_jobs.close()
+                    if local_client:
+                        await local_client.close()
 
     app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.1", lifespan=lifespan)
+
+    if capability_jobs:
+        from fastapi import HTTPException
+
+        from inference_gateway.adapters.capability_http import router as capability_router
+
+        async def capability_owner(request: Request) -> str:
+            key = request.headers.get("authorization", "").removeprefix("Bearer ")
+            if ledger:
+                principal = ledger.authenticate(key)
+                if principal is None:
+                    raise HTTPException(401, "Invalid API key")
+                if not principal.permits("inference"):
+                    raise HTTPException(403, "Insufficient inference permission")
+                return principal.user_id
+            if config.api_key is not None and not hmac.compare_digest(
+                key.encode(), config.api_key.encode()
+            ):
+                raise HTTPException(401, "Invalid API key")
+            return "shared"
+
+        app.include_router(
+            capability_router(
+                capability_jobs,
+                capability_owner,
+                str(Path(config.capability_state_dir).resolve() / "inputs"),
+                voices=json.loads(Path(config.capability_voices_file).read_text())
+                if config.capability_voices_file
+                else None,
+            )
+        )
 
     if ledger:
         attach_reports(app, ledger)
@@ -488,6 +568,10 @@ def create_app(
                 names.update(native.models_for(endpoints))
         if ledger:
             names &= {p["model"] for p in ledger.prices() if p["active"]}
+        if capability_jobs is not None and family == "openai" and ledger is None:
+            names.update(
+                spec.document["model"]["source"] for spec in capability_jobs.catalog.values()
+            )
         return JSONResponse(
             render(
                 family,
@@ -514,4 +598,5 @@ def create_app(
         # System One clients send Bearer keys and parse this error envelope.
         return await generate(request, "openai", native_only=True)
 
+    attach_conversation_schemas(app)
     return app

@@ -4,6 +4,24 @@ Status: implemented subset, verified against the SDK versions in `uv.lock`.
 Compatibility means the listed request and response flows work with those SDKs.
 It does not mean every provider feature or every agent application is supported.
 
+The optional ComfyStream candidate adds image generation/editing, WAV speech,
+JSON/text transcription, video lifecycle, image transformations, music, meshes,
+durable jobs and authenticated artifacts. Its [active acceptance plan](../exec-plans/active/comfystream-capabilities.md)
+tracks the remaining media response/event schemas, GPU/profile acceptance and
+paid-media work. Model features are explicitly rejected until their adapter supports
+them; local Qwen currently supports plain text without tools or reasoning controls.
+
+Use `GATEWAY_CAPABILITY_WORKSPACE` for local execution, or configure
+`GATEWAY_CAPABILITY_RUNNERS` as a JSON mapping of `media`/`chat` profiles to private
+ComfyStream HTTP origins with `GATEWAY_CAPABILITY_RUNNER_TOKEN`. Both profiles must
+match the installed catalog. They share staged-input/output and GPU-admission volumes;
+the gateway owns a separate SQLite jobs database and opaque artifact IDs under
+`GATEWAY_CAPABILITY_STATE_DIR`. Retention defaults to 86400 seconds and is configured
+with `GATEWAY_CAPABILITY_RETENTION_SECONDS`; the bounded queue defaults to 16.
+Uploaded files are tenant-owned, limited to 25 MiB, and expire; remote media URLs
+are unsupported. Completed jobs survive restart, interrupted jobs fail without replay,
+and tenant-scoped idempotency keys reject changed inputs.
+
 ## Interfaces
 
 | Interface | Route | Version/header behavior |

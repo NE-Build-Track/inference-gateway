@@ -14,8 +14,25 @@ class Settings:
     timeout_seconds: float = 300
     backend: Literal["fake", "livepeer"] = "fake"
     accounting_db: str | None = None
+    capability_workspace: str | None = None
+    capability_state_dir: str = "./capability-state"
+    capability_voices_file: str | None = None
+    capability_retention_seconds: int = 86400
+    capability_queue_limit: int = 16
+    capability_gpu: str = "0"
+    capability_capacity_file: str | None = None
+    capability_runners: tuple[tuple[str, str], ...] = ()
+    capability_runner_token: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
+        if self.capability_retention_seconds <= 0 or self.capability_queue_limit <= 0:
+            raise ValueError("Capability retention and queue limits must be positive")
+        if self.capability_runners and (
+            self.capability_workspace or not self.capability_runner_token
+        ):
+            raise ValueError(
+                "Remote capability profiles require a private token and no local workspace"
+            )
         if not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive and finite")
         if self.accounting_db and self.api_key:

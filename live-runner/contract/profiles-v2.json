@@ -1,0 +1,74 @@
+{
+  "chat_completions": {
+    "path": "/v1/chat/completions",
+    "profile": "openai.chat.v1",
+    "usage": "chat.final.v1",
+    "stream_usage": "include_usage_required"
+  },
+  "responses": {
+    "path": "/v1/responses",
+    "profile": "openai.responses.stateless.v1",
+    "usage": "responses.final.v1",
+    "stream_usage": "terminal"
+  },
+  "messages": {
+    "path": "/v1/messages",
+    "profile": "anthropic.messages.v1",
+    "usage": "messages.events.v1",
+    "stream_usage": "terminal"
+  },
+  "systemone": {
+    "path": "/v1/systemone",
+    "profile": "typesafe.systemone.v1",
+    "usage": "systemone.final.v1",
+    "stream_usage": "unsupported"
+  },
+  "images_generations": {
+    "path": "/v1/images/generations",
+    "profile": "openai.images.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  },
+  "images_edits": {
+    "path": "/v1/images/edits",
+    "profile": "openai.images.edits.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  },
+  "audio_speech": {
+    "path": "/v1/audio/speech",
+    "profile": "openai.audio.speech.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  },
+  "audio_transcriptions": {
+    "path": "/v1/audio/transcriptions",
+    "profile": "openai.audio.transcriptions.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  },
+  "videos": {
+    "path": "/v1/videos",
+    "profile": "openai.videos.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  },
+  "image_transformations": {
+    "path": "/v1/image-transformations",
+    "profile": "gateway.image.transformations.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  },
+  "music_generations": {
+    "path": "/v1/music/generations",
+    "profile": "gateway.music.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  },
+  "meshes_generations": {
+    "path": "/v1/meshes/generations",
+    "profile": "gateway.meshes.v1",
+    "usage": "media.measured.v1",
+    "stream_usage": "unsupported"
+  }
+}

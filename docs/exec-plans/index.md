@@ -7,6 +7,7 @@ Use a short task note for small edits.
 
 - [Initial scaffold](completed/initial-scaffold.md): implementation and validation record.
 - [Technical debt](tech-debt-tracker.md): work left outside the accepted initial slice.
+- [ComfyStream capabilities](active/comfystream-capabilities.md): local media execution, durable jobs and candidate acceptance.
 
 - [Livepeer backend](completed/livepeer-backend.md): embedded engine integration and verification record.
 

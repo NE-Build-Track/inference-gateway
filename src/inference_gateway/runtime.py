@@ -26,6 +26,15 @@ from inference_gateway.core.models import Finished
 EngineFactory = Callable[[LivepeerSettings], Awaitable[ActorApi]]
 
 
+def capability_runners(raw: str) -> tuple[tuple[str, str], ...]:
+    value = json.loads(raw)
+    if not isinstance(value, dict) or not all(
+        isinstance(key, str) and isinstance(url, str) for key, url in value.items()
+    ):
+        raise ValueError("Capability runners must map profile names to HTTP origins")
+    return tuple(value.items())
+
+
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     values = os.environ if env is None else env
     backend = values.get("GATEWAY_BACKEND", "fake")
@@ -34,6 +43,17 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         accounting_db=values.get("GATEWAY_ACCOUNTING_DB") or None,
         timeout_seconds=float(values.get("GATEWAY_TIMEOUT_SECONDS", "300")),
         backend=cast(Literal["fake", "livepeer"], backend),
+        capability_workspace=values.get("GATEWAY_CAPABILITY_WORKSPACE") or None,
+        capability_state_dir=values.get("GATEWAY_CAPABILITY_STATE_DIR", "./capability-state"),
+        capability_voices_file=values.get("GATEWAY_CAPABILITY_VOICES_FILE") or None,
+        capability_retention_seconds=int(
+            values.get("GATEWAY_CAPABILITY_RETENTION_SECONDS", "86400")
+        ),
+        capability_queue_limit=int(values.get("GATEWAY_CAPABILITY_QUEUE_LIMIT", "16")),
+        capability_gpu=values.get("GATEWAY_CAPABILITY_GPU", "0"),
+        capability_capacity_file=values.get("GATEWAY_CAPABILITY_CAPACITY_FILE") or None,
+        capability_runners=capability_runners(values.get("GATEWAY_CAPABILITY_RUNNERS", "{}")),
+        capability_runner_token=values.get("GATEWAY_CAPABILITY_RUNNER_TOKEN") or None,
     )
 
 
