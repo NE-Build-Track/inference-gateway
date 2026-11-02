@@ -248,7 +248,7 @@ def create_app(
             async with resources(app):
                 yield
 
-    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.1", lifespan=lifespan)
+    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.2", lifespan=lifespan)
 
     if ledger:
         attach_reports(app, ledger)
