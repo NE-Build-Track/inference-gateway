@@ -33,6 +33,7 @@ def router(
     timeout: float,
     max_input: int = 32 * 1024 * 1024,
     max_output: int = 128 * 1024 * 1024,
+    open_for_request: Callable[[Request, NativeRequest], Awaitable[NativeStream]] | None = None,
 ) -> APIRouter:
     api = APIRouter(dependencies=[Depends(HTTPBearer(auto_error=False))])
 
@@ -155,7 +156,11 @@ def router(
                     identifier, model, operation, path, b"", safe_headers, raw, False
                 )
                 async with asyncio.timeout(timeout):
-                    stream = await open_network(command)
+                    stream = (
+                        await open_for_request(request, command)
+                        if open_for_request
+                        else await open_network(command)
+                    )
                     store.bind(row["id"], stream.job_id)
                     if any(
                         k.lower() == "content-encoding" and v not in {"", "identity"}
@@ -242,6 +247,7 @@ def router(
                     "x-request-id": identifier,
                     "request-id": identifier,
                     "cache-control": "private, no-store",
+                    "x-should-retry": "false",
                 },
             )
 

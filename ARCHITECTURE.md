@@ -5,6 +5,11 @@ a small generation contract. On native routes, it forwards the original request 
 usage. System One decisions always use native routes. The gateway owns no conversation history;
 clients submit history on every request.
 
+The optional `railway` composition in `remote.py` serves admitted synchronous media
+through `backends/remote_railway.py` and the remote Core HTTP `/v1/jobs` API. It borrows
+caller credentials, owns only receipts/artifacts and never constructs BuilderEngine.
+The existing embedded composition and conversation adapters are unchanged.
+
 ```text
 OpenAI clients ────┐
                    ├─ HTTP boundary ─┬─ protocol translators → GenerationService → Fake or LivepeerBackend

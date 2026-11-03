@@ -168,6 +168,10 @@ def create_app(
 ) -> FastAPI:
     """Borrow injected backends; own configured Builder Core through ASGI lifespan."""
     config = settings if settings is not None else load_settings()
+    if config.backend == "railway":
+        from inference_gateway.remote import create_remote_app
+
+        return create_remote_app(config)
     batch_store = (
         BatchStore(
             config.batch_database,

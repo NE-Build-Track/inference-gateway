@@ -12,7 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class Settings:
     api_key: str | None = field(default=None, repr=False)
     timeout_seconds: float = 300
-    backend: Literal["fake", "livepeer"] = "fake"
+    backend: Literal["fake", "livepeer", "railway"] = "fake"
+    engine_url: str | None = None
+    capability_openapi_file: str | None = None
     accounting_db: str | None = None
     batch_database: str | None = None
     batch_artifact_dir: str = "./batch-artifacts"
@@ -27,8 +29,16 @@ class Settings:
             raise ValueError("Registry mode cannot also use a legacy shared key")
         if self.api_key == "":
             raise ValueError("api_key cannot be empty")
-        if self.backend not in {"fake", "livepeer"}:
-            raise ValueError("backend must be fake or livepeer")
+        if self.backend not in {"fake", "livepeer", "railway"}:
+            raise ValueError("backend must be fake, livepeer or railway")
+        if self.backend == "railway" and (
+            not self.engine_url
+            or not self.capability_openapi_file
+            or not self.batch_database
+            or self.api_key
+            or self.accounting_db
+        ):
+            raise ValueError("Railway requires URL, catalog and batch database; caller auth only")
 
 
 class ModelRoute(BaseModel):

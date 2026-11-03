@@ -1,0 +1,27 @@
+name: inference-gateway
+services:
+  gateway:
+    image: ${GATEWAY_IMAGE:?Set an immutable image reference}
+    environment:
+      GATEWAY_BACKEND: railway
+      GATEWAY_ENGINE_URL: https://engine-production-e189.up.railway.app
+      GATEWAY_CAPABILITY_OPENAPI_FILE: /catalog/capabilities.openapi.json
+      GATEWAY_BATCH_DATABASE: /data/batch.sqlite
+      GATEWAY_BATCH_ARTIFACT_DIR: /data/artifacts
+      GATEWAY_BATCH_RETENTION_SECONDS: '86400'
+      GATEWAY_TIMEOUT_SECONDS: '600'
+    volumes:
+      - ./catalog:/catalog:ro
+      - ./data:/data
+    ports: ['127.0.0.1:18000:8000']
+    read_only: true
+    tmpfs: ['/tmp:size=64m']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 60s
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 4

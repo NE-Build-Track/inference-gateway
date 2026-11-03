@@ -36,7 +36,9 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         batch_artifact_dir=values.get("GATEWAY_BATCH_ARTIFACT_DIR", "./batch-artifacts"),
         batch_retention_seconds=int(values.get("GATEWAY_BATCH_RETENTION_SECONDS", "86400")),
         timeout_seconds=float(values.get("GATEWAY_TIMEOUT_SECONDS", "300")),
-        backend=cast(Literal["fake", "livepeer"], backend),
+        backend=cast(Literal["fake", "livepeer", "railway"], backend),
+        engine_url=values.get("GATEWAY_ENGINE_URL") or None,
+        capability_openapi_file=values.get("GATEWAY_CAPABILITY_OPENAPI_FILE") or None,
     )
 
 

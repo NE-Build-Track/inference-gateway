@@ -4,6 +4,13 @@ Status: implemented subset, verified against the SDK versions in `uv.lock`.
 Compatibility means the listed request and response flows work with those SDKs.
 It does not mean every provider feature or every agent application is supported.
 
+`GATEWAY_BACKEND=railway` serves an operator-pinned synchronous media catalog through
+the remote Core HTTP API. It forwards each caller's Builder bearer credential and
+creates no embedded engine. The [remote deployment profile](../../deploy/remote/README.md)
+documents admission expiry, credential-scoped receipts, limits and rollback. This
+profile advertises only admitted media operations; conversation adapters remain in
+the existing embedded backend. Paid acceptance is separate from deployment.
+
 The optional `batch` extra adds synchronous network media methods when
 `GATEWAY_BATCH_DATABASE` is configured. Requests use admitted Livepeer runners through
 Builder Engine. SQLite stores request receipts, correlated network job IDs and
