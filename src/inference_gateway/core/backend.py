@@ -37,6 +37,14 @@ class BackendUnavailable(BackendError):
     public_message = "Generation backend unavailable"
 
 
+class QuotaExhausted(BackendError):
+    """The allowance that pays for generation is spent; no retry succeeds until it is funded."""
+
+    status_code = 429
+    error_code = "insufficient_quota"
+    public_message = "Generation allowance exhausted"
+
+
 class BackendConflict(BackendError):
     status_code = 409
     public_message = "Generation operation already dispatched"

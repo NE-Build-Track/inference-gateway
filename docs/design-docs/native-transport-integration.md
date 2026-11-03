@@ -25,7 +25,7 @@ still goes through Builder Core; no separate HTTP client bypasses payment/sessio
 
 ## Dependency review chain
 
-The gateway pins Builder Core `releases/m3` at `d3df806`, which includes `2134e29`, the merge of
+The gateway pins Builder Core `releases/m3` at `1514212`, the M3 merge, which includes `2134e29`, the merge of
 [Builder Core PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55) into
 `releases/m3` (28 October). Core sends the paid runner request itself (its D53), so native
 transport lives in Core: bounded raw bodies, content type, validated headers, operation identity,
@@ -70,5 +70,5 @@ validated metadata and rejects conflicting IDs. See the [identity contract](../.
 The [28 October review](../references/repository-compatibility-2026-10-28.md) superseded
 that overlay result for newer M3: Core now owns the paid runner call, so PR #55 had to port
 native behavior onto that implementation. It did, and merged as `2134e29`, which the pinned
-`d3df806` includes, so the upstream SDK is used unpatched. Native startup still rejects an installed Core that lacks the required request
+`1514212` includes, so the upstream SDK is used unpatched. Native startup still rejects an installed Core that lacks the required request
 fields or response-header facade.

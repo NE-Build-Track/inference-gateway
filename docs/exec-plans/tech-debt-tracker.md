@@ -49,7 +49,7 @@ load/concurrency acceptance must address this. Four paid calls reconciled expect
 costs; winning-ticket chain finality remains separately observable in the retained paid node.
 
 Builder Core M3 upgrade: done on 29 October (Core `d3df806`, which includes the PR #55 merge
-`2134e29`; upstream SDK; `livepeer/` Node and Batteries); see the
+`2134e29`; moved to the M3 merge `1514212` on 2 November; upstream SDK; `livepeer/` Node and Batteries); see the
 [repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md). Paid failover is kept: Core
 may fail a paid 503, 404 or 409 over to another orchestrator, at most `LPB_MAX_PAID_ATTEMPTS` (2)
 paid attempts; set it to `1` to turn paid failover off. Live paid failover between two

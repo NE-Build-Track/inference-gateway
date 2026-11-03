@@ -18,7 +18,7 @@ chmod 600 deploy/livepeer/gateway/.env
 scripts/build-images.sh
 ```
 
-Set `IMAGE_TAG` to name a release, for example `IMAGE_TAG=v0.2.1 scripts/build-images.sh`. The script
+Set `IMAGE_TAG` to name a release, for example `IMAGE_TAG=v0.2.2 scripts/build-images.sh`. The script
 builds locally and never publishes. Node and Clearinghouse images come from the commits pinned in
 Compose, so a new tag on them does not imply a source change. Rebuilding them installs current
 `apt` packages and produces different bytes, so when only the gateway changed, build it alone and

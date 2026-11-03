@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import httpx
 import pytest
-from livepeer_builder.testing import FakeEngine, Reply, runner
+from livepeer_builder.testing import Fails, FakeEngine, Reply, runner
 
 from inference_gateway.adapters.ledger import SQLiteLedger
 from inference_gateway.adapters.runner_contract import PROFILES
@@ -179,6 +179,32 @@ async def test_forwarded_native_errors_disable_sdk_retries(status, streaming):
     # SDKs retry 429/5xx by default; each retry would be a new paid request.
     assert response.status_code == status and response.content == raw
     assert response.headers["x-should-retry"] == "false"
+
+
+async def test_native_exhausted_allowance_is_insufficient_quota():
+    """A native job whose payment the signer refused for a spent allowance (Core D58) never
+    started: 429 insufficient_quota, not 503."""
+    app, _, _, _ = setup(
+        "chat_completions",
+        Fails(
+            kind="payment",
+            message="upstream private secret",
+            status_code=402,
+            payment_sent=False,
+            reason="allowance_exhausted",
+        ),
+    )
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post("/v1/chat/completions", json={"model": "m"})
+    assert response.status_code == 429
+    assert response.headers["x-should-retry"] == "false"
+    error = response.json()["error"]
+    assert (error["type"], error["code"]) == ("insufficient_quota", "insufficient_quota")
+    assert error["message"] == "Generation allowance exhausted"
+    assert "upstream private secret" not in response.text
 
 
 @pytest.mark.parametrize("protocol", ["openai", "anthropic"])

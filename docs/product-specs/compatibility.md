@@ -122,7 +122,10 @@ normalization. Missing usage, malformed/truncated output, unsupported finish rea
 reasoning content, or text after tools fail explicitly. No token counts are fabricated.
 
 Engine capacity/payment failures map to 503, operation conflicts to 409, and deadlines to
-504 before headers. Public errors omit upstream details. See the [Livepeer contract](../design-docs/livepeer.md)
+504 before headers. A payment the signer refused because the allowance is spent (Core D58,
+`allowance_exhausted`) maps to 429 with code `insufficient_quota`, as OpenAI reports a spent
+quota (type `insufficient_quota`; Anthropic shape: `rate_limit_error`), on routed and native
+requests alike; `x-should-retry: false` stops SDK retries until the allowance is funded. Public errors omit upstream details. See the [Livepeer contract](../design-docs/livepeer.md)
 for cancellation, tool-result translation, request correlation, and engine-owned accounting.
 
 See [accounting and reporting](../design-docs/accounting.md) for API-key permissions,

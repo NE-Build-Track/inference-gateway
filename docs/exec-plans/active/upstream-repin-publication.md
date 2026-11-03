@@ -26,19 +26,20 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
 - [x] `make check` and gateway image smoke.
 - [x] Forwarded native errors carry `x-should-retry: false` (found during review; SDK contract tests).
 - [x] Paid remote GPU acceptance and cleanup; see the [evidence](../../../live-runner/tests/m3-upstream-2026-10-29.md).
-- [ ] Commit, review and merge the gateway branch.
+- [x] Commit, review and merge the gateway branch: PR #6, merged 29 October (`2d391af`).
 - [x] Default ticket expected value 2e10 wei; signer caps tickets at 1e11 wei and fixed prices
       at $0.01. Paid checks served at 2.9% overpayment and refused coarse or over-priced terms
       before payment.
 - [x] Compose image names match the registry repositories; `IMAGE_REGISTRY` and `IMAGE_TAG`
       select a published release.
-- [ ] Push three images under `m3-upstream-20261029` to `registry.livepeer.tools/ne-build-track/`:
-      `inference-gateway` (local `inference-gateway:local`, `sha256:fd175fb0…`, built from the
-      merge with `main`; the [release candidate check](../../../live-runner/tests/release-candidate-2026-10-29.md)
-      passed), `inference-node` (signer,
-      orchestrator and runner bundle; local `inference-node:a4b68ed`) and
-      `inference-clearinghouse` (local `inference-clearinghouse:d47d1ff`). Each local image ID
-      becomes the published config digest; record the manifest digests. Leave `v0.0.1` unchanged.
+- [ ] Push all three images under one release tag to `registry.livepeer.tools/ne-build-track/`.
+      The `m3-upstream-20261029` tag was never pushed. Releases moved to version tags instead:
+      the gateway was published as `v0.2.0` (`sha256:1dc05620…`) and `v0.2.1` (`sha256:e145772b…`),
+      but `inference-node` and `inference-clearinghouse` were not, so neither tag can be pulled
+      whole. `v0.2.2` publishes all three: the gateway built from `main` with Core `1514212`
+      (PR #11), and the tested `inference-node:a4b68ed` (signer, orchestrator and runner bundle)
+      and `inference-clearinghouse:d47d1ff` retagged, since their sources are unchanged. Record the
+      manifest digests here. Leave `v0.0.1` unchanged.
 - [ ] Update `live-runner/images.lock.json` with the published node digest; regenerate
       bundles and issue approvals for the new deployment revision. Then update the node-lock
       statements in `docs/product-specs/native-inference.md` and `live-runner/contract/README.md`.

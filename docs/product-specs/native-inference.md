@@ -101,7 +101,7 @@ idle until the operator has completed the required deployment acceptance.
 
 ## Dependency and release status
 
-The gateway pins Builder Core `releases/m3` at `d3df806`, which includes `2134e29`, the merge of
+The gateway pins Builder Core `releases/m3` at `1514212`, the M3 merge, which includes `2134e29`, the merge of
 [NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55).
 Core pins the SDK to upstream `livepeer/livepeer-python-gateway` `2017a80`; the earlier SDK fork
 pin (`cd6ed5e`, NE PR #6) is gone. Deployment images build Node and Clearinghouse Batteries from
@@ -146,5 +146,5 @@ Native startup requires Core's raw-body, content-type, protocol-header and HTTP-
 request fields plus its response-header stream facade. An incompatible dependency
 installation fails before engine creation with a diagnostic to restore the locked
 versions. The [28 October review](../references/repository-compatibility-2026-10-28.md) found
-M3 `efb9c03` lacked them; the pinned Core `d3df806` has them (see the
+M3 `efb9c03` lacked them; the pinned Core `1514212` has them (see the
 [29 October repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md)).

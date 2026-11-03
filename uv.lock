@@ -731,7 +731,7 @@ wheels = [
 
 [[package]]
 name = "inference-gateway"
-version = "0.2.1"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -763,7 +763,7 @@ dev = [
 requires-dist = [
     { name = "anyio", specifier = ">=4,<5" },
     { name = "fastapi", specifier = ">=0.115,<1" },
-    { name = "livepeer-builder", git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=d3df80657ef1b497d1b6dff90fb7e27d9e03bc58" },
+    { name = "livepeer-builder", git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=15142129ebbf51103658f8ad48fd5adae052c56d" },
     { name = "pydantic", specifier = ">=2.7,<3" },
     { name = "python-multipart", marker = "extra == 'batch'", specifier = ">=0.0.20" },
     { name = "uvicorn", specifier = ">=0.30,<1" },
@@ -990,8 +990,8 @@ wheels = [
 
 [[package]]
 name = "livepeer-builder"
-version = "0.1.1.dev147+gd3df806"
-source = { git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=d3df80657ef1b497d1b6dff90fb7e27d9e03bc58#d3df80657ef1b497d1b6dff90fb7e27d9e03bc58" }
+version = "0.1.1.dev159+g1514212"
+source = { git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=15142129ebbf51103658f8ad48fd5adae052c56d#15142129ebbf51103658f8ad48fd5adae052c56d" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiosqlite" },

@@ -212,7 +212,7 @@ reconciliation redrive. See [operations](docs/OPERATIONS.md) and the
 make check
 uv build
 scripts/build-images.sh gateway              # inference-gateway:local
-IMAGE_TAG=v0.2.1 scripts/build-images.sh     # All three images under one release tag
+IMAGE_TAG=v0.2.2 scripts/build-images.sh     # All three images under one release tag
 ```
 
 The script builds locally and never publishes.
@@ -249,8 +249,8 @@ should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LI
 Related repository upgrades must preserve native transport. The
 [28 October compatibility review](docs/references/repository-compatibility-2026-10-28.md)
 found that native transport had to move into Core after M3 moved the paid call there. Core PR
-#55 did that and merged as `2134e29`. The gateway pins the later `releases/m3` commit
-`d3df806`, which includes it; Core pins the upstream Python SDK, and deployment images build
+#55 did that and merged as `2134e29`. The gateway pins the M3 merge, `releases/m3` commit
+`1514212` (2 November), which includes it; Core pins the upstream Python SDK, and deployment images build
 Node and Clearinghouse Batteries from `livepeer/` `main`. The
 [29 October repin evidence](live-runner/tests/m3-upstream-2026-10-29.md) records the tested
 combination. Use the locked dependencies (`uv sync --locked`).
