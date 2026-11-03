@@ -30,5 +30,22 @@ v2 deployment rendering; all-nine-model immutable runner-image acceptance and en
 paid orchestrator tests. Registry billing currently refuses media dispatch rather
 than inventing input/output tokens. Runner metadata alone is not certification.
 
-Run the complete Linux `make check` and package build after these changes. Keep this
-plan active until network acceptance passes. Production ComfyStream remains unchanged.
+The five-model catalog (FLUX, BiRefNet, Whisper, ACE-Step and TripoSR) is deployed on
+eliteprd1 at USD 0.02 per request and appears in production Engine API discovery.
+Qwen and Wan are excluded. Gateway branch main was merged at `6dd7bb1`; all 657 tests
+and the v0.2.2 build passed before the admission/probe tooling was added.
+
+`scripts/prepare_catalog_admission.py` compiles reviewed deployment/discovery/OpenAPI
+exports into exact model routes, expiring approvals and a deployment-bound Core
+schema registry. `scripts/test_paid_catalog.py --run` submits five single-attempt
+production Engine API requests using an existing bearer credential file, persisting
+operation references before dispatch. A failed or uncertain call stops the run;
+existing reports cannot be reused to repeat generation. It records job IDs and
+actual costs without fabricating settlement or token counts. Cost reconciliation is
+still required after serving.
+
+The reporting console uses OIDC. Its saved older LPK admin key returns 401 from the
+production engine; its current reader is read-only. No roles or allocations have
+been changed to enable testing. Paid acceptance awaits an authorized Builder
+credential/session. Core/console schema changes are candidate source changes pending
+their required human review. Keep this plan active until network acceptance passes.
