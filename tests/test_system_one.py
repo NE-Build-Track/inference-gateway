@@ -2,6 +2,7 @@
 
 import base64
 import json
+import logging
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -410,6 +411,48 @@ async def test_unpriced_model_fails_before_dispatch(tmp_path):
                 PATH, json=REQUEST, headers={"authorization": "Bearer " + secret}
             )
     assert response.status_code == 400 and not engine.jobs.requests
+
+
+@pytest.mark.parametrize(
+    ("reply", "status", "outcome"),
+    [
+        (decision_reply(), 200, "succeeded"),
+        (
+            Reply(status_code=422, content_type="application/json", chunks=(b'{"detail":[]}',)),
+            422,
+            "failed",
+        ),
+    ],
+)
+async def test_native_requests_log_their_completion_without_bodies(
+    tmp_path, caplog, reply, status, outcome
+):
+    app, _, _, secret = gateway(
+        Supply("clef", (SYSTEM_ONE,)), replies={SYSTEM_ONE: reply}, tmp_path=tmp_path
+    )
+    caplog.set_level(logging.INFO, logger="inference_gateway")
+    async with app.router.lifespan_context(app):
+        async with http_client(app) as client:
+            response = await client.post(
+                PATH, json=REQUEST, headers={"authorization": "Bearer " + secret}
+            )
+    assert response.status_code == status
+    finished = [
+        json.loads(r.getMessage())
+        for r in caplog.records
+        if r.getMessage().startswith('{"event": "native_request_finished"')
+    ]
+    assert len(finished) == 1
+    record = finished[0]
+    assert record.pop("elapsed_s") >= 0
+    assert record == {
+        "event": "native_request_finished",
+        "request_id": response.headers["x-request-id"],
+        "endpoint": SYSTEM_ONE,
+        "status": status,
+        "outcome": outcome,
+    }
+    assert "parcel" not in caplog.text  # The request body is never logged.
 
 
 async def test_backend_validation_error_is_preserved_without_charge(tmp_path):

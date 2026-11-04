@@ -24,6 +24,7 @@ application. Identity and retail accounting have durable state in a separate gat
 | `core/accounting.py` | Principal, immutable prices, wholesale observation port | Core, standard library |
 | `accounting.py` | Meter validated generation and reconcile accounting | Core, ledger adapter |
 | `adapters/ledger.py` | SQLite identity, retail ledger and dated wholesale projections | Core, standard library |
+| `adapters/ledger_writer.py` | Apply ledger writes on one thread, in order | Standard library |
 | `adapters/reports.py` | Authorized provider and gateway report formats | Core, ledger adapter, FastAPI |
 | `cli.py` | Local user/key/price/adjustment administration | Core, ledger adapter |
 | `core/service.py` | Enforce event order; assemble nonstream responses | Core only |

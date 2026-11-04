@@ -8,6 +8,7 @@ import time
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager, nullcontext, suppress
 from dataclasses import replace
+from functools import partial
 from typing import Any
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from inference_gateway.accounting import MeteredBackend, reconciliation_loop
 from inference_gateway.adapters import response_api
 from inference_gateway.adapters.http_stream import ManagedStreamingResponse
 from inference_gateway.adapters.ledger import SQLiteLedger
+from inference_gateway.adapters.ledger_writer import LedgerWriter
 from inference_gateway.adapters.model_catalog import (
     FAMILY_ENDPOINTS,
     TRANSLATED_ENDPOINTS,
@@ -168,11 +170,13 @@ def create_app(
     config = settings if settings is not None else load_settings()
     owns_engine = backend is None and config.backend == "livepeer"
     ledger = SQLiteLedger(config.accounting_db) if config.accounting_db else None
+    # Request-path writes wait on the disk, so they run on one thread instead of the event loop.
+    writer = LedgerWriter() if ledger else None
     native = native_backend
     selected_backend = backend if backend is not None else FakeBackend()
 
     def compose(selected: Backend) -> GenerationService:
-        return GenerationService(MeteredBackend(selected, ledger) if ledger else selected)
+        return GenerationService(MeteredBackend(selected, ledger, writer) if ledger else selected)
 
     service = None if owns_engine else compose(selected_backend)
     # Models the gateway translates. Native supply is listed separately, per endpoint.
@@ -203,7 +207,7 @@ def create_app(
         @asynccontextmanager
         async def accounting_worker() -> AsyncIterator[None]:
             worker = (
-                asyncio.create_task(reconciliation_loop(ledger, config.backend, source))
+                asyncio.create_task(reconciliation_loop(ledger, config.backend, source, writer))
                 if ledger
                 else None
             )
@@ -220,8 +224,8 @@ def create_app(
             async with livepeer_backend(
                 options,
                 engine_factory or build_engine,
-                ledger.record_usage if ledger else None,
-                ledger.bind_job if ledger else None,
+                partial(writer.send, ledger.record_usage) if ledger and writer else None,
+                partial(writer.send, ledger.bind_job) if ledger and writer else None,
             ) as live:
                 service = compose(live)
                 native = live.native_backend
@@ -245,8 +249,13 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         with ledger.server_lock() if ledger else nullcontext():
-            async with resources(app):
-                yield
+            try:
+                async with resources(app):
+                    yield
+            finally:
+                if writer:
+                    # Apply every queued write before another server may own the database.
+                    await asyncio.to_thread(writer.close)
 
     app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.2", lifespan=lifespan)
 
@@ -288,6 +297,18 @@ def create_app(
             key.encode(), config.api_key.encode()
         ):
             return failure(protocol, "Invalid API key", 401, request_id)
+
+        async def begin(model: str, recorded_protocol: str) -> None:
+            assert ledger is not None and writer is not None and principal is not None
+            try:
+                await writer.write(
+                    ledger.begin, request_id, principal, model, config.backend, recorded_protocol
+                )
+            except asyncio.CancelledError:
+                # If the begin committed, close it rather than leave it running until restart.
+                writer.send(ledger.outcome, request_id, "disconnected")
+                raise
+
         try:
             data = await request.json()
             if (
@@ -306,17 +327,13 @@ def create_app(
                     # Permanent until configuration changes, so unlike 503 it invites no retry.
                     return failure(protocol, UNAVAILABLE_ON_ENDPOINT, 400, request_id)
                 if ledger and principal:
-                    ledger.begin(
-                        request_id,
-                        principal,
-                        raw.model,
-                        config.backend,
-                        "systemone" if native_only else protocol,
-                    )
+                    await begin(raw.model, "systemone" if native_only else protocol)
                 return NativeHTTPResponse(
                     native,
                     raw,
                     ledger=ledger,
+                    writer=writer,
+                    started=started,
                     deadline_seconds=config.timeout_seconds,
                     failure=lambda message, status: failure(protocol, message, status, request_id),
                 )
@@ -348,7 +365,7 @@ def create_app(
             return failure(protocol, "Generation backend unavailable", 503, request_id)
         if ledger and principal:
             try:
-                ledger.begin(request_id, principal, command.model, config.backend, protocol)
+                await begin(command.model, protocol)
             except ValueError:
                 return failure(protocol, "Model has no configured retail price", 400, request_id)
         identity = ResponseIdentity(

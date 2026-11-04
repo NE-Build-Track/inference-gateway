@@ -194,5 +194,7 @@ paid for. `make check` passes 638 tests.
 Report reads use indexes, page in SQL and run in worker threads. On a synthetic ledger of 7,919
 requests, a request-list page fell from 7.2 s, with the event loop frozen throughout, to 0.015 s, and
 the longest freeze during any report to 0.026 s. Reconciliation now stops refreshing settled
-requests, and finds a job without a saved ID by searching near the request's admission time.
-`make check` passes 665 tests. See the [plan](exec-plans/active/ledger-event-loop.md).
+requests, and finds a job without a saved ID by searching near the request's admission time. Ledger
+writes run on one thread; with the ledger on a slow SSD, the median event-loop freeze during metered
+requests fell from 44 ms to 0.2 ms. Native requests log their completion. `make check` passes
+672 tests. See the [plan](exec-plans/active/ledger-event-loop.md).

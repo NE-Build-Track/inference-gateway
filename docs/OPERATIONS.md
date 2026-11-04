@@ -43,9 +43,13 @@ loads it. For host execution, supply environment variables with signer/Batteries
 are reachable from the host.
 
 On validated routes, gateway logs connect `request_id` to `job_id` through `livepeer_job_started`
-and `livepeer_job_closed`. Native routes, including System One, write no per-request log records.
-Correlate them through the `x-request-id` header, the registry's request record and Builder Core's
-matching operation reference. `livepeer_usage_report_failed` retains counts for reconciliation, while
+and `livepeer_job_closed`. Native routes, including System One, log one `native_request_finished`
+record per request, with `request_id`, `endpoint`, the HTTP `status`, the `outcome` and `elapsed_s`
+from admission, and never a body. A delivered and charged stream can still show `disconnected`; see
+the [debt tracker](exec-plans/tech-debt-tracker.md). Correlate native requests with Builder Core
+through the `x-request-id` header, the registry's request record and Core's matching operation
+reference. A `ledger_write_failed` record names the write and request ID of a ledger write that
+failed after being queued; reconciliation repairs usage from the engine where it can. `livepeer_usage_report_failed` retains counts for reconciliation, while
 the native `native_usage_report_failed` records only the request ID;
 network cost stays in the engine and may arrive later. A 503 indicates unavailable capacity
 or payment infrastructure; a 409 means the operation was already dispatched. The gateway
