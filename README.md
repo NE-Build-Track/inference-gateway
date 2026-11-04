@@ -212,7 +212,7 @@ reconciliation redrive. See [operations](docs/OPERATIONS.md) and the
 make check
 uv build
 scripts/build-images.sh gateway              # inference-gateway:local
-IMAGE_TAG=v0.2.2 scripts/build-images.sh     # All three images under one release tag
+IMAGE_TAG=v0.2.3 scripts/build-images.sh     # All three images under one release tag
 ```
 
 The script builds locally and never publishes.

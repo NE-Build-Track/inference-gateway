@@ -14,7 +14,7 @@ The same audit found two slower, constant costs. Reconciliation refreshes every 
 seconds forever, and each paid request makes five synchronous SQLite transactions, which take 12 to
 42 ms depending on the disk.
 
-The work ships in three pull requests, smallest risk first.
+The work shipped in three pull requests, smallest risk first, and is released in v0.2.3.
 
 ## Acceptance
 
@@ -85,7 +85,7 @@ change, since the disk still sets it.
 
 ## Rollback
 
-Redeploying an older gateway fails at startup, because it refuses schema version 4. To roll back,
+Redeploying v0.2.2 or earlier fails at startup, because those versions refuse schema version 4. To roll back,
 stop the gateway, back up the database, then remove the indexes and restore the version:
 
 ```sh
