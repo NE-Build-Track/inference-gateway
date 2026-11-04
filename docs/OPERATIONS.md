@@ -61,9 +61,8 @@ command checks it again. See the Livepeer guide for cancellation during stream o
 
 See [accounting](design-docs/accounting.md) for exact monetary semantics and the CLI runbook.
 
-On its first start, a gateway with schema version 4 builds two report indexes in the accounting
-database and records the new version. Gateways from before this change refuse a version 4 database,
-so back up the database before upgrading. To roll back, follow the
+On its first start, v0.2.3 builds two report indexes in the accounting database and records schema
+version 4. v0.2.2 and earlier refuse a version 4 database, so back up the database before upgrading. To roll back, follow the
 [ledger plan](exec-plans/active/ledger-event-loop.md#rollback).
 
 

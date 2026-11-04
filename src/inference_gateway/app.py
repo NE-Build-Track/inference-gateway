@@ -257,7 +257,7 @@ def create_app(
                     # Apply every queued write before another server may own the database.
                     await asyncio.to_thread(writer.close)
 
-    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.2", lifespan=lifespan)
+    app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.3", lifespan=lifespan)
 
     if ledger:
         attach_reports(app, ledger)
