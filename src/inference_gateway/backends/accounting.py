@@ -6,14 +6,14 @@ from inference_gateway.core.models import Finished
 
 class UnavailableAccounting:
     async def observe(
-        self, request_id: str, job_id: str | None, usage: Finished | None
+        self, request_id: str, job_id: str | None, usage: Finished | None, created: float
     ) -> Observation:
         return Observation("unavailable", basis="not_provided", usage_reported=True)
 
 
 class FakeAccounting:
     async def observe(
-        self, request_id: str, job_id: str | None, usage: Finished | None
+        self, request_id: str, job_id: str | None, usage: Finished | None, created: float
     ) -> Observation:
         return Observation(
             "none",

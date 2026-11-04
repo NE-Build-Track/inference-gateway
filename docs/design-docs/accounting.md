@@ -90,12 +90,17 @@ CLI operations remain available while the server runs.
 On startup, unfinished local requests become `interrupted`. The reconciliation loop reads
 backend evidence and retries accounting operations only. It never redispatches inference.
 A job reference is saved as soon as the Livepeer stream opens. If a crash happens earlier,
-the adapter searches the public engine job list by the request's operation reference.
-Unknown records remain unresolved; discovery is not proof that a job never ran.
+the adapter searches the public engine job list by the request's operation reference, among jobs
+created from one minute before the request to ten minutes after it. A job created later is not
+found. Unknown records remain unresolved; discovery is not proof that a job never ran.
 
-The loop checks due rows every five seconds, up to 100 per pass. Successful projections
-refresh after 60 seconds, allowing late corrections. Backend reads are bounded to ten
-seconds per request. Errors back off exponentially, then pause after eight failures for
+The loop checks due rows every five seconds, up to 100 per pass. A successful observation is
+refreshed after a tenth of the request's age, and never sooner than a minute, so a young request is
+checked often while corrections are likeliest. Refreshes stop once a request is settled and a day
+old, or unresolved and a week old. Settled means the cost is final (`none`, `observed`, `corrected`
+or `unavailable`) and the engine has the usage, or there is no usage to give it. A request is then
+checked about 60 times in its first day, instead of every minute forever. Backend reads are bounded
+to ten seconds per request. Errors back off exponentially, then pause after eight failures for
 operator redrive. The request record exposes failure count, next reconciliation time and
 last successful observation time to administrators. A failed usage report is retried by
 reading the engine's recorded usage before writing, so inference is never repeated.

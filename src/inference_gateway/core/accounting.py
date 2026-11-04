@@ -9,6 +9,25 @@ from inference_gateway.core.models import Finished
 SCOPES = frozenset({"inference", "reports", "admin"})
 QUANTUM = Decimal("0.000000001")
 
+# Observations that further refreshes cannot improve, apart from a late correction.
+SETTLED_STATUSES = frozenset({"none", "observed", "corrected", "unavailable"})
+REFRESH_FLOOR = 60.0
+SETTLED_FOR = 86400.0
+UNRESOLVED_FOR = 7 * 86400.0
+PAUSED = 253402300799.0  # Waits for an operator's explicit redrive.
+
+
+def next_refresh(now: float, created: float, settled: bool) -> float:
+    """Refresh a request often while it is young, when corrections are likeliest, then stop.
+
+    The interval is a tenth of the request's age, and never under a minute. A settled request is
+    checked for corrections for a day, and an unresolved one for a week.
+    """
+    age = max(0.0, now - created)
+    if age >= (SETTLED_FOR if settled else UNRESOLVED_FOR):
+        return PAUSED
+    return now + max(REFRESH_FLOOR, age / 10)
+
 
 @dataclass(frozen=True)
 class Principal:
@@ -105,9 +124,12 @@ class Observation:
 
 class AccountingSource(Protocol):
     async def observe(
-        self, request_id: str, job_id: str | None, usage: Finished | None
+        self, request_id: str, job_id: str | None, usage: Finished | None, created: float
     ) -> Observation:
-        """Read/reconcile accounting only; never run inference or invent a zero cost."""
+        """Read/reconcile accounting only; never run inference or invent a zero cost.
+
+        `created` is when the gateway admitted the request, so a job search can stay near it.
+        """
         ...
 
 

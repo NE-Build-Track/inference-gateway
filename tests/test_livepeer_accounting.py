@@ -1,4 +1,5 @@
 import json
+import time
 from decimal import Decimal
 from uuid import uuid4
 
@@ -67,7 +68,7 @@ async def test_wholesale_adapter_preserves_pending_recovers_usage_and_classifies
     )
     assert recorded == [("req_a", Finished("stop", 10, 2, 8))]
     source = LivepeerAccounting(engine, actor)
-    observed = await source.observe("req_a", None, None)
+    observed = await source.observe("req_a", None, None, time.time())
     assert observed.job_id == jobs[0] and observed.amount is None and observed.status == "pending"
     assert engine.jobs.usage_reports[0][1]["cached_prompt_tokens"] == 8
     job = (await engine.jobs.list_jobs(actor))[0]
@@ -85,11 +86,11 @@ async def test_wholesale_adapter_preserves_pending_recovers_usage_and_classifies
         first_observed_at=None,
         updated_at=None,
     )
-    updated = await source.observe("req_a", str(job.id), None)
+    updated = await source.observe("req_a", str(job.id), None, time.time())
     assert updated.amount == "0.12" and updated.basis == "ticket_expected_value"
     assert updated.attempts[0]["classification"] == "delivered"
     assert len(engine.jobs.requests) == 1
-    assert (await source.observe("missing", str(uuid4()), None)).status == "unknown"
+    assert (await source.observe("missing", str(uuid4()), None, time.time())).status == "unknown"
 
 
 async def test_usage_reporting_retries_do_not_repeat_generation():
@@ -114,9 +115,9 @@ async def test_usage_reporting_retries_do_not_repeat_generation():
             await engine.jobs.run(actor, JobRequest(app=app, path="/", operation_ref="req_x"))
         ).job
         source = LivepeerAccounting(engine, actor)
-        result = await source.observe("req_x", str(job.id), Finished("stop", 10, 2, 5))
+        result = await source.observe("req_x", str(job.id), Finished("stop", 10, 2, 5), time.time())
         assert result.usage_reported and result.usage.cached_input_tokens == 5
-        again = await source.observe("req_x", str(job.id), Finished("stop", 10, 2, 5))
+        again = await source.observe("req_x", str(job.id), Finished("stop", 10, 2, 5), time.time())
         assert again.usage == result.usage
         assert len(transport.calls) == 1
         assert len(await engine.jobs.list_jobs(actor)) == 1
@@ -159,7 +160,9 @@ async def test_a_repeat_after_a_refused_payment_is_the_job_accounting_finds():
             raise AssertionError("the refused payment should fail the first job")
         second = (await engine.jobs.run(actor, request)).job
         assert second.id != first.id
-        observed = await LivepeerAccounting(engine, actor).observe("req_r", None, None)
+        # This engine runs on a test clock, so admission time comes from it as well.
+        admitted = first.created_at.timestamp()
+        observed = await LivepeerAccounting(engine, actor).observe("req_r", None, None, admitted)
         assert observed.job_id == str(second.id)
 
 
