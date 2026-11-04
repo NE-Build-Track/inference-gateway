@@ -10,10 +10,24 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+import anyio
+import anyio.to_thread
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from inference_gateway.adapters.ledger import SQLiteLedger
+
+# Reports run in worker threads so a large read cannot stall inference on the event loop. Their
+# Python work still competes for the interpreter lock, so only this many run at once; the rest wait.
+REPORT_WORKERS = 2
+FILTERS = {
+    "api_key_ids": "key_id",
+    "user_ids": "user_id",
+    "models": "model",
+    "project_ids": "user_id",
+    "workspace_ids": "user_id",
+    "outcomes": "outcome",
+}
 
 
 def epoch(value: str) -> float:
@@ -34,7 +48,16 @@ def iso(value: float) -> str:
 
 
 def attach_reports(app: FastAPI, ledger: SQLiteLedger) -> None:
+    limiter: anyio.CapacityLimiter | None = None
+
     async def report(request: Request) -> JSONResponse:
+        nonlocal limiter
+        if limiter is None:
+            limiter = anyio.CapacityLimiter(REPORT_WORKERS)
+        # Cancellation waits for the thread, so a disconnected client still holds its slot.
+        return await anyio.to_thread.run_sync(build, request, limiter=limiter)
+
+    def build(request: Request) -> JSONResponse:
         anthropic = "/organizations/" in request.url.path
         gateway = "/gateway/" in request.url.path
         costs = request.url.path.endswith(("costs", "cost_report"))
@@ -101,7 +124,7 @@ def attach_reports(app: FastAPI, ledger: SQLiteLedger) -> None:
             start = epoch(start_raw)
             end_raw = q.get("end_time") or q.get("ending_at")
             end = epoch(end_raw) if end_raw else float(int(time.time()) + 1)
-            offset = 0
+            offset, after = 0, None
             fingerprint = hashlib.sha256(
                 json.dumps(sorted((k, v) for k, v in q.multi_items() if k != "page")).encode()
             ).hexdigest()
@@ -109,25 +132,23 @@ def attach_reports(app: FastAPI, ledger: SQLiteLedger) -> None:
                 cursor = json.loads(base64.urlsafe_b64decode(q["page"]))
                 if cursor["query"] != fingerprint:
                     raise ValueError("Cursor does not match query")
-                end, offset = float(cursor["end"]), int(cursor["offset"])
+                end = float(cursor["end"])
+                if "after" in cursor:
+                    after = (float(cursor["after"][0]), str(cursor["after"][1]))
+                else:
+                    offset = int(cursor["offset"])
+                if after is not None and not request.url.path.endswith("/requests"):
+                    raise ValueError("Cursor does not match query")
             if not math.isfinite(end) or end <= start or end - start > 31 * 86400 or offset < 0:
                 raise ValueError("Use a positive window of at most 31 days")
             limit = int(q.get("limit", "100"))
             if not 1 <= limit <= 1000:
                 raise ValueError("Limit must be between 1 and 1000")
-            rows = ledger.rows(principal, start, end)
-            mapping = {
-                "api_key_ids": "key_id",
-                "user_ids": "user_id",
-                "models": "model",
-                "project_ids": "user_id",
-                "workspace_ids": "user_id",
-                "outcomes": "outcome",
-            }
-            for query, field in mapping.items():
-                filters = q.getlist(query) + q.getlist(query + "[]")
-                if filters:
-                    rows = [r for r in rows if r[field] in filters]
+            filters = [
+                (column, chosen)
+                for query, column in FILTERS.items()
+                if (chosen := q.getlist(query) + q.getlist(query + "[]"))
+            ]
             group = q.getlist("group_by") + q.getlist("group_by[]")
             dimensions = {
                 "api_key_id": "key_id",
@@ -154,21 +175,51 @@ def attach_reports(app: FastAPI, ledger: SQLiteLedger) -> None:
             )
             if set(group) - supported or len(group) != len(set(group)):
                 raise ValueError("Unsupported grouping")
+            cursor_after: list[Any] | None = None
             if request.url.path.endswith("/requests"):
-                items = rows
+                # Read one page past the limit to learn whether another page exists.
+                rows = ledger.rows(
+                    principal,
+                    start,
+                    end,
+                    filters=filters,
+                    after=after,
+                    offset=offset,
+                    limit=limit + 1,
+                )
+                more = len(rows) > limit
+                selected = rows[:limit]
+                if more:
+                    cursor_after = [selected[-1]["created"], selected[-1]["id"]]
             else:
                 width = q.get("bucket_width", "1d")
                 sizes = {"1m": 60, "1h": 3600, "1d": 86400}
                 if width not in sizes or (costs and width != "1d"):
                     raise ValueError("Unsupported bucket width")
                 seconds = sizes[width]
-                if math.ceil((end - start) / seconds) > 10000:
+                total = math.ceil((end - start) / seconds)
+                if total > 10000:
                     raise ValueError("Too many buckets; use a larger bucket width")
+                first, last = offset, min(total, offset + limit)
+                # Read only this page's buckets, with one bucket of margin on each side, and keep
+                # rows by computed bucket index so a page boundary assigns rows exactly as before.
+                rows = (
+                    ledger.rows(
+                        principal,
+                        max(start, start + (first - 1) * seconds),
+                        min(end, start + (last + 1) * seconds),
+                        filters=filters,
+                    )
+                    if first < last
+                    else []
+                )
                 buckets: dict[int, list[dict[str, Any]]] = defaultdict(list)
                 for row in rows:
-                    buckets[int((row["created"] - start) // seconds)].append(row)
-                items = []
-                for index in range(math.ceil((end - start) / seconds)):
+                    index = int((row["created"] - start) // seconds)
+                    if first <= index < last:
+                        buckets[index].append(row)
+                selected = []
+                for index in range(first, last):
                     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
                     for row in buckets[index]:
                         currency = (
@@ -284,7 +335,7 @@ def attach_reports(app: FastAPI, ledger: SQLiteLedger) -> None:
                         for r in buckets[index]
                     )
                     low, high = start + index * seconds, min(end, start + (index + 1) * seconds)
-                    items.append(
+                    selected.append(
                         {
                             "starting_at": iso(low),
                             "ending_at": iso(high),
@@ -300,13 +351,13 @@ def attach_reports(app: FastAPI, ledger: SQLiteLedger) -> None:
                             "gateway_unresolved_requests": unresolved,
                         }
                     )
-            selected = items[offset : offset + limit]
-            more = offset + limit < len(items)
+                more = offset + limit < total
+            position = (
+                {"after": cursor_after} if cursor_after is not None else {"offset": offset + limit}
+            )
             token = (
                 base64.urlsafe_b64encode(
-                    json.dumps(
-                        {"query": fingerprint, "end": end, "offset": offset + limit}
-                    ).encode()
+                    json.dumps({"query": fingerprint, "end": end, **position}).encode()
                 ).decode()
                 if more
                 else None

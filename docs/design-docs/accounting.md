@@ -130,11 +130,17 @@ Supply `start_time`/`end_time` as UTC Unix seconds, or `starting_at`/`ending_at`
 ISO timestamps. The interval is inclusive/exclusive, attributed by request start time.
 Adjustments appear in their original request's bucket. End defaults to the current second
 plus one. Use `bucket_width=1m`, `1h`, or `1d`; cost reports use `1d`. Windows are limited to
-31 days, 10,000 buckets and 10,000 authorized requests; narrow the window for larger exports.
+31 days and 10,000 buckets.
 
 `limit` is 1–1000, default 100. For bucket reports it counts buckets; for request lists it
 counts requests. Follow `next_page` using the same query and `page`. Cursors preserve the
 end time and pagination position, but do not freeze accounting against later reconciliation.
+A request-list cursor resumes after the last request returned, so later pages never repeat or skip
+one. A bucket report reads only the buckets on its page, and one page may cover at most 10,000
+authorized requests; lower `limit` or narrow the window if it does. Request lists have no such cap.
+
+Reports run in worker threads, at most two at once, so a large read never stalls inference. Each read
+uses an index; schema version 4 added `entries(request_id, created, id)` and `requests(created, id)`.
 `X-Gateway-Accounting-As-Of` identifies report generation time. Request records expose the
 actual wholesale observation time; it may be older. Responses use `Cache-Control: no-store`.
 
