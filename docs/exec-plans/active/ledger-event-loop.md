@@ -53,8 +53,10 @@ The work ships in three pull requests, smallest risk first.
 - [x] Reconciliation slows with age and stops for settled and long-unresolved requests.
 - [x] The job search without a saved job ID covers only jobs near admission time.
 - [x] Tests: the schedule, settling, operator redrive, a draining backlog and the bounded search.
-- [ ] Writer thread for request-path writes.
-- [ ] Native completion and error logs.
+- [x] Writer thread for request-path and reconciliation writes.
+- [x] Native completion and error logs.
+- [x] Tests: order, cancelled waits, logged failures, a responsive loop under slow writes, a
+  request cancelled during its begin, a cancelled stream, and the native log.
 
 ## Verification
 
@@ -67,7 +69,7 @@ Synthetic ledger with 7,919 requests and 7,523 charges, on NVMe:
 | Daily usage for the whole window | About 7.3 s, the same full read | 0.19 s |
 | Longest event-loop freeze during any read | 7.2 s | 0.026 s |
 
-`make check` passes 665 tests. The operator's own reproduction has not been run against
+`make check` passes 672 tests. The operator's own reproduction has not been run against
 this change.
 
 Reconciliation, by the same schedule: a request is refreshed about 60 times in its first day, then
@@ -76,6 +78,10 @@ loop never idled. On upgrade, every settled request older than a day gets one la
 At 100 per pass with five seconds between passes, 7,919 of them take 80 passes, at least seven
 minutes. The bounded job
 search reads one page where it used to read every job; a test with 5,002 jobs covers it.
+
+Request-path writes, with the ledger on a slow SSD and 100 requests four at a time: the median
+event-loop freeze fell from 44 ms to 0.2 ms, and the longest from 103 ms to 7 ms. Throughput did not
+change, since the disk still sets it.
 
 ## Rollback
 

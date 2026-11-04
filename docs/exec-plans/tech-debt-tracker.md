@@ -17,10 +17,9 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Native stream outcomes | A native SSE request that was delivered and charged can record the outcome `disconnected`. Charges are correct; the outcome misleads reports. Find where the stream ends early and record success |
 | SGLang local media paths | SGLang's image loader opens `file://` and `/path` values, and `--allowed-media-domains` covers only HTTP(S). System One admits only inline images, but native chat bodies are not inspected, so an SGLang vision route may have the same exposure; this path has not been traced end to end. Test and restrict it before admitting one |
 | Per-call wholesale versus per-token retail | Decisions are short, so a flat wholesale price can exceed retail at ordinary input rates. Price from real token counts; add a per-call fee only if rates cannot cover it |
-| Native request logs | Native and System One requests write no per-request log records, unlike validated routes. Add outcome and elapsed-time records, without bodies, before relying on logs to operate them |
 | Discovery process test timing | `test_discovery_process_preserves_native_runner_identity` failed once in a full local run and passed when repeated; the cause is unknown. It allows about 5 seconds for a subprocess to start. Widen the window if it recurs |
 | Reporting scale | Request lists page in SQL without a cap. A bucket report still totals its page's rows in Python and fails above 10,000 requests per page; aggregate in SQL if pages grow past that |
-| Ledger writes on the event loop | Each paid request makes five synchronous SQLite transactions on the event loop: 12 ms on NVMe and 42 ms on a slow SSD in local measurements. Move them to one writer thread that preserves order and cancellation |
+| Ledger write throughput | One writer thread commits each write separately: about 12 ms per metered request on NVMe and 40 ms on a slow SSD, so metered requests top out near 80 or 25 per second. Batch commits if load approaches that |
 | Accounting operations | Automate backups and reconciliation alerts; incomplete usage remains explicit and may require an operator adjustment |
 | Additional endpoints | Specify the next capability; add a port and adapters where needed |
 | Library extraction | Separate distributions when an external consumer needs independent releases |

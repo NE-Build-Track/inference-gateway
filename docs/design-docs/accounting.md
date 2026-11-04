@@ -87,6 +87,14 @@ The gateway database uses WAL, foreign keys, migrations and short transactions. 
 holds a file lock for its lifetime; a second server fails instead of recovering active work.
 CLI operations remain available while the server runs.
 
+Writes never run on the event loop. One writer thread applies request and reconciliation writes in
+the order they were queued, so a request's begin, job, usage and outcome land in that order. Each
+write is queued before its caller waits, so cancelling a request cannot drop its outcome; a request
+cancelled while its begin waits queues a `disconnected` outcome after it. Each request waits for its
+own writes before it completes. Shutdown applies every queued write before releasing the database.
+Key lookups and the model list's price read still run on the event loop. Each is a read that never
+waits for a commit, and took about 0.4 ms, never over 0.7 ms, on a slow SSD.
+
 On startup, unfinished local requests become `interrupted`. The reconciliation loop reads
 backend evidence and retries accounting operations only. It never redispatches inference.
 A job reference is saved as soon as the Livepeer stream opens. If a crash happens earlier,
