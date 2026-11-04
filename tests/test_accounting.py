@@ -216,7 +216,7 @@ async def test_recovery_observations_and_accounting_retry_never_dispatch(book):
     class Source:
         calls = 0
 
-        async def observe(self, request_id, job_id, usage):
+        async def observe(self, request_id, job_id, usage, created):
             self.calls += 1
             return Observation("pending", job_id="job1", usage=Finished("stop", 10, 20))
 

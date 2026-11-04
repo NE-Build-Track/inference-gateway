@@ -48,7 +48,9 @@ async def reconcile_once(ledger: SQLiteLedger, backend: str, source: AccountingS
             else None
         )
         try:
-            value = await asyncio.wait_for(source.observe(row["id"], row["job_id"], usage), 10)
+            value = await asyncio.wait_for(
+                source.observe(row["id"], row["job_id"], usage, row["created"]), 10
+            )
             ledger.observation(row["id"], value)
         except Exception:
             ledger.reconcile_failed(row["id"])

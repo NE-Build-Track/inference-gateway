@@ -51,7 +51,9 @@ network cost stays in the engine and may arrive later. A 503 indicates unavailab
 or payment infrastructure; a 409 means the operation was already dispatched. The gateway
 does not retry inference. Registry mode retries accounting work separately; inspect
 `reconcile_failures` in admin request reports and use `gateway accounting retry REQUEST_ID`
-after repairing the cause. See the Livepeer guide for cancellation during stream opening.
+after repairing the cause. Reconciliation also stops by itself, a day after a request settles or a
+week after an unresolved one began; its `next_reconcile` then reads `253402300799`, and the same
+command checks it again. See the Livepeer guide for cancellation during stream opening.
 
 See [accounting](design-docs/accounting.md) for exact monetary semantics and the CLI runbook.
 

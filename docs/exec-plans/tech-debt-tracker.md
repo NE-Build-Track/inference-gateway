@@ -20,8 +20,6 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Native request logs | Native and System One requests write no per-request log records, unlike validated routes. Add outcome and elapsed-time records, without bodies, before relying on logs to operate them |
 | Discovery process test timing | `test_discovery_process_preserves_native_runner_identity` failed once in a full local run and passed when repeated; the cause is unknown. It allows about 5 seconds for a subprocess to start. Widen the window if it recurs |
 | Reporting scale | Request lists page in SQL without a cap. A bucket report still totals its page's rows in Python and fails above 10,000 requests per page; aggregate in SQL if pages grow past that |
-| Reconciliation never settles | Every request is refreshed every 60 seconds forever, so beyond about 1,200 requests the loop never idles. Stop refreshing final costs after a few checks for corrections; see the [plan](active/ledger-event-loop.md) |
-| Job search without a job ID | Recovering a request with no saved job ID pages through every job in Core, on every refresh. Search only jobs created near the request |
 | Ledger writes on the event loop | Each paid request makes five synchronous SQLite transactions on the event loop: 12 ms on NVMe and 42 ms on a slow SSD in local measurements. Move them to one writer thread that preserves order and cancellation |
 | Accounting operations | Automate backups and reconciliation alerts; incomplete usage remains explicit and may require an operator adjustment |
 | Additional endpoints | Specify the next capability; add a port and adapters where needed |

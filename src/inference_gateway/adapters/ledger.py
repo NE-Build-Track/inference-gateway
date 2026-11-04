@@ -19,7 +19,15 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from inference_gateway.core.accounting import QUANTUM, SCOPES, Observation, Price, Principal
+from inference_gateway.core.accounting import (
+    QUANTUM,
+    SCOPES,
+    SETTLED_STATUSES,
+    Observation,
+    Price,
+    Principal,
+    next_refresh,
+)
 from inference_gateway.core.models import Finished
 
 SCHEMA = """
@@ -403,6 +411,16 @@ class SQLiteLedger:
             self.record_usage(request_id, value.usage)
         with self.connection() as db:
             now = time.time()
+            row = db.execute(
+                "SELECT created,input_tokens FROM requests WHERE id=?", (request_id,)
+            ).fetchone()
+            if not row:
+                raise ValueError("Unknown request")
+            # Nothing left to learn once the cost is final and the engine has the usage, or there
+            # is no usage to give it.
+            settled = value.status in SETTLED_STATUSES and (
+                value.usage_reported or row["input_tokens"] is None
+            )
             db.execute(
                 "UPDATE requests SET "
                 "job_id=COALESCE(?,job_id),wholesale_status=?,wholesale_amount=?, "
@@ -417,7 +435,7 @@ class SQLiteLedger:
                     value.basis,
                     json.dumps(value.attempts),
                     now,
-                    now + 60,
+                    next_refresh(now, row["created"], settled),
                     not value.usage_reported,
                     json.dumps(value.quantities),
                     value.usage_source,
