@@ -17,6 +17,7 @@ from pydantic import ValidationError
 
 from inference_gateway.accounting import MeteredBackend, reconciliation_loop
 from inference_gateway.adapters import response_api
+from inference_gateway.adapters.batch_store import BatchStore
 from inference_gateway.adapters.http_stream import ManagedStreamingResponse
 from inference_gateway.adapters.ledger import SQLiteLedger
 from inference_gateway.adapters.model_catalog import (
@@ -29,6 +30,7 @@ from inference_gateway.adapters.model_catalog import (
 )
 from inference_gateway.adapters.native_http import NativeHTTPResponse
 from inference_gateway.adapters.native_request import envelope
+from inference_gateway.adapters.openapi import attach_conversation_schemas
 from inference_gateway.adapters.reports import attach_reports
 from inference_gateway.adapters.responses import (
     Protocol,
@@ -46,7 +48,7 @@ from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.accounting import AccountingSource
 from inference_gateway.core.backend import Backend, BackendError
 from inference_gateway.core.models import Event
-from inference_gateway.core.native import NativeBackend
+from inference_gateway.core.native import NativeBackend, NativeRequest, NativeStream
 from inference_gateway.core.service import GenerationService
 from inference_gateway.runtime import (
     EngineFactory,
@@ -166,6 +168,19 @@ def create_app(
 ) -> FastAPI:
     """Borrow injected backends; own configured Builder Core through ASGI lifespan."""
     config = settings if settings is not None else load_settings()
+    if config.backend == "railway":
+        from inference_gateway.remote import create_remote_app
+
+        return create_remote_app(config)
+    batch_store = (
+        BatchStore(
+            config.batch_database,
+            config.batch_artifact_dir,
+            retention=config.batch_retention_seconds,
+        )
+        if config.batch_database
+        else None
+    )
     owns_engine = backend is None and config.backend == "livepeer"
     ledger = SQLiteLedger(config.accounting_db) if config.accounting_db else None
     native = native_backend
@@ -244,11 +259,70 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        with ledger.server_lock() if ledger else nullcontext():
-            async with resources(app):
-                yield
+        maintenance = None
+        try:
+            with (
+                ledger.server_lock() if ledger else nullcontext(),
+                batch_store.server_lock() if batch_store else nullcontext(),
+            ):
+                async with resources(app):
+                    if batch_store:
+                        batch_store.recover()
+
+                        async def expire_batch_artifacts() -> None:
+                            assert batch_store is not None
+                            while True:
+                                batch_store.expire()
+                                await asyncio.sleep(min(60, config.batch_retention_seconds))
+
+                        maintenance = asyncio.create_task(expire_batch_artifacts())
+                    yield
+        finally:
+            if maintenance:
+                maintenance.cancel()
+                await asyncio.gather(maintenance, return_exceptions=True)
+            if batch_store:
+                batch_store.close()
 
     app = FastAPI(title="Agent-compatible endpoint gateway", version="0.2.2", lifespan=lifespan)
+
+    if batch_store:
+        from fastapi import HTTPException
+
+        from inference_gateway.adapters.network_batch import router as network_batch_router
+        from inference_gateway.core.backend import BackendUnavailable, UnsupportedFeature
+
+        async def batch_owner(request: Request) -> str:
+            key = request.headers.get("authorization", "").removeprefix("Bearer ")
+            principal = ledger.authenticate(key) if ledger else None
+            if ledger and principal is None:
+                raise HTTPException(401, "Invalid API key")
+            if principal and not principal.permits("inference"):
+                raise HTTPException(403, "Insufficient inference permission")
+            if config.api_key is not None and not hmac.compare_digest(
+                key.encode(), config.api_key.encode()
+            ):
+                raise HTTPException(401, "Invalid API key")
+            return principal.user_id if principal else "shared"
+
+        async def open_network_batch(command: NativeRequest) -> NativeStream:
+            if native is None:
+                raise BackendUnavailable()
+            if not native.accepts(command.model) or not native.supports(
+                command.model, command.endpoint
+            ):
+                raise UnsupportedFeature()
+            if ledger:
+                # Media retail pricing needs measured media units. Never bill
+                # images, audio or meshes as fabricated input/output tokens.
+                raise UnsupportedFeature("Media retail accounting is not configured")
+            return await native.open(command)
+
+        app.include_router(
+            network_batch_router(
+                batch_store, open_network_batch, batch_owner, timeout=config.timeout_seconds
+            )
+        )
 
     if ledger:
         attach_reports(app, ledger)
@@ -490,6 +564,11 @@ def create_app(
                 names.update(native.models_for(endpoints))
         if ledger:
             names &= {p["model"] for p in ledger.prices() if p["active"]}
+        if batch_store and native and family == "openai" and ledger is None:
+            from inference_gateway.adapters.network_batch import SYNCHRONOUS_PROFILES
+
+            for endpoint in SYNCHRONOUS_PROFILES:
+                names.update(native.models_for((endpoint,)))
         return JSONResponse(
             render(
                 family,
@@ -516,4 +595,5 @@ def create_app(
         # System One clients send Bearer keys and parse this error envelope.
         return await generate(request, "openai", native_only=True)
 
+    attach_conversation_schemas(app)
     return app

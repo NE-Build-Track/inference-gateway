@@ -1,0 +1,144 @@
+{
+  "$defs": {
+    "CapacityGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "slots": {
+          "minimum": 1,
+          "title": "Slots",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "slots"
+      ],
+      "title": "CapacityGroup",
+      "type": "object"
+    },
+    "EndpointProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "usage": {
+          "title": "Usage",
+          "type": "string"
+        },
+        "stream_usage": {
+          "enum": [
+            "include_usage_required",
+            "terminal",
+            "unsupported"
+          ],
+          "title": "Stream Usage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "profile",
+        "usage",
+        "stream_usage"
+      ],
+      "title": "EndpointProfile",
+      "type": "object"
+    },
+    "RuntimeIdentityV2": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "comfystream",
+          "title": "Name",
+          "type": "string"
+        },
+        "image": {
+          "pattern": "^[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}$",
+          "title": "Image",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "image"
+      ],
+      "title": "RuntimeIdentityV2",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "inference_contract": {
+      "const": 2,
+      "title": "Inference Contract",
+      "type": "integer"
+    },
+    "runner_id": {
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+      "title": "Runner Id",
+      "type": "string"
+    },
+    "model_name": {
+      "maxLength": 96,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeIdentityV2"
+    },
+    "deployment_revision": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Deployment Revision",
+      "type": "string"
+    },
+    "endpoints": {
+      "additionalProperties": {
+        "$ref": "#/$defs/EndpointProfile"
+      },
+      "minProperties": 1,
+      "title": "Endpoints",
+      "type": "object"
+    },
+    "capacity_group": {
+      "$ref": "#/$defs/CapacityGroup"
+    },
+    "limits": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Limits",
+      "type": "object"
+    },
+    "admission": {
+      "const": "candidate",
+      "title": "Admission",
+      "type": "string"
+    }
+  },
+  "required": [
+    "inference_contract",
+    "runner_id",
+    "model_name",
+    "runtime",
+    "deployment_revision",
+    "endpoints",
+    "capacity_group",
+    "admission"
+  ],
+  "title": "RunnerMetadataV2",
+  "type": "object"
+}

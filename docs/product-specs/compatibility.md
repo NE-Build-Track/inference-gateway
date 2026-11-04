@@ -4,6 +4,28 @@ Status: implemented subset, verified against the SDK versions in `uv.lock`.
 Compatibility means the listed request and response flows work with those SDKs.
 It does not mean every provider feature or every agent application is supported.
 
+`GATEWAY_BACKEND=railway` serves an operator-pinned synchronous media catalog through
+the remote Core HTTP API. It forwards each caller's Builder bearer credential and
+creates no embedded engine. The [remote deployment profile](../../deploy/remote/README.md)
+documents admission expiry, credential-scoped receipts, limits and rollback. This
+profile advertises only admitted media operations; conversation adapters remain in
+the existing embedded backend. Paid acceptance is separate from deployment.
+
+The optional `batch` extra adds synchronous network media methods when
+`GATEWAY_BATCH_DATABASE` is configured. Requests use admitted Livepeer runners through
+Builder Engine. SQLite stores request receipts, correlated network job IDs and
+idempotency records; `GATEWAY_BATCH_ARTIFACT_DIR` stores the returned response artifacts
+under opaque, authenticated IDs. `GATEWAY_BATCH_RETENTION_SECONDS` defaults to 86400.
+There is no embedded model runtime, local generation queue or direct runner-address
+configuration in the gateway. Incomplete network outcomes are retained and never
+automatically resubmitted. Standard synchronous routes return provider response bodies.
+
+Image generation/editing, speech, transcription and transformation/music/mesh batch
+extensions are candidate network methods. Async video/job lifecycle forwarding and
+media retail pricing still need acceptance. Registry billing refuses media requests
+until media-unit pricing is configured; media is never charged as invented tokens.
+The [network-runner plan](../exec-plans/active/comfystream-capabilities.md) tracks release gates.
+
 ## Interfaces
 
 | Interface | Route | Version/header behavior |
@@ -95,8 +117,7 @@ Guarded sampling, reasoning effort/budget and audio input controls remain unveri
 paid dispatch.
 
 See [Models and Responses](models-and-responses.md) for their separate stateless contract.
-Embeddings, stored conversations, and customer payment collection remain outside this slice. Registry mode provides persistent usage and retail/wholesale accounting. The server's generated OpenAPI page lists routes but does not yet describe the
-manually parsed request bodies; this document and request models define the contract.
+Embeddings, stored conversations, and customer payment collection remain outside this slice. Registry mode provides persistent usage and retail/wholesale accounting. Generated OpenAPI describes conversational request bodies, authentication and streaming responses. Complete media schemas remain a release gate; this document and request models define the supported subset.
 
 ## Livepeer backend
 

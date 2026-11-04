@@ -5,6 +5,11 @@ a small generation contract. On native routes, it forwards the original request 
 usage. System One decisions always use native routes. The gateway owns no conversation history;
 clients submit history on every request.
 
+The optional `railway` composition in `remote.py` serves admitted synchronous media
+through `backends/remote_railway.py` and the remote Core HTTP `/v1/jobs` API. It borrows
+caller credentials, owns only receipts/artifacts and never constructs BuilderEngine.
+The existing embedded composition and conversation adapters are unchanged.
+
 ```text
 OpenAI clients ────┐
                    ├─ HTTP boundary ─┬─ protocol translators → GenerationService → Fake or LivepeerBackend
@@ -24,6 +29,8 @@ application. Identity and retail accounting have durable state in a separate gat
 | `core/accounting.py` | Principal, immutable prices, wholesale observation port | Core, standard library |
 | `accounting.py` | Meter validated generation and reconcile accounting | Core, ledger adapter |
 | `adapters/ledger.py` | SQLite identity, retail ledger and dated wholesale projections | Core, standard library |
+| `adapters/batch_store.py` | Synchronous network request receipts, idempotent response replay and artifact retention | Standard library |
+| `adapters/network_batch.py` | Synchronous media HTTP bodies and delivery through an injected network transport | Core native port, batch store, FastAPI |
 | `adapters/reports.py` | Authorized provider and gateway report formats | Core, ledger adapter, FastAPI |
 | `cli.py` | Local user/key/price/adjustment administration | Core, ledger adapter |
 | `core/service.py` | Enforce event order; assemble nonstream responses | Core only |
@@ -55,7 +62,10 @@ reconciliation worker retries accounting reads/writes, never generation. There i
 response replay cache or message broker. In Livepeer mode,
 Builder Core owns its durable job/payment/cost records and failover, including paid failover to another orchestrator (its D52, capped by `LPB_MAX_PAID_ATTEMPTS`).
 Gateway request IDs become engine operation references for correlation. Client disconnects
-stop reading and preserve the engine's outcome; no application reply is saved.
+stop reading and preserve the engine's outcome. Conversational replies remain transient.
+When synchronous network batches are enabled, the gateway retains response artifacts
+and receipts linked to the actual Builder job ID. It never schedules local inference,
+installs model packages or automatically resubmits incomplete network work.
 
 The inbound adapters protect the core from external vocabulary changes. This costs
 translation code and contract tests, but allows either interface to evolve independently.

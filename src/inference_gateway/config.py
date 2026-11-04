@@ -12,18 +12,33 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class Settings:
     api_key: str | None = field(default=None, repr=False)
     timeout_seconds: float = 300
-    backend: Literal["fake", "livepeer"] = "fake"
+    backend: Literal["fake", "livepeer", "railway"] = "fake"
+    engine_url: str | None = None
+    capability_openapi_file: str | None = None
     accounting_db: str | None = None
+    batch_database: str | None = None
+    batch_artifact_dir: str = "./batch-artifacts"
+    batch_retention_seconds: int = 86400
 
     def __post_init__(self) -> None:
+        if self.batch_retention_seconds <= 0:
+            raise ValueError("Batch retention must be positive")
         if not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive and finite")
         if self.accounting_db and self.api_key:
             raise ValueError("Registry mode cannot also use a legacy shared key")
         if self.api_key == "":
             raise ValueError("api_key cannot be empty")
-        if self.backend not in {"fake", "livepeer"}:
-            raise ValueError("backend must be fake or livepeer")
+        if self.backend not in {"fake", "livepeer", "railway"}:
+            raise ValueError("backend must be fake, livepeer or railway")
+        if self.backend == "railway" and (
+            not self.engine_url
+            or not self.capability_openapi_file
+            or not self.batch_database
+            or self.api_key
+            or self.accounting_db
+        ):
+            raise ValueError("Railway requires URL, catalog and batch database; caller auth only")
 
 
 class ModelRoute(BaseModel):
@@ -76,7 +91,19 @@ class NativeApproval(BaseModel):
     app: str = Field(min_length=1)
     model: str = Field(min_length=1)
     deployment_revision: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
-    endpoint: Literal["chat_completions", "responses", "messages", "systemone"]
+    endpoint: Literal[
+        "chat_completions",
+        "responses",
+        "messages",
+        "systemone",
+        "images_generations",
+        "images_edits",
+        "audio_speech",
+        "audio_transcriptions",
+        "image_transformations",
+        "music_generations",
+        "meshes_generations",
+    ]
     expires_at: float = Field(gt=0)
 
 

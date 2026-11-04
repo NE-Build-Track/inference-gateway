@@ -8,6 +8,7 @@ from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import DiscoverySource, SelectionPolicy
 
 from inference_gateway.adapters.runner_contract import PROFILES, RunnerMetadata
+from inference_gateway.adapters.runner_contract_v2 import RunnerMetadataV2, parse_metadata
 
 
 def origin(url: str) -> tuple[str, str, int]:
@@ -65,7 +66,7 @@ class FilteredDiscovery:
         return tuple(selected)
 
 
-def native_runner_id(runner: Runner, metadata: RunnerMetadata) -> str | None:
+def native_runner_id(runner: Runner, metadata: RunnerMetadata | RunnerMetadataV2) -> str | None:
     """Resolve a declaration, not an authorization; never infer identity from a URL."""
     if metadata.runner_id is not None:
         if runner.runner_id and runner.runner_id != metadata.runner_id:
@@ -86,7 +87,7 @@ def normalize_native_identity(runner: Runner) -> Runner | None:
     if not isinstance(value, dict) or "inference_contract" not in value:
         return runner
     try:
-        metadata = RunnerMetadata.model_validate_json(runner.metadata or "")
+        metadata = parse_metadata(value)
     except ValueError:
         return None
     identity = native_runner_id(runner, metadata)
