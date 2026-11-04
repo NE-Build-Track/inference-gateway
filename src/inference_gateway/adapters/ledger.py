@@ -11,7 +11,8 @@ import math
 import secrets
 import sqlite3
 import time
-from collections.abc import Iterator
+from collections import defaultdict
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
@@ -53,6 +54,14 @@ CREATE TRIGGER immutable_price BEFORE UPDATE OF model,currency,input_rate,output
  SELECT RAISE(ABORT,'Price versions are immutable'); END;
 PRAGMA user_version=1;
 """
+# A report reads one window of requests, then each request's entries. Without these, both reads
+# scan whole tables: the charge index is partial, and an admin report cannot use user_id first.
+REPORT_INDEXES = """
+CREATE INDEX entry_lookup ON entries(request_id,created,id);
+CREATE INDEX report_window ON requests(created,id);
+"""
+REPORT_FILTERS = frozenset({"key_id", "user_id", "model", "outcome"})
+REPORT_ROW_LIMIT = 10000
 
 
 class SQLiteLedger:
@@ -84,7 +93,13 @@ class SQLiteLedger:
                       BEGIN SELECT RAISE(ABORT,'Price versions are immutable'); END;
                     PRAGMA user_version=3;
                     COMMIT;""")
-            elif version != 3:
+                version = 3
+            if version == 3:
+                db.executescript(
+                    "BEGIN IMMEDIATE;\n" + REPORT_INDEXES + "PRAGMA user_version=4;\nCOMMIT;"
+                )
+                version = 4
+            if version != 4:
                 raise ValueError("Unsupported accounting schema version")
         Path(path).chmod(0o600)
 
@@ -454,55 +469,88 @@ class SQLiteLedger:
         return records[0] if records else None
 
     def rows(
-        self, principal: Principal, start: float, end: float, request_id: str | None = None
+        self,
+        principal: Principal,
+        start: float,
+        end: float,
+        request_id: str | None = None,
+        *,
+        filters: Sequence[tuple[str, Sequence[str]]] = (),
+        after: tuple[float, str] | None = None,
+        offset: int = 0,
+        limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        owner = None if principal.permits("admin") else principal.user_id
+        """Requests in [start, end) ordered by (created, id), each with its entries.
+
+        Each filter is a column and its allowed values; filters combine with AND. `after` resumes
+        after a (created, id) position. Without a limit, more than 10,000 rows is an error.
+        """
+        where = ["r.created>=?", "r.created<?"]
+        params: list[Any] = [start, end]
+        if not principal.permits("admin"):
+            where.append("r.user_id=?")
+            params.append(principal.user_id)
+        if request_id is not None:
+            where.append("r.id=?")
+            params.append(request_id)
+        for column, values in filters:
+            if column not in REPORT_FILTERS or not values:
+                raise ValueError("Unsupported report filter")
+            where.append(f"r.{column} IN ({','.join('?' * len(values))})")
+            params.extend(values)
+        if after is not None:
+            where.append("(r.created,r.id)>(?,?)")
+            params.extend(after)
+        capped = limit is None
+        params.extend([REPORT_ROW_LIMIT + 1 if limit is None else limit, offset])
         with self.connection() as db:
             records = [
                 dict(r)
                 for r in db.execute(
                     "SELECT r.*,p.currency FROM requests r JOIN prices p ON "
-                    "p.version=r.price_version "
-                    "WHERE created>=? AND created<? AND (? IS NULL OR user_id=?) "
-                    "AND (? IS NULL OR r.id=?) ORDER BY "
-                    "created,id LIMIT 10001",
-                    (start, end, owner, owner, request_id, request_id),
+                    "p.version=r.price_version WHERE "
+                    + " AND ".join(where)
+                    + " ORDER BY r.created,r.id LIMIT ? OFFSET ?",
+                    params,
                 )
             ]
-            if len(records) > 10000:
+            if capped and len(records) > REPORT_ROW_LIMIT:
                 raise ValueError("Report exceeds 10000 requests; narrow the time window")
-            for row in records:
-                entries = [
-                    dict(e)
-                    for e in db.execute(
-                        "SELECT * FROM entries WHERE request_id=? ORDER BY created,id", (row["id"],)
-                    )
-                ]
-                row["retail_amount"] = (
-                    str(sum((Decimal(e["amount"]) for e in entries), Decimal(0)))
-                    if entries
-                    else None
-                )
-                if row["billing_status"] == "not_billable" and not entries:
-                    row["retail_amount"] = "0"
-                row["entries"] = entries
-                row["attempts"] = json.loads(row["attempts"])
-                row["wholesale_usage"] = json.loads(row["wholesale_usage"])
-                if not principal.permits("admin"):
-                    for field in (
-                        "job_id",
-                        "wholesale_status",
-                        "wholesale_amount",
-                        "wholesale_currency",
-                        "wholesale_basis",
-                        "attempts",
-                        "reconciled",
-                        "next_reconcile",
-                        "reconcile_failures",
-                        "report_pending",
-                        "backend",
-                        "wholesale_usage",
-                        "wholesale_usage_source",
-                    ):
-                        row.pop(field, None)
+            entries: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            ids = [row["id"] for row in records]
+            for first in range(0, len(ids), 500):
+                chunk = ids[first : first + 500]
+                for e in db.execute(
+                    f"SELECT * FROM entries WHERE request_id IN ({','.join('?' * len(chunk))}) "
+                    "ORDER BY request_id,created,id",
+                    chunk,
+                ):
+                    entries[e["request_id"]].append(dict(e))
+        for row in records:
+            found = entries.get(row["id"], [])
+            row["retail_amount"] = (
+                str(sum((Decimal(e["amount"]) for e in found), Decimal(0))) if found else None
+            )
+            if row["billing_status"] == "not_billable" and not found:
+                row["retail_amount"] = "0"
+            row["entries"] = found
+            row["attempts"] = json.loads(row["attempts"])
+            row["wholesale_usage"] = json.loads(row["wholesale_usage"])
+            if not principal.permits("admin"):
+                for field in (
+                    "job_id",
+                    "wholesale_status",
+                    "wholesale_amount",
+                    "wholesale_currency",
+                    "wholesale_basis",
+                    "attempts",
+                    "reconciled",
+                    "next_reconcile",
+                    "reconcile_failures",
+                    "report_pending",
+                    "backend",
+                    "wholesale_usage",
+                    "wholesale_usage_source",
+                ):
+                    row.pop(field, None)
         return records

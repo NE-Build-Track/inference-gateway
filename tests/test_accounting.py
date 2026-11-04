@@ -278,7 +278,7 @@ def test_single_server_lock_and_schema_upgrade(tmp_path):
         db.executescript(SCHEMA)
     ledger = SQLiteLedger(path)
     with ledger.connection() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 4
     with ledger.server_lock():
         with pytest.raises(ValueError), SQLiteLedger(path).server_lock():
             pass
