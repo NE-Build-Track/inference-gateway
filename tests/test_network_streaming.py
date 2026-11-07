@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import httpx
 import pytest
 import uvicorn
+from contract_helpers import CHAT, envelope, validated_backend
 
 from inference_gateway.app import Settings, create_app
 from inference_gateway.core.models import BlockStart, Delta
@@ -73,10 +74,9 @@ async def test_livepeer_socket_disconnect_preserves_engine_outcome(protocol, mod
     from livepeer_builder import ActorContext, EngineSupply
     from livepeer_builder.testing import ScriptedStreamTransport, StreamScript, make_engine, runner
 
-    from inference_gateway.backends.livepeer import LivepeerBackend
     from inference_gateway.config import LivepeerSettings, ModelRoute
 
-    app_name = "chat/socket-test"
+    app_name = "chat"
     opened = asyncio.Event()
 
     class Transport(ScriptedStreamTransport):
@@ -88,14 +88,14 @@ async def test_livepeer_socket_disconnect_preserves_engine_outcome(protocol, mod
     first = b'data: {"choices":[{"index":0,"delta":{"content":"first"},"finish_reason":null}]}\n\n'
     events = [first, 20.0] if mode == "streaming" else [20.0]
     transport = Transport(opens=[StreamScript(events=events)])
-    options = LivepeerSettings(routes=(ModelRoute(name="qwen", app=app_name),))
+    options = LivepeerSettings(routes=(ModelRoute(name="qwen", capability=app_name),))
     actor = ActorContext(
         actor_id=options.actor_id,
         application_id=options.application_id,
         permissions=frozenset({"jobs.read"}),
     )
     async with make_engine(
-        runners=[runner(app_name, metadata='{"model_name":"qwen"}')],
+        runners=[runner(app_name, metadata=envelope("qwen", CHAT))],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
@@ -103,7 +103,7 @@ async def test_livepeer_socket_disconnect_preserves_engine_outcome(protocol, mod
         stream_settle_s=0.01,
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'engine.db'}",
     ) as engine:
-        app = create_app(LivepeerBackend(engine, options), Settings(timeout_seconds=30))
+        app = create_app(validated_backend(engine, options), Settings(timeout_seconds=30))
         async with serve(app) as url:
             path = "/v1/chat/completions" if protocol == "openai" else "/v1/messages"
             body = {

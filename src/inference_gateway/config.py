@@ -28,9 +28,10 @@ class Settings:
 
 class ModelRoute(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+    # What clients send; a runner serves the route when its envelope's model name is the same.
     name: str = Field(min_length=1)
-    app: str = Field(min_length=1)
-    upstream_model: str | None = Field(default=None, min_length=1)
+    # A capability from the standard's list, such as `chat` or `decision`: a runner's App ID.
+    capability: str = Field(default="chat", min_length=1)
     mode: Literal["validated", "native"] = "validated"
     upstream_api: Literal["chat_completions", "responses"] = "chat_completions"
     # The initial Qwen runner supports this vLLM extension. Other routes can omit it.
@@ -58,8 +59,6 @@ class ModelRoute(BaseModel):
 
     @model_validator(mode="after")
     def coherent_capabilities(self) -> "ModelRoute":
-        if self.upstream_model is not None and self.upstream_model != self.name:
-            raise ValueError("Model name must match metadata and upstream identity")
         if (self.reasoning_efforts or "reasoning_budget" in self.capabilities) and (
             "reasoning" not in self.capabilities
         ):
@@ -69,26 +68,14 @@ class ModelRoute(BaseModel):
         return self
 
 
-class NativeApproval(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
-    orchestrator: str
-    runner_id: str = Field(min_length=1)
-    app: str = Field(min_length=1)
-    model: str = Field(min_length=1)
-    deployment_revision: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
-    endpoint: Literal["chat_completions", "responses", "messages", "systemone"]
-    expires_at: float = Field(gt=0)
-
-
 class LivepeerSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
     application_id: str = Field(default="endpoint-gateway", min_length=1)
     actor_id: str = Field(default="shared-application", min_length=1)
-    routes: tuple[ModelRoute, ...] = (
-        ModelRoute(name="qwen3.8-27b", app="blueclaw/chat/qwen3.8-27b"),
-    )
+    routes: tuple[ModelRoute, ...] = (ModelRoute(name="qwen3.8-27b"),)
     approved_orchestrators: tuple[str, ...] = ()
-    native_approvals: tuple[NativeApproval, ...] = ()
+    # A JSON array of approvals with their conformance reports, re-read when it changes.
+    approvals_file: str | None = Field(default=None, min_length=1)
     timeout_seconds: float = Field(default=300, gt=0, le=3600)
     first_byte_timeout_seconds: float = Field(default=60, gt=0, le=3600)
     idle_timeout_seconds: float = Field(default=60, gt=0, le=3600)
@@ -101,6 +88,8 @@ class LivepeerSettings(BaseModel):
         for name in {r.name for r in self.routes}:
             if len({r.mode for r in self.routes if r.name == name}) != 1:
                 raise ValueError("A model must have one route mode")
-        if not self.routes or len({(r.name, r.app) for r in self.routes}) != len(self.routes):
-            raise ValueError("Configure at least one route with unique model/app pairs")
+        if not self.routes or len({(r.name, r.capability) for r in self.routes}) != len(
+            self.routes
+        ):
+            raise ValueError("Configure at least one route with unique model/capability pairs")
         return self

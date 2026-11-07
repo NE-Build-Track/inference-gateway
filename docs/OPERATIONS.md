@@ -123,21 +123,22 @@ because an endpoint presents a different certificate.
 
 ## Models and Responses rollout
 
-The new routing contract requires each runner to register JSON metadata containing the exact
-served model name, for example `{"model_name":"gemma4:26b"}`. Update runner registration first.
-Do not replace missing metadata with the app name. Configure the gateway's approved orchestrators,
-existing signer/payment settings and retail prices as before, then configure the model route:
+Each runner registers under [runner contract v1](product-specs/runner-contract.md): App ID `chat`,
+and an envelope naming the exact served model, for example `"model":{"name":"gemma4:26b",…}`, and
+the profiles it speaks. Update runner registration and the gateway together: the gateway ignores
+runners in earlier metadata formats, and logs each once with the reason. Configure the gateway's
+approved orchestrators, existing signer/payment settings and retail prices as before, then
+configure the model route:
 
 ```sh
-# Replace your-team/gemma-app with the actual registered application ID.
-GATEWAY_MODEL_ROUTES='[{"name":"gemma4:26b","app":"your-team/gemma-app","upstream_api":"responses","capabilities":["parallel_tools","media_input"],"input_media":["image"]}]'
+GATEWAY_MODEL_ROUTES='[{"name":"gemma4:26b","upstream_api":"responses","capabilities":["parallel_tools","media_input"],"input_media":["image"]}]'
 ```
 
-Declare only capabilities verified on every matching runner in that model/app route. Use
+Declare only capabilities verified on every matching runner of that route. Use
 `upstream_api:"chat_completions"` to expose the stateless Responses subset through a chat runner;
-use `responses` when the runner implements the native endpoint. Duplicate names on different
-apps add alternative offerings, selected before paid dispatch. Names must match `model_name`;
-legacy aliases and different `upstream_model` values are no longer accepted.
+use `responses` when the runner declares `openai.responses.stateless.v2`. Route names must equal the
+envelope's `model.name`. A runner whose envelope says `admission: private` serves only with an
+approval in `GATEWAY_APPROVALS_FILE`.
 
 Build a candidate without replacing the published v0.0.1 image:
 
@@ -146,7 +147,7 @@ IMAGE_TAG=models-responses scripts/build-images.sh gateway
 ```
 
 Set the same `IMAGE_TAG` in an isolated deployment with a separate engine ID/database and port while retaining
-approved TLS trust. Readiness requires eligible model metadata. A 200 empty `/v1/models` list can
+approved TLS trust. Readiness requires an eligible runner envelope. A 200 empty `/v1/models` list can
 mean no approved available supply or no retail price; 401/403 indicates authentication/scope issues.
 Bearer authentication works for every caller; Anthropic clients can also use `x-api-key`. The
 contents depend on the caller: see [model lists](product-specs/models-and-responses.md#model-lists).

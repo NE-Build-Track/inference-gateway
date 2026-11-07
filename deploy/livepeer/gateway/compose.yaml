@@ -86,20 +86,22 @@ services:
       GATEWAY_ACCOUNTING_DB: ${GATEWAY_ACCOUNTING_DB:-/data/gateway.db}
       GATEWAY_APPLICATION_ID: ${GATEWAY_APPLICATION_ID:-endpoint-gateway}
       GATEWAY_ACTOR_ID: ${GATEWAY_ACTOR_ID:-shared-application}
-      GATEWAY_CHAT_APP: ${GATEWAY_CHAT_APP:-blueclaw/chat/qwen3.8-27b}
+      # The envelope model name runners publish; the route serves the `chat` capability.
       GATEWAY_MODEL_NAME: ${GATEWAY_MODEL_NAME:-qwen3.8-27b}
       GATEWAY_APPROVED_ORCHESTRATORS: ${GATEWAY_APPROVED_ORCHESTRATORS:-}
       GATEWAY_TIMEOUT_SECONDS: ${GATEWAY_TIMEOUT_SECONDS:-300}
-      GATEWAY_UPSTREAM_MODEL: ${GATEWAY_UPSTREAM_MODEL:-}
       # Empty selects the single-model settings above; JSON can configure multiple routes.
       GATEWAY_MODEL_ROUTES: ${GATEWAY_MODEL_ROUTES:-}
-      # Operator evidence for native routes, including System One; an empty array admits none.
-      GATEWAY_NATIVE_APPROVALS: ${GATEWAY_NATIVE_APPROVALS:-[]}
+      # Operator approvals with conformance reports, re-read when the file changes. Empty admits no
+      # native traffic and no private runner. Set it to /etc/gateway/approvals/approvals.json.
+      GATEWAY_APPROVALS_FILE: ${GATEWAY_APPROVALS_FILE:-}
       SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/pinned
     ports: ["127.0.0.1:${GATEWAY_PORT:-8000}:8000"]
     volumes:
       - gateway-data:/data
       - ./config/runner-trust:/etc/ssl/pinned:ro
+      # A directory, not a file, so a replaced approvals file is seen without a restart.
+      - ./config/approvals:/etc/gateway/approvals:ro
     # Start the payment-stack profile explicitly, or configure independent payment services.
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')"]

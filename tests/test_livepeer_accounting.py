@@ -3,11 +3,11 @@ import time
 from decimal import Decimal
 from uuid import uuid4
 
+from contract_helpers import CHAT, envelope, validated_backend
 from livepeer_builder import ActorContext
 from livepeer_builder.contracts import AttemptCost, Fees, JobCost
 from livepeer_builder.testing import FakeEngine, Reply, runner
 
-from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.backends.livepeer_accounting import LivepeerAccounting
 from inference_gateway.config import LivepeerSettings, ModelRoute
 from inference_gateway.core.models import Finished, Generate, Message, Text
@@ -15,7 +15,7 @@ from inference_gateway.core.service import GenerationService
 
 
 async def test_wholesale_adapter_preserves_pending_recovers_usage_and_classifies_cost():
-    app = "chat/test"
+    app = "chat"
     actor = ActorContext(
         actor_id="shared-application",
         application_id="endpoint-gateway",
@@ -27,7 +27,7 @@ async def test_wholesale_adapter_preserves_pending_recovers_usage_and_classifies
 
     engine = FakeEngine(
         streaming=True,
-        runners=[runner(app, metadata='{"model_name":"test"}')],
+        runners=[runner(app, metadata=envelope("test", CHAT))],
         replies={
             (app, "/v1/chat/completions"): Reply(
                 content_type="text/event-stream",
@@ -54,10 +54,10 @@ async def test_wholesale_adapter_preserves_pending_recovers_usage_and_classifies
             )
         },
     )
-    options = LivepeerSettings(routes=(ModelRoute(name="test", app=app),))
+    options = LivepeerSettings(routes=(ModelRoute(name="test", capability=app),))
     recorded = []
     jobs = []
-    backend = LivepeerBackend(
+    backend = validated_backend(
         engine,
         options,
         lambda rid, usage: recorded.append((rid, usage)),
@@ -97,7 +97,7 @@ async def test_usage_reporting_retries_do_not_repeat_generation():
     from livepeer_builder import EngineSupply, JobRequest
     from livepeer_builder.testing import ScriptedTransport, make_engine
 
-    app = "chat/test"
+    app = "chat"
     actor = ActorContext(
         actor_id="a",
         application_id="app",
@@ -105,7 +105,7 @@ async def test_usage_reporting_retries_do_not_repeat_generation():
     )
     transport = ScriptedTransport(steps=[ScriptedTransport.ok()])
     async with make_engine(
-        runners=[runner(app, metadata='{"model_name":"test"}')],
+        runners=[runner(app, metadata=envelope("test", CHAT))],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
@@ -130,7 +130,7 @@ async def test_a_repeat_after_a_refused_payment_is_the_job_accounting_finds():
     from livepeer_builder import EngineSupply, JobFailed, JobRequest, RunnerCallError
     from livepeer_builder.testing import ScriptedTransport, make_engine
 
-    app = "chat/test"
+    app = "chat"
     actor = ActorContext(
         actor_id="a",
         application_id="app",
@@ -145,7 +145,7 @@ async def test_a_repeat_after_a_refused_payment_is_the_job_accounting_finds():
     )
     transport = ScriptedTransport(steps=[refused, ScriptedTransport.ok()])
     async with make_engine(
-        runners=[runner(app, metadata='{"model_name":"test"}')],
+        runners=[runner(app, metadata=envelope("test", CHAT))],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",

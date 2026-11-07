@@ -115,9 +115,9 @@ Unsupported Response. Valid media inputs and high effort were rejected by the ru
 
 
 Models and stateless Responses now have offline SDK/engine coverage described in the
-[contract](product-specs/models-and-responses.md). Live Gemma acceptance is pending its route and
-valid `model_name` metadata. Existing Qwen probe results predate strict metadata routing; they do
-not certify the new routing or native Responses transport.
+[contract](product-specs/models-and-responses.md). Live Gemma acceptance is pending its route and a
+runner contract v1 envelope. Existing Qwen probe results predate runner contract v1; they do not
+certify v1 selection or native Responses transport.
 
 The completed Models/Responses implementation passed 326 tests and the full repository checks.
 The candidate Docker image passed isolated fake-backend HTTP smoke tests for Models, Responses

@@ -168,7 +168,7 @@ remove reasoning or unsupported media from conversation history.
 ```json
 [{
   "name": "qwen3.8-27b",
-  "app": "blueclaw/chat/qwen3.8-27b",
+  "capability": "chat",
   "disable_thinking": true,
   "capabilities": ["structured_output", "reasoning", "stop", "parallel_tools"]
 }]

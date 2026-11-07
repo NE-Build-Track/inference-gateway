@@ -6,30 +6,29 @@ and Anthropic Messages remain available.
 
 ## Model identity and routing
 
-Runner discovery metadata must be a JSON object containing a nonempty string `model_name`:
+A runner names its model in its [runner contract v1](runner-contract.md) envelope:
 
 ```json
-{"model_name":"gemma4:26b"}
+{"runner_contract":1,"deployment_revision":"sha256:…",
+ "model":{"name":"gemma4:26b","source":"ollama:gemma4:26b","revision":"sha256:…"},
+ "endpoints":{"responses":{"profile":"openai.responses.stateless.v2"}}}
 ```
 
-That exact string is the public model name and upstream request `model`. App names identify
-applications, never model identities. Invalid/missing metadata excludes a runner. There is no
-fallback to an app suffix or default model. Existing routes using public aliases must migrate.
-`upstream_model` is retained only when it equals `name`; differing aliases fail configuration.
+`model.name` is the public model name and the upstream request's `model`. An App ID names a
+capability, such as `chat`, never a model. A runner without a valid envelope is ignored. There is
+no fallback to an App ID, a source or a default model.
 
-Operators explicitly approve model/app pairs through `GATEWAY_MODEL_ROUTES`. Duplicate model
-names across different apps are allowed; duplicate pairs are rejected. The gateway chooses the
-eligible app with the most available runner capacity among routes supporting the request.
-An injected Builder Core `SelectionPolicy` filters candidates by exact model metadata and positive
-(or unknown) capacity, then delegates ordering to the existing policy. This also filters every
-retry candidate within the chosen app. No cross-app retry is introduced, and paid attempts retain
-the engine's existing retry restrictions. Builder Core itself is unchanged.
+Operators list model routes in `GATEWAY_MODEL_ROUTES`, each a model name and a capability (`chat`
+by default). Duplicate pairs are rejected. An injected Builder Core `SelectionPolicy` filters
+candidates by capability, model name, the endpoint's profile and positive (or unknown) capacity,
+then delegates ordering to the existing policy. This also filters every retry candidate. Paid
+attempts retain the engine's existing retry restrictions.
 
-On validated routes, endpoint and feature support remain explicit operator declarations per
-model/app route. Metadata `model_name` alone does not advertise Responses, tools or vision, and every
-matching runner within a route must satisfy its declared contract. Do not group incompatible runners
-together. Native routes declare their endpoints in runner metadata instead; see the
-[native contract](native-inference.md).
+On validated routes, feature support remains an explicit operator declaration per route. A runner
+must declare the route's upstream profile (`openai.chat.v2`, or `openai.responses.stateless.v2`
+with `upstream_api: responses`), but that declaration doesn't advertise tools or vision, and every
+matching runner must satisfy the route's declared contract. Native routes need an approval for each
+runner and endpoint instead; see the [native contract](native-inference.md).
 
 ## Model lists
 
@@ -51,9 +50,9 @@ request does not say which the caller will use. A chat-only native model therefo
 OpenAI list but stays callable by name.
 
 Validated routes appear for OpenAI and Anthropic, because the gateway translates them, and never
-for System One. If a runner's contract metadata does not declare the route's upstream endpoint, the
-gateway ignores that runner for the route, both when listing and when selecting a runner to pay. A
-Clef route that forgets `mode: native` therefore serves nobody, rather than appearing to chat clients.
+for System One. A runner that doesn't declare the route's upstream profile serves nobody on that
+route, both when listing and when selecting a runner to pay. A Clef runner registers as `decision`,
+so a Clef route that forgets `mode: native` serves nobody, rather than appearing to chat clients.
 
 The list is a point-in-time filter on API compatibility, not a feature guarantee: a text-only model
 can be listed for a client that later sends images. Calling a model on an endpoint with no approval
@@ -161,8 +160,7 @@ not re-run inference. Failure after a paid request does not erase its wholesale 
 Offline SDK and real-engine tests cover both upstream paths, normal/streaming output, tools,
 images, structured text, truncation, malformed output, model filtering, authentication, prices,
 usage/job correlation and generator cancellation. Live Gemma acceptance requires its actual route.
-The available Qwen discovery records inspected during this implementation lacked `model_name`;
-they cannot qualify under this contract. Do not deploy this version onto those routes until their
-metadata and matching route names are configured. Existing v0.0.1 deployments are unchanged.
+Runners move to runner contract v1 together with the gateway: a v1 gateway ignores runners still
+registered in an earlier metadata format.
 
 See [setup and validation](../OPERATIONS.md#models-and-responses-rollout).

@@ -2,6 +2,7 @@ import json
 
 import httpx
 import pytest
+from contract_helpers import CHAT, envelope, policy
 from livepeer_builder.testing import FakeEngine, runner
 
 from inference_gateway.app import Settings, create_app
@@ -11,14 +12,14 @@ from inference_gateway.runtime import build_engine, load_livepeer_settings, load
 
 
 async def test_lifespan_owns_engine_and_readiness():
-    app_name = "chat/test"
+    app_name = "chat"
     engine = FakeEngine(
-        streaming=True, runners=[runner(app_name, metadata='{"model_name":"public"}')]
+        streaming=True, runners=[runner(app_name, metadata=envelope("public", CHAT))]
     )
-    options = LivepeerSettings(routes=(ModelRoute(name="public", app=app_name),))
+    options = LivepeerSettings(routes=(ModelRoute(name="public", capability=app_name),))
 
-    async def factory(settings):
-        assert settings == options
+    async def factory(settings, runner_policy):
+        assert settings == options and runner_policy.contract.release == "2026.11.3"
         return engine
 
     app = create_app(
@@ -46,7 +47,7 @@ async def test_startup_failure_closes_engine(fail_start):
 
         engine.start = start
 
-    async def factory(settings):
+    async def factory(settings, runner_policy):
         return engine
 
     app = create_app(
@@ -63,7 +64,7 @@ async def test_startup_failure_closes_engine(fail_start):
 async def test_empty_discovery_is_not_ready():
     engine = FakeEngine(streaming=True)
 
-    async def factory(settings):
+    async def factory(settings, runner_policy):
         return engine
 
     app = create_app(
@@ -84,8 +85,8 @@ def test_routes_and_limits_from_environment():
         "GATEWAY_TIMEOUT_SECONDS": "45",
         "GATEWAY_MODEL_ROUTES": json.dumps(
             [
-                {"name": "one", "app": "a", "upstream_model": "one"},
-                {"name": "two", "app": "b", "disable_thinking": False},
+                {"name": "one"},
+                {"name": "two", "capability": "chat", "disable_thinking": False},
             ]
         ),
         "GATEWAY_ACTOR_ID": "actor",
@@ -96,16 +97,19 @@ def test_routes_and_limits_from_environment():
     config = load_livepeer_settings(settings, env)
     assert config.actor_id == "actor" and config.timeout_seconds == 45
     assert config.first_byte_timeout_seconds == 10
-    assert config.routes[0].upstream_model == "one"
+    assert config.routes[0].capability == "chat"
     assert not config.routes[1].disable_thinking
+    assert config.approvals_file is None
 
 
 @pytest.mark.parametrize(
     "values",
     [
         {"GATEWAY_MODEL_ROUTES": "{}"},
-        {"GATEWAY_MODEL_ROUTES": '[{"name":"a","app":"b"},{"name":"a","app":"b"}]'},
-        {"GATEWAY_MODEL_ROUTES": '[{"name":"a","app":"b","typo":true}]'},
+        {"GATEWAY_MODEL_ROUTES": '[{"name":"a"},{"name":"a","capability":"chat"}]'},
+        {"GATEWAY_MODEL_ROUTES": '[{"name":"a","typo":true}]'},
+        # Before v1, a route named an operator's App ID.
+        {"GATEWAY_MODEL_ROUTES": '[{"name":"a","app":"blueclaw/chat/a"}]'},
         {"GATEWAY_MAX_ATTEMPTS": "0"},
         {"GATEWAY_APPROVED_ORCHESTRATORS": "https://user:private-secret@host"},
         {"GATEWAY_IDLE_TIMEOUT_SECONDS": "nan"},
@@ -122,21 +126,23 @@ async def test_payment_configuration_fails_without_values_or_secrets_in_error(mo
     monkeypatch.setenv("LPB_ALLOCATION_MODE", "per_actor")
     monkeypatch.setenv("LPB_SHARED_PAYMENT_KEY", "private-secret")
     with pytest.raises(ValueError) as exc:
-        await build_engine(LivepeerSettings())
+        await build_engine(LivepeerSettings(), policy())
     assert "private-secret" not in str(exc.value)
 
 
-async def test_discovery_filters_app_and_origin_without_owning_source():
+async def test_discovery_filters_capability_and_origin_without_owning_source():
+    meta = envelope("m", CHAT)
+
     class Source:
         async def fetch(self):
             return (
-                runner("yes", orchestrator_url="https://orch.example"),
-                runner("yes", orchestrator_url="https://orch.example:444"),
-                runner("no", orchestrator_url="https://orch.example"),
-                runner("yes", orchestrator_url="https://other.example"),
+                runner("chat", orchestrator_url="https://orch.example", metadata=meta),
+                runner("chat", orchestrator_url="https://orch.example:444", metadata=meta),
+                runner("decision", orchestrator_url="https://orch.example", metadata=meta),
+                runner("chat", orchestrator_url="https://other.example", metadata=meta),
             )
 
-    source = FilteredDiscovery(Source(), frozenset({"yes"}), ("https://orch.example:443",))
+    source = FilteredDiscovery(Source(), frozenset({"chat"}), ("https://orch.example:443",))
     found = await source.fetch()
     assert len(found) == 1 and found[0].orchestrator_url == "https://orch.example"
 
@@ -160,7 +166,7 @@ async def test_discovery_configuration_is_required_before_engine_creation(
         "LPB_SECRET_KEY": Fernet.generate_key().decode(),
     }.items():
         monkeypatch.setenv(name, value)
-    options = LivepeerSettings(routes=(ModelRoute(name="m", app="chat", mode=mode),))
+    options = LivepeerSettings(routes=(ModelRoute(name="m", capability="chat", mode=mode),))
     monkeypatch.delenv("LPB_DISCOVERY_URL", raising=False)
     created = []
     engine = FakeEngine(streaming=True)
@@ -171,12 +177,12 @@ async def test_discovery_configuration_is_required_before_engine_creation(
 
     monkeypatch.setattr(BuilderEngine, "create", create)
     with pytest.raises(ValueError) as exc:
-        await build_engine(options)
+        await build_engine(options, policy())
     assert "LPB_DISCOVERY_URL" in str(exc.value)
     assert "fixture-payment-key" not in str(exc.value)
     assert created == []
     monkeypatch.setenv("LPB_DISCOVERY_URL", "http://discovery.test:8939/discovery")
-    assert await build_engine(options) is engine
+    assert await build_engine(options, policy()) is engine
     assert created == ["http://discovery.test:8939/discovery"]
 
 
@@ -192,15 +198,15 @@ async def test_native_contract_mismatch_fails_before_engine_creation(monkeypatch
         pytest.fail("Incompatible native engine must not open resources")
 
     monkeypatch.setattr(BuilderEngine, "create", unexpected_create)
-    settings = LivepeerSettings(routes=(ModelRoute(name="m", app="chat", mode="native"),))
+    settings = LivepeerSettings(routes=(ModelRoute(name="m", capability="chat", mode="native"),))
     with pytest.raises(ValueError, match="lacks the native HTTP contract"):
-        await build_engine(settings)
+        await build_engine(settings, policy())
 
 
 async def test_native_requires_response_headers_before_engine_creation(monkeypatch):
     import inference_gateway.runtime as runtime
 
     monkeypatch.setattr(runtime, "JobStreamApi", object)
-    settings = LivepeerSettings(routes=(ModelRoute(name="m", app="chat", mode="native"),))
+    settings = LivepeerSettings(routes=(ModelRoute(name="m", capability="chat", mode="native"),))
     with pytest.raises(ValueError, match="uv sync --locked"):
-        await build_engine(settings)
+        await build_engine(settings, policy())

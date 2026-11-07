@@ -59,7 +59,7 @@ route. Additional guarded adapter paths cover sampling, reasoning effort/budgets
 remain unverified and disabled locally. Citations,
 hosted search and media output have fake contracts only.
 A [stateless Responses subset and per-SDK model lists](docs/product-specs/models-and-responses.md)
-are also implemented. Livepeer model routing now requires runner metadata `model_name`.
+are also implemented. Livepeer routing reads [runner contract v1](docs/product-specs/runner-contract.md) envelopes only.
 The gateway does not execute tools,
 collect customer payments or replay generated responses. See the
 [compatibility contract](docs/product-specs/compatibility.md).

@@ -26,7 +26,7 @@ from livepeer_builder import ActorContext, JobFailed, JobRequest
 
 from inference_gateway.backends.sse import SSEDecoder
 from inference_gateway.config import Settings
-from inference_gateway.runtime import build_engine, load_livepeer_settings
+from inference_gateway.runtime import build_engine, load_livepeer_settings, load_policy
 
 
 def image_fixture():
@@ -267,6 +267,8 @@ def classify(feature, signals, text):
 
 async def probe(engine, settings, route, feature, changes):
     payload = {
+        # What requests send is the envelope's model name, which a route's name equals.
+        "model": route.name,
         "messages": [{"role": "user", "content": "Say hello briefly."}],
         "max_tokens": 96,
         "stream": True,
@@ -274,8 +276,6 @@ async def probe(engine, settings, route, feature, changes):
         "chat_template_kwargs": {"enable_thinking": False},
         **changes,
     }
-    if route.upstream_model:
-        payload["model"] = route.upstream_model
     operation = "probe_" + uuid4().hex
     actor = ActorContext(
         actor_id=settings.actor_id,
@@ -291,7 +291,7 @@ async def probe(engine, settings, route, feature, changes):
             stream = await engine.jobs.streaming.stream(
                 actor,
                 JobRequest(
-                    app=route.app,
+                    app=route.capability,
                     path="/v1/chat/completions",
                     method="POST",
                     model=route.name,
@@ -380,8 +380,8 @@ async def run(options):
     try:
         settings = load_livepeer_settings(Settings(backend="livepeer"))
         route = next(r for r in settings.routes if options.model is None or r.name == options.model)
-        report.update(model=route.name, app=route.app)
-        engine = await build_engine(settings)
+        report.update(model=route.name, capability=route.capability)
+        engine = await build_engine(settings, load_policy(settings))
         await engine.start()
         selected = cases()
         if options.feature:
@@ -390,7 +390,7 @@ async def run(options):
             previous = json.loads(await asyncio.to_thread(Path(options.baseline_report).read_text))
             if (
                 previous.get("model") != route.name
-                or previous.get("app") != route.app
+                or previous.get("capability") != route.capability
                 or not any(
                     r["feature"] == "baseline" and r["status"] == "observed"
                     for r in previous["results"]

@@ -3,7 +3,7 @@
 Clef-Flash is a decision model: it answers typed questions with probabilities and refuses chat.
 Four backends serve it at `POST /v1/systemone`. [compose.yaml](compose.yaml) has a profile for each,
 with a pinned image and settings that fit a 24 GB GPU, and
-[metadata.examples.json](metadata.examples.json) has the runner metadata to match.
+[metadata.examples.json](metadata.examples.json) has a runner contract v1 envelope to match each.
 
 ## Choose a backend
 
@@ -76,19 +76,34 @@ HealthGrants = ["127.0.0.1:30002"]
 # runners.toml
 [[Runners]]
 ID = "clef-flash-vllm"
-App = "inference/clef"
+App = "decision"
 RunnerURL = "http://127.0.0.1:30002"
 Mode = "single-shot"
 Status = "ready"
 Capacity = 4
-Metadata = "<the backend's entry from metadata.examples.json, as one JSON string>"
-HealthURL = "http://127.0.0.1:30002/health"
+Metadata = '<the backend's entry from metadata.examples.json, as compact JSON>'
+HealthURL = "http://127.0.0.1:8080/healthz"
 HealthCode = 200
+[Runners.PriceInfo]
+Price = 0.5
+Currency = "usd"
+Unit = "hour"
 ```
 
-Before you use a metadata example, replace `deployment_revision` with a SHA-256 that changes whenever
-the deployment does; the hash of your compose file works. Approvals bind to this value, so changing it
-needs a new approval. `runner_id` must match the node's `ID`.
+The App ID is `decision`, the capability System One's profile serves; a runner contract v1 gateway
+selects nothing else for it. The price is an example; set the wholesale rate your node charges.
+
+Before you use an envelope example, replace `deployment_revision` with the standard's recipe over the
+backend's image digest, the model's source and revision, the profile `typesafe.systemone.v1` and the
+settings that change behavior. `runner-contract envelope` computes it from a `runner.toml` manifest
+([the standard's tool](https://github.com/NE-Build-Track/live-runner-standard/tree/main/python/runner-contract)).
+Approvals bind to this value, so changing the image, model or settings needs a new approval, while
+moving the node or changing capacity doesn't. `runner_id` must match the node's `ID`.
+
+`HealthURL` must answer 200 only after a self-test of `systemone` passes, which a backend's own
+`/health` doesn't do. Run [readiness.py](../../tooling/readiness.py) beside the backend with a
+`readiness.json` naming the backend's URL, the model and the endpoint
+`{"name":"systemone","path":"/v1/systemone"}`, and point `HealthURL` at it.
 
 The live test ran each backend with a capacity of 4. That shows four requests at once work, not that
 4 is the limit. llama.cpp runs with one slot and queues the rest.

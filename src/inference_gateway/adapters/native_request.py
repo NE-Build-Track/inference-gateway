@@ -6,8 +6,16 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
-from inference_gateway.adapters.runner_contract import PROFILES
 from inference_gateway.core.native import NativeRequest
+
+# The gateway's native surfaces. Each endpoint's wire profile, and the path runners serve it on,
+# come from the registry in the backend.
+SURFACES = {
+    "/v1/chat/completions": "chat_completions",
+    "/v1/responses": "responses",
+    "/v1/messages": "messages",
+    "/v1/systemone": "systemone",
+}
 
 # Backends ignore or fetch these depending on the backend and model. An ignored field still returns
 # an answer and a charge, so a decision would silently not use the media it was sent.
@@ -73,7 +81,7 @@ def envelope(
     query: bytes = b"",
     max_bytes: int = 8 * 1024 * 1024,
 ) -> NativeRequest:
-    endpoint = next((k for k, v in PROFILES.items() if v["path"] == path), None)
+    endpoint = SURFACES.get(path)
     if endpoint is None or len(body) > max_bytes:
         raise InvalidNativeRequest("Unsupported endpoint or oversized request")
     try:

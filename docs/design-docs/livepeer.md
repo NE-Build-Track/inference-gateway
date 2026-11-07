@@ -35,10 +35,9 @@ process per database and keep the database volume across restarts.
 | `GATEWAY_BACKEND` | `fake` locally; `livepeer` in Compose | Explicit backend selection; no silent fallback |
 | `GATEWAY_APPLICATION_ID` | `endpoint-gateway` | Server-controlled engine application identity |
 | `GATEWAY_ACTOR_ID` | `shared-application` | One server-controlled backend actor; gateway users are attributed in its own ledger |
-| `GATEWAY_MODEL_NAME` | `qwen3.8-27b` | Model name clients send |
-| `GATEWAY_CHAT_APP` | `blueclaw/chat/qwen3.8-27b` | Runner app selected by discovery |
-| `GATEWAY_UPSTREAM_MODEL` | Omitted | Legacy explicit name; must equal route name and metadata `model_name` |
+| `GATEWAY_MODEL_NAME` | `qwen3.8-27b` | Model name clients send, and the envelope's `model.name`; the route serves `chat` |
 | `GATEWAY_MODEL_ROUTES` | Unset | JSON route array overriding the single-model settings |
+| `GATEWAY_APPROVALS_FILE` | Unset | JSON approvals with conformance reports, re-read when it changes; unset admits no native traffic or private runner |
 | `GATEWAY_APPROVED_ORCHESTRATORS` | Empty | Comma-separated HTTP(S) origins; empty trusts the configured discovery source |
 | `GATEWAY_TIMEOUT_SECONDS` | `300` | Total generation limit; live backend maximum 3600 seconds |
 | `GATEWAY_FIRST_BYTE_TIMEOUT_SECONDS` | `60` | Engine opening/first-byte budget, capped by total |
@@ -50,16 +49,18 @@ process per database and keep the database volume across restarts.
 For multiple routes, configure:
 
 ```sh
-GATEWAY_MODEL_ROUTES='[{"name":"qwen3.8-27b","app":"blueclaw/chat/qwen3.8-27b","disable_thinking":true},{"name":"served-name","app":"team/other-chat","upstream_model":"served-name","disable_thinking":false}]'
+GATEWAY_MODEL_ROUTES='[{"name":"qwen3.8-27b","disable_thinking":true},{"name":"served-name","capability":"chat","disable_thinking":false}]'
 ```
 
 Unknown model names fail with 400 before engine dispatch, as does a native model with no approval
 for the requested endpoint. Routes can also set `display_name`, `description` and `release_date`
-for [model lists](../product-specs/models-and-responses.md#model-lists). Routes must have unique model/app pairs, and names must match JSON metadata `model_name`.
-Missing metadata excludes runners. See [model routing and Responses](../product-specs/models-and-responses.md)
-for capacity selection, the injected selection policy, and native Responses transport.
-Discovery is filtered to configured apps and, when supplied, approved origins including
-scheme and port. The default Qwen route sends `chat_template_kwargs.enable_thinking=false`.
+for [model lists](../product-specs/models-and-responses.md#model-lists). Routes must have unique
+model/capability pairs, and a route's name must equal the envelope's `model.name`. Runners without a
+valid [runner contract v1](../product-specs/runner-contract.md) envelope are ignored and logged once.
+See [model routing and Responses](../product-specs/models-and-responses.md) for capacity selection,
+the injected selection policy, and native Responses transport. Discovery is filtered to the routes'
+capabilities and, when supplied, approved origins including scheme and port. Validated routes
+select `candidate` runners without approval; a `private` runner needs one. The default Qwen route sends `chat_template_kwargs.enable_thinking=false`.
 Routes for other runners can omit that extension with `disable_thinking=false`.
 
 ## Request and response path

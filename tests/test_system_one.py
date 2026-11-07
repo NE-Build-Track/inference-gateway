@@ -13,6 +13,8 @@ import httpx
 import httpx2
 import pytest
 from anthropic import AsyncAnthropic
+from contract_helpers import approval, contract, policy
+from contract_helpers import envelope as runner_envelope
 from livepeer_builder.testing import FakeEngine, Reply, runner
 from openai import AsyncOpenAI
 from typesafe_sdk import (
@@ -28,15 +30,20 @@ from typesafe_sdk import (
 from inference_gateway.adapters.ledger import SQLiteLedger
 from inference_gateway.adapters.native_request import InvalidNativeRequest, envelope
 from inference_gateway.adapters.native_usage import UsageObserver
-from inference_gateway.adapters.runner_contract import PROFILES
 from inference_gateway.app import create_app
-from inference_gateway.config import LivepeerSettings, ModelRoute, NativeApproval, Settings
+from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.accounting import Price
 from inference_gateway.core.backend import BackendError
 
 CHAT, RESPONSES, MESSAGES, SYSTEM_ONE = "chat_completions", "responses", "messages", "systemone"
 GENERATION = (CHAT, RESPONSES, MESSAGES)
 PATH = "/v1/systemone"
+PATHS = {
+    CHAT: "/v1/chat/completions",
+    RESPONSES: "/v1/responses",
+    MESSAGES: "/v1/messages",
+    SYSTEM_ONE: PATH,
+}
 DECISION = {
     "model": "clef",
     "answers": {"needs_help": {"type": "noul", "noul": 0.91}},
@@ -64,69 +71,63 @@ class Supply:
     validated: bool = False
 
 
+def capability_of(endpoint):
+    return "decision" if endpoint == SYSTEM_ONE else "chat"
+
+
 def gateway(*supply, replies=None, tmp_path=None, prices=None, routes=None):
-    runners, approvals = [], []
+    """One registration per capability a supply advertises, as runner contract v1 requires."""
+    runners, approvals, default_routes = [], [], []
     for index, item in enumerate(supply):
-        runner_id, app = f"runner-{index}", f"app/{item.model}"
         revision = "sha256:" + f"{index:x}" * 64
-        metadata = (
-            {"model_name": item.model}
-            if item.validated
-            else {
-                "inference_contract": 1,
-                "model_name": item.model,
-                "runtime": {"name": "sglang", "image": "lmsysorg/sglang@sha256:" + "a" * 64},
-                "deployment_revision": revision,
-                "endpoints": {name: PROFILES[name] for name in item.advertised},
-                "limits": {"context_tokens": 16384},
-                "admission": "candidate",
-            }
-        )
-        runners.append(
-            runner(
-                app,
-                metadata=json.dumps(metadata, separators=(",", ":")),
-                orchestrator_url="https://orch",
-                capacity_available=item.capacity,
-            ).model_copy(update={"runner_id": runner_id})
-        )
-        if item.validated:
-            continue
-        for endpoint in item.advertised if item.approved is None else item.approved:
-            approvals.append(
-                NativeApproval(
-                    orchestrator="https://orch",
-                    runner_id=runner_id,
-                    app=app,
-                    model=item.model,
-                    deployment_revision=revision,
-                    endpoint=endpoint,
-                    expires_at=item.expires_at or time.time() + 60,
-                )
+        for capability in ("chat", "decision"):
+            endpoints = tuple(e for e in item.advertised if capability_of(e) == capability)
+            if not endpoints and not (item.validated and capability == "chat"):
+                continue
+            runner_id = f"runner-{index}-{capability}"
+            metadata = runner_envelope(
+                item.model,
+                endpoints or GENERATION,
+                revision=revision,
+                runtime={"name": "sglang", "image": "sha256:" + "a" * 64},
+                limits={"context_tokens": 16384},
             )
+            runners.append(
+                runner(
+                    capability,
+                    url=f"https://{runner_id}",
+                    metadata=metadata,
+                    orchestrator_url="https://orch",
+                    capacity_available=item.capacity,
+                ).model_copy(update={"runner_id": runner_id})
+            )
+            mode = "validated" if item.validated else "native"
+            default_routes.append(ModelRoute(name=item.model, capability=capability, mode=mode))
+            if item.validated:
+                continue
+            for endpoint in item.advertised if item.approved is None else item.approved:
+                if endpoint in endpoints:
+                    approvals.append(
+                        approval(
+                            "https://orch",
+                            runner_id,
+                            item.model,
+                            endpoint,
+                            revision=revision,
+                            expires_at=item.expires_at or time.time() + 60,
+                        )
+                    )
     engine = FakeEngine(
         streaming=True,
         runners=runners,
         replies={
-            (f"app/{item.model}", PROFILES[endpoint]["path"]): reply
-            for item in supply
+            (capability_of(endpoint), PATHS[endpoint]): reply
             for endpoint, reply in (replies or {}).items()
         },
     )
-    options = LivepeerSettings(
-        routes=routes
-        or tuple(
-            ModelRoute(
-                name=item.model,
-                app=f"app/{item.model}",
-                mode="validated" if item.validated else "native",
-            )
-            for item in supply
-        ),
-        native_approvals=tuple(approvals),
-    )
+    options = LivepeerSettings(routes=routes or tuple(default_routes))
 
-    async def factory(_):
+    async def factory(_settings, _policy):
         return engine
 
     ledger, secret = None, "unused"
@@ -139,7 +140,12 @@ def gateway(*supply, replies=None, tmp_path=None, prices=None, routes=None):
     settings = Settings(
         backend="livepeer", accounting_db=str(tmp_path / "retail.db") if tmp_path else None
     )
-    app = create_app(settings=settings, livepeer_settings=options, engine_factory=factory)
+    app = create_app(
+        settings=settings,
+        livepeer_settings=options,
+        engine_factory=factory,
+        runner_policy=policy(*approvals),
+    )
     return app, engine, ledger, secret
 
 
@@ -202,7 +208,8 @@ async def test_response_bytes_are_unchanged():
     app, _, _, _ = gateway(Supply("clef", (SYSTEM_ONE,)), replies={SYSTEM_ONE: reply})
     async with app.router.lifespan_context(app):
         async with http_client(app) as client:
-            raw = b'{ "model":"clef", "state":"s", "questions":{"q":{"type":"noul"}}, "future":1 }'
+            # The entry allows no unknown request fields; the answer's reach the client unchanged.
+            raw = b'{ "model":"clef",  "state":"s", "questions":{"q":{"type":"noul"}} }'
             response = await client.post(PATH, content=raw)
     assert response.status_code == 200 and response.content == b"".join(reply.chunks)
     assert response.headers["x-request-id"].startswith("req_")
@@ -339,14 +346,16 @@ async def test_sdk_image_helper_is_refused_because_no_backend_takes_multipart():
     assert not engine.jobs.requests
 
 
-async def test_explicit_stream_false_is_allowed():
+@pytest.mark.parametrize("extra", [{"stream": False}, {"questoins": {}}])
+async def test_fields_the_entry_does_not_define_fail_before_dispatch(extra):
+    """The entry's request schema allows no other top-level fields, so a misspelling can't pass."""
     app, engine, _, _ = gateway(
         Supply("clef", (SYSTEM_ONE,)), replies={SYSTEM_ONE: decision_reply()}
     )
     async with app.router.lifespan_context(app):
         async with http_client(app) as client:
-            response = await client.post(PATH, json={**REQUEST, "stream": False})
-    assert response.status_code == 200 and len(engine.jobs.requests) == 1
+            response = await client.post(PATH, json={**REQUEST, **extra})
+    assert response.status_code == 400 and not engine.jobs.requests
 
 
 async def test_compressed_body_fails_before_dispatch():
@@ -568,41 +577,32 @@ async def test_real_engine_selects_pays_and_records_a_decision():
     from livepeer_builder.services.discovery import MostCapacityFirst
     from livepeer_builder.testing import ScriptedStreamTransport, StreamScript, make_engine
 
+    from inference_gateway.backends.approvals import FixedApprovals
+    from inference_gateway.backends.discovery import ContractSelection
     from inference_gateway.backends.native_livepeer import LivepeerNativeBackend
-    from inference_gateway.backends.native_selection import Admission, NativeSelection
     from inference_gateway.native import forward
 
     revision = "sha256:" + "b" * 64
-    metadata = {
-        "inference_contract": 1,
-        "model_name": "clef",
-        "runtime": {"name": "sglang", "image": "lmsysorg/sglang@sha256:" + "a" * 64},
-        "deployment_revision": revision,
-        "endpoints": {SYSTEM_ONE: PROFILES[SYSTEM_ONE]},
-        "limits": {"context_tokens": 32768},
-        "admission": "candidate",
-    }
     decision_runner = runner(
-        "decide",
+        "decision",
         orchestrator_url="https://orch",
-        metadata=json.dumps(metadata, separators=(",", ":")),
+        metadata=runner_envelope("clef", (SYSTEM_ONE,), revision=revision),
         capacity_available=1,
     ).model_copy(update={"runner_id": "one"})
-    # A chat runner on the same app must never be chosen for a decision.
+    # A chat profile under the decision App ID serves neither, so it is never chosen.
     chat_runner = runner(
-        "decide",
+        "decision",
         orchestrator_url="https://orch",
-        metadata=json.dumps(
-            {**metadata, "endpoints": {CHAT: PROFILES[CHAT]}}, separators=(",", ":")
-        ),
+        metadata=runner_envelope("clef", (CHAT,), revision=revision),
         capacity_available=100,
     ).model_copy(update={"runner_id": "chat", "url": "https://chat-runner"})
-    admission = Admission("https://orch", "one", "decide", "clef", revision, SYSTEM_ONE, 2e10)
+    granted = approval("https://orch", "one", "clef", SYSTEM_ONE, revision=revision)
+    approvals = FixedApprovals((granted,))
     raw_reply = json.dumps(DECISION).encode()
     transport = ScriptedStreamTransport(
         opens=[StreamScript(events=[raw_reply], status_code=200, content_type="application/json")]
     )
-    selection = NativeSelection(MostCapacityFirst(), lambda: (admission,))
+    selection = ContractSelection(MostCapacityFirst(), contract(), approvals)
     async with make_engine(
         runners=[chat_runner, decision_runner],
         supply=EngineSupply(transport=transport, selection=selection),
@@ -611,9 +611,9 @@ async def test_real_engine_selects_pays_and_records_a_decision():
         shared_allocation_id="fixture",
     ) as engine:
         options = LivepeerSettings(
-            routes=(ModelRoute(name="clef", app="decide", mode="native"),),
+            routes=(ModelRoute(name="clef", capability="decision", mode="native"),),
         )
-        backend = LivepeerNativeBackend(engine, options, lambda: (admission,))
+        backend = LivepeerNativeBackend(engine, options, contract(), approvals)
         assert backend.models_for((SYSTEM_ONE,)) == ("clef",)
         assert backend.models_for((CHAT,)) == ()
         body = json.dumps(REQUEST).encode()
@@ -747,7 +747,7 @@ async def test_validated_routes_serve_translating_sdks_only():
 
 async def test_forgotten_native_mode_cannot_list_a_runner_that_refuses_chat():
     # `mode` defaults to validated, so this is an easy mistake on a Clef route.
-    routes = (ModelRoute(name="clef", app="app/clef"),)
+    routes = (ModelRoute(name="clef"),)
     app, engine, _, _ = gateway(Supply("clef", (SYSTEM_ONE,), approved=()), routes=routes)
     async with app.router.lifespan_context(app):
         assert await list_openai(app) == []
@@ -762,7 +762,7 @@ async def test_forgotten_native_mode_cannot_list_a_runner_that_refuses_chat():
 
 
 async def test_validated_route_accepts_a_runner_declaring_its_upstream_endpoint():
-    routes = (ModelRoute(name="chat", app="app/chat"),)
+    routes = (ModelRoute(name="chat"),)
     app, _, _, _ = gateway(Supply("chat", (CHAT,), approved=()), routes=routes)
     async with app.router.lifespan_context(app):
         assert await list_openai(app) == ["chat"]
@@ -780,13 +780,12 @@ async def test_list_formats_match_each_sdk():
     routes = (
         ModelRoute(
             name="full",
-            app="app/full",
             mode="native",
             display_name="Full model",
             description="Generates text.",
             release_date="2026-10-09",
         ),
-        ModelRoute(name="clef", app="app/clef", mode="native"),
+        ModelRoute(name="clef", capability="decision", mode="native"),
     )
     app, _, _, _ = gateway(Supply("full", GENERATION), Supply("clef", (SYSTEM_ONE,)), routes=routes)
     async with app.router.lifespan_context(app):
@@ -902,24 +901,24 @@ async def test_list_errors_also_vary_because_their_envelope_depends_on_the_sdk(t
 
 
 def test_validated_selection_skips_a_runner_that_does_not_declare_the_job_path():
-    """Listing is not enough: the engine ranks every runner on the route's app at dispatch."""
+    """Listing is not enough: the engine ranks every runner of the capability at dispatch."""
     from livepeer_builder import JobRequest, NoCapacity
     from livepeer_builder.services.discovery import MostCapacityFirst
 
-    from inference_gateway.backends.discovery import ModelSelection
+    from inference_gateway.backends.approvals import FixedApprovals
+    from inference_gateway.backends.discovery import ContractSelection
 
-    def candidate(name, capacity, **fields):
-        metadata = json.dumps({"model_name": "m", **fields})
-        return runner("app", metadata=metadata, capacity_available=capacity).model_copy(
+    def candidate(name, capacity, endpoints):
+        metadata = runner_envelope("m", endpoints)
+        return runner("chat", metadata=metadata, capacity_available=capacity).model_copy(
             update={"runner_id": name}
         )
 
-    decision = candidate("decision", 100, endpoints={SYSTEM_ONE: PROFILES[SYSTEM_ONE]})
-    chat = candidate("chat", 1, endpoints={CHAT: PROFILES[CHAT]})
-    legacy = candidate("legacy", 1)  # Model-name-only metadata declares nothing, so it stays.
-    policy = ModelSelection(MostCapacityFirst())
-    job = JobRequest(app="app", model="m", path="/v1/chat/completions")
-    assert {r.runner_id for r in policy.order([decision, chat, legacy], job)} == {"chat", "legacy"}
+    decision = candidate("decision", 100, (SYSTEM_ONE,))
+    chat = candidate("chat", 1, (CHAT,))
+    policy = ContractSelection(MostCapacityFirst(), contract(), FixedApprovals())
+    job = JobRequest(app="chat", model="m", path="/v1/chat/completions")
+    assert [r.runner_id for r in policy.order([decision, chat], job)] == ["chat"]
     with pytest.raises(NoCapacity):
         policy.order([decision], job)
 

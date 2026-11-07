@@ -2,16 +2,27 @@ import json
 from dataclasses import replace
 
 import pytest
+from contract_helpers import approval, contract
+from contract_helpers import envelope as runner_envelope
 from livepeer_builder import JobRequest, NoCapacity
 from livepeer_builder.services.discovery import MostCapacityFirst
 from livepeer_builder.testing import runner
 
 from inference_gateway.adapters.native_request import InvalidNativeRequest, envelope
 from inference_gateway.adapters.native_usage import UsageObserver
-from inference_gateway.adapters.runner_contract import PROFILES
-from inference_gateway.backends.native_selection import Admission, NativeSelection
+from inference_gateway.backends.approvals import FixedApprovals
+from inference_gateway.backends.discovery import NATIVE, ContractSelection, FilteredDiscovery
 from inference_gateway.core.backend import BackendError
 from inference_gateway.native import forward
+
+REVISION = "sha256:" + "b" * 64
+NATIVE_CHAT = JobRequest(app="chat", model="m", path="/v1/chat/completions", capability=NATIVE)
+
+
+def admitting(*approvals, now=100):
+    return ContractSelection(
+        MostCapacityFirst(), contract(), FixedApprovals(approvals, now=lambda: now)
+    )
 
 
 def request(body=b'{ "model":"m", "unknown":{"future":true}, "stream":false }', **kw):
@@ -72,54 +83,41 @@ def test_explicit_stateless_responses_and_stream_usage():
 
 
 def supply():
-    meta = {
-        "inference_contract": 1,
-        "model_name": "m",
-        "runtime": {"name": "vllm", "image": "vllm/vllm-openai@sha256:" + "a" * 64},
-        "deployment_revision": "sha256:" + "b" * 64,
-        "endpoints": {"chat_completions": PROFILES["chat_completions"]},
-        "limits": {"context_tokens": 4096},
-        "admission": "candidate",
-    }
-    r = runner(
-        "app",
-        orchestrator_url="https://orch",
-        metadata=json.dumps(meta, separators=(",", ":")),
-        capacity_available=1,
-    ).model_copy(update={"runner_id": "one"})
-    approval = Admission(
-        "https://orch", "one", "app", "m", meta["deployment_revision"], "chat_completions", 200
+    meta = runner_envelope(
+        "m",
+        ("chat_completions",),
+        revision=REVISION,
+        runtime={"name": "vllm", "image": "sha256:" + "a" * 64},
+        limits={"context_tokens": 4096},
     )
-    return r, approval
+    r = runner(
+        "chat", orchestrator_url="https://orch", metadata=meta, capacity_available=1
+    ).model_copy(update={"runner_id": "one"})
+    return r, approval("https://orch", "one", "m", revision=REVISION, expires_at=200)
 
 
 def test_selection_requires_external_matching_current_evidence():
-    r, approval = supply()
-    active = [approval]
-    policy = NativeSelection(MostCapacityFirst(), lambda: tuple(active), now=lambda: 100)
-    job = JobRequest(app="app", model="m", path="/v1/chat/completions")
-    assert policy.order([r], job) == [r]
+    r, granted = supply()
+    assert admitting(granted).order([r], NATIVE_CHAT) == [r]
     for change in [
         {"expires_at": 100},
         {"model": "other"},
         {"endpoint": "responses"},
         {"orchestrator": "https://elsewhere"},
-        {"deployment_revision": "sha256:" + "c" * 64},
+        {"revision": "sha256:" + "c" * 64},
         {"runner_id": "two"},
-        {"app": "other"},
     ]:
-        active[:] = [replace(approval, **change)]
+        fields = {"orchestrator": "https://orch", "runner_id": "one", "model": "m"}
+        fields |= {"revision": REVISION, "expires_at": 200} | change
         with pytest.raises(NoCapacity):
-            policy.order([r], job)
-    active.clear()
+            admitting(approval(**fields)).order([r], NATIVE_CHAT)
     with pytest.raises(NoCapacity):
-        policy.order([r], job)
-    active[:] = [approval]
+        admitting().order([r], NATIVE_CHAT)
     for change in [{"metadata": "{}"}, {"capacity_available": 0}, {"capacity_available": None}]:
         with pytest.raises(NoCapacity):
-            policy.order([r.model_copy(update=change)], job)
+            admitting(granted).order([r.model_copy(update=change)], NATIVE_CHAT)
     with pytest.raises(NoCapacity):
-        policy.order([r], job.model_copy(update={"path": "/admin"}))
+        admitting(granted).order([r], NATIVE_CHAT.model_copy(update={"path": "/admin"}))
 
 
 def sse(data):
@@ -221,9 +219,13 @@ class Stream:
     headers = (("content-type", "text/event-stream"), ("set-cookie", "secret"))
     job_id = "j"
 
-    def __init__(self, chunks):
+    def __init__(self, chunks, succeeded=True):
         self.chunks = chunks
+        self.verdict = succeeded
         self.closed = self.completed = self.disconnected_count = 0
+
+    def succeeded(self):
+        return self.verdict
 
     async def __aiter__(self):
         for chunk in self.chunks:
@@ -271,6 +273,21 @@ async def test_forwarding_accounts_once_and_closes_without_rewriting():
     assert backend.calls == [req] and jobs == [("r", "j")]
     assert len(measured) == 1 and outcomes == [("r", "succeeded")]
     assert (stream.completed, stream.closed, stream.disconnected_count) == (1, 1, 0)
+
+
+async def test_usage_without_the_entrys_success_is_a_failed_outcome():
+    """Measured usage alone isn't success: an error mapping or a broken success rule decides."""
+    stream = Stream([CHAT], succeeded=False)
+    outcomes = []
+    async with forward(
+        Backend(stream),
+        request(b'{"model":"m","stream":true,"stream_options":{"include_usage":true}}'),
+        bind_job=lambda *v: None,
+        record_usage=lambda *v: None,
+        record_outcome=lambda *v: outcomes.append(v),
+    ) as delivery:
+        assert b"".join([part async for part in delivery.body]) == CHAT
+    assert outcomes == [("r", "failed")] and stream.disconnected_count == 1
 
 
 async def test_close_before_body_and_missing_usage_keep_failure():
@@ -446,7 +463,7 @@ async def test_native_selection_embeds_in_real_engine_before_transport(metadata_
     from livepeer_builder import ActorContext, EngineSupply
     from livepeer_builder.testing import ScriptedStreamTransport, StreamScript, make_engine
 
-    right, approval = supply()
+    right, granted = supply()
     wrong = right.model_copy(
         update={"url": "https://wrong", "runner_id": "wrong", "capacity_available": 100}
     )
@@ -457,13 +474,12 @@ async def test_native_selection_embeds_in_real_engine_before_transport(metadata_
                 "metadata": json.dumps({**json.loads(right.metadata), "runner_id": "one"}),
             }
         )
-    from inference_gateway.backends.discovery import FilteredDiscovery
 
     def decorate(parts):
         return replace(
             parts,
             discovery_source=FilteredDiscovery(
-                parts.discovery_source, frozenset({"app"}), ("https://orch",)
+                parts.discovery_source, frozenset({"chat"}), ("https://orch",)
             ),
         )
 
@@ -476,7 +492,7 @@ async def test_native_selection_embeds_in_real_engine_before_transport(metadata_
             )
         ]
     )
-    policy = NativeSelection(MostCapacityFirst(), lambda: (approval,), now=lambda: 100)
+    policy = admitting(granted)
     async with make_engine(
         runners=[wrong, right],
         decorate=decorate,
@@ -490,7 +506,7 @@ async def test_native_selection_embeds_in_real_engine_before_transport(metadata_
         )
         stream = await engine.jobs.streaming.stream(
             actor,
-            JobRequest(app="app", model="m", path="/v1/chat/completions", return_http_errors=True),
+            NATIVE_CHAT.model_copy(update={"return_http_errors": True}),
         )
         async with stream:
             async for _ in stream:
@@ -526,9 +542,7 @@ def test_native_image_counts_toward_request_size_limit():
 
 @pytest.mark.parametrize("advertised", [None, "", "one"])
 async def test_metadata_runner_identity_is_normalized_without_changing_transport(advertised):
-    from inference_gateway.backends.discovery import FilteredDiscovery
-
-    original, approval = supply()
+    original, granted = supply()
     meta = {**json.loads(original.metadata), "runner_id": "one"}
     candidate = original.model_copy(
         update={
@@ -542,31 +556,22 @@ async def test_metadata_runner_identity_is_normalized_without_changing_transport
         async def fetch(self):
             return (candidate,)
 
-    discovered = await FilteredDiscovery(Source(), frozenset({"app"}), ("https://orch",)).fetch()
+    discovered = await FilteredDiscovery(Source(), frozenset({"chat"}), ("https://orch",)).fetch()
     assert len(discovered) == 1
     normalized = discovered[0]
     assert normalized.runner_id == "one"
     assert normalized.url == candidate.url
     assert normalized.metadata == candidate.metadata
     assert normalized.orchestrator_url == candidate.orchestrator_url
-    policy = NativeSelection(MostCapacityFirst(), lambda: (approval,), now=lambda: 100)
-    assert policy.order(
-        discovered, JobRequest(app="app", model="m", path="/v1/chat/completions")
-    ) == list(discovered)
+    assert admitting(granted).order(discovered, NATIVE_CHAT) == list(discovered)
     # Metadata is not authorization, including when the top-level ID is absent.
     with pytest.raises(NoCapacity):
-        NativeSelection(MostCapacityFirst(), lambda: (), now=lambda: 100).order(
-            discovered, JobRequest(app="app", model="m", path="/v1/chat/completions")
-        )
+        admitting().order(discovered, NATIVE_CHAT)
 
 
-@pytest.mark.parametrize(
-    "declared,top", [("other", "one"), (None, None), ("bad id", None), ("", None)]
-)
-async def test_missing_invalid_or_conflicting_identity_fails_closed(declared, top):
-    from inference_gateway.backends.discovery import FilteredDiscovery
-
-    original, approval = supply()
+@pytest.mark.parametrize("declared,top", [("other", "one"), (None, None)])
+async def test_missing_or_conflicting_identity_never_passes_native_admission(declared, top):
+    original, granted = supply()
     meta = json.loads(original.metadata)
     if declared is not None:
         meta["runner_id"] = declared
@@ -576,54 +581,66 @@ async def test_missing_invalid_or_conflicting_identity_fails_closed(declared, to
         async def fetch(self):
             return (candidate,)
 
-    assert await FilteredDiscovery(Source(), frozenset({"app"}), ("https://orch",)).fetch() == ()
-    # The admission layer also rejects conflicts if a custom source bypasses normalization.
-    policy = NativeSelection(MostCapacityFirst(), lambda: (approval,), now=lambda: 100)
+    discovered = await FilteredDiscovery(Source(), frozenset({"chat"}), ("https://orch",)).fetch()
+    # A conflict is dropped from discovery; a runner with no ID can't match any approval.
+    assert discovered == (() if declared else (candidate,))
+    # Selection also refuses a conflict if a custom source bypasses normalization.
     with pytest.raises(NoCapacity):
-        policy.order([candidate], JobRequest(app="app", model="m", path="/v1/chat/completions"))
+        admitting(granted).order([candidate], NATIVE_CHAT)
 
 
-def test_legacy_identity_is_compatible_and_not_inferred_from_urls():
-    from inference_gateway.backends.discovery import normalize_native_identity
-
-    candidate, _ = supply()
-    assert normalize_native_identity(candidate) == candidate
-    legacy = candidate.model_copy(update={"metadata": "opaque legacy metadata", "runner_id": None})
-    assert normalize_native_identity(legacy) == legacy
+def test_identity_is_never_inferred_from_urls():
+    candidate, granted = supply()
     missing = candidate.model_copy(update={"runner_id": None, "url": "https://orch/apps/one/app"})
-    assert normalize_native_identity(missing) is None
+    with pytest.raises(NoCapacity):
+        admitting(granted).order([missing], NATIVE_CHAT)
 
 
-def test_optional_identity_does_not_reduce_legacy_metadata_size_budget():
-    from inference_gateway.adapters.runner_contract import RunnerMetadata
-
-    candidate, _ = supply()
+def test_the_metadata_limit_is_exactly_1024_bytes():
+    candidate, granted = supply()
     meta = json.loads(candidate.metadata)
     raw = json.dumps(meta, separators=(",", ":"))
-    meta["runtime"]["image"] = "a" * (1024 - len(raw.encode())) + meta["runtime"]["image"]
-    raw = json.dumps(meta, separators=(",", ":"))
-    assert len(raw.encode()) == 1024
-    assert RunnerMetadata.model_validate_json(raw).runner_id is None
+    meta["attributes"] = {"pad": ""}
+    padding = 1024 - len(json.dumps(meta, separators=(",", ":")).encode())
+    meta["attributes"]["pad"] = "x" * padding
+    fits = json.dumps(meta, separators=(",", ":"))
+    assert len(fits.encode()) == 1024 and len(raw.encode()) < 1024
+    assert admitting(granted).order([candidate.model_copy(update={"metadata": fits})], NATIVE_CHAT)
+    over = fits.replace('"pad":"', '"pad":"x')
+    with pytest.raises(NoCapacity):
+        admitting(granted).order([candidate.model_copy(update={"metadata": over})], NATIVE_CHAT)
 
 
-async def test_identity_normalization_does_not_change_validated_routes():
-    from inference_gateway.backends.discovery import FilteredDiscovery
+def responses_answer(status, reason=None, streaming=False):
+    body = {"status": status, "usage": {"input_tokens": 2, "output_tokens": 1}}
+    if reason:
+        body["incomplete_details"] = {"reason": reason}
+    if streaming:
+        return "text/event-stream", sse({"type": "response." + status, "response": body})
+    return "application/json", json.dumps(body).encode()
 
-    original, _ = supply()
-    candidate = original.model_copy(
-        update={"metadata": json.dumps({**json.loads(original.metadata), "runner_id": "conflict"})}
-    )
 
-    class Source:
-        async def fetch(self):
-            return (candidate,)
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize(
+    "status,reason,success",
+    [
+        ("completed", None, True),
+        ("incomplete", "max_output_tokens", True),
+        ("incomplete", "content_filter", True),
+        ("failed", None, False),
+    ],
+)
+def test_the_responses_entry_counts_an_incomplete_answer_as_success(
+    streaming, status, reason, success
+):
+    """v2's success rule. The decoder still refuses a cut it can't report as length."""
+    content_type, raw = responses_answer(status, reason, streaming)
+    reader = contract().reader("responses", status=200, content_type=content_type)
+    reader.feed(raw)
+    assert reader.finish().success is success
 
-    assert await FilteredDiscovery(
-        Source(), frozenset({"app"}), ("https://orch",), native_routes=frozenset()
-    ).fetch() == (candidate,)
-    assert (
-        await FilteredDiscovery(
-            Source(), frozenset({"app"}), ("https://orch",), native_routes=frozenset({("app", "m")})
-        ).fetch()
-        == ()
-    )
+
+def test_a_chat_stream_cut_before_done_is_not_an_answer():
+    reader = contract().reader("chat_completions", status=200, content_type="text/event-stream")
+    reader.feed(sse({"choices": [{"index": 0, "finish_reason": "length", "delta": {}}]}))
+    assert reader.finish().success is False

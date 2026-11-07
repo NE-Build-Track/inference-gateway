@@ -52,6 +52,7 @@ from inference_gateway.core.native import NativeBackend
 from inference_gateway.core.service import GenerationService
 from inference_gateway.runtime import (
     EngineFactory,
+    RunnerPolicy,
     build_engine,
     livepeer_backend,
     load_livepeer_settings,
@@ -163,6 +164,7 @@ def create_app(
     *,
     livepeer_settings: LivepeerSettings | None = None,
     engine_factory: EngineFactory | None = None,
+    runner_policy: RunnerPolicy | None = None,
     accounting_source: AccountingSource | None = None,
     native_backend: NativeBackend | None = None,
 ) -> FastAPI:
@@ -226,6 +228,7 @@ def create_app(
                 engine_factory or build_engine,
                 partial(writer.send, ledger.record_usage) if ledger and writer else None,
                 partial(writer.send, ledger.bind_job) if ledger and writer else None,
+                runner_policy,
             ) as live:
                 service = compose(live)
                 native = live.native_backend
@@ -326,6 +329,12 @@ def create_app(
                 if not native.supports(raw.model, raw.endpoint):
                     # Permanent until configuration changes, so unlike 503 it invites no retry.
                     return failure(protocol, UNAVAILABLE_ON_ENDPOINT, 400, request_id)
+                # The entry's request schema, checked before payment and off the event loop. Its
+                # lines name where and what the schema wants, never the request's values.
+                if problems := await asyncio.to_thread(native.problems, raw):
+                    broken = "; ".join(problems[:3])
+                    message = f"Request breaks the endpoint's wire profile: {broken}"
+                    return failure(protocol, message, 400, request_id)
                 if ledger and principal:
                     await begin(raw.model, "systemone" if native_only else protocol)
                 return NativeHTTPResponse(

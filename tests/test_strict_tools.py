@@ -2,6 +2,7 @@ import json
 
 import httpx
 import pytest
+from contract_helpers import CHAT, envelope, validated_backend
 
 from inference_gateway.app import create_app
 from inference_gateway.testing import FakeBackend
@@ -75,7 +76,6 @@ async def scripted_backend(native, arguments, *, ledger=None, text=None):
     from livepeer_builder.testing import FakeEngine, Reply, runner
     from test_responses_api import native_frames
 
-    from inference_gateway.backends.livepeer import LivepeerBackend
     from inference_gateway.config import LivepeerSettings, ModelRoute
 
     if native:
@@ -135,7 +135,7 @@ async def scripted_backend(native, arguments, *, ledger=None, text=None):
     path = "/v1/responses" if native else "/v1/chat/completions"
     engine = FakeEngine(
         streaming=True,
-        runners=[runner("chat", metadata='{"model_name":"gemma"}')],
+        runners=[runner("chat", metadata=envelope("gemma", CHAT))],
         replies={
             ("chat", path): Reply(
                 content_type="text/event-stream", chunks=tuple(f.encode() for f in frames)
@@ -144,11 +144,11 @@ async def scripted_backend(native, arguments, *, ledger=None, text=None):
     )
     route = ModelRoute(
         name="gemma",
-        app="chat",
+        capability="chat",
         upstream_api="responses" if native else "chat_completions",
         capabilities={"structured_output", "parallel_tools"},
     )
-    backend = LivepeerBackend(
+    backend = validated_backend(
         engine,
         LivepeerSettings(routes=(route,)),
         ledger.record_usage if ledger else None,

@@ -5,6 +5,7 @@ import httpx
 import pytest
 from anthropic import APIStatusError as AnthropicStatusError
 from anthropic import AsyncAnthropic
+from contract_helpers import CHAT, envelope, validated_backend
 from livepeer_builder import ActorContext, EngineSupply, RunnerCallError
 from livepeer_builder.testing import (
     Fails,
@@ -20,7 +21,6 @@ from openai import APIStatusError as OpenAIStatusError
 from openai import AsyncOpenAI
 
 from inference_gateway.app import create_app
-from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.config import LivepeerSettings, ModelRoute
 from inference_gateway.core.backend import BackendDeadline, BackendError, UnknownModel
 from inference_gateway.core.models import (
@@ -35,9 +35,9 @@ from inference_gateway.core.models import (
 )
 from inference_gateway.core.service import GenerationService
 
-APP = "blueclaw/chat/qwen3.8-27b"
+APP = "chat"
 PATH = "/v1/chat/completions"
-OPTIONS = LivepeerSettings(routes=(ModelRoute(name="qwen", app=APP),))
+OPTIONS = LivepeerSettings(routes=(ModelRoute(name="qwen", capability=APP),))
 ACTOR = ActorContext(
     actor_id=OPTIONS.actor_id,
     application_id=OPTIONS.application_id,
@@ -66,7 +66,7 @@ def ending(reason="stop"):
 def scripted(chunks):
     return FakeEngine(
         streaming=True,
-        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
+        runners=[runner(APP, metadata=envelope("qwen", CHAT))],
         replies={(APP, PATH): Reply(content_type="text/event-stream", chunks=tuple(chunks))},
     )
 
@@ -96,7 +96,7 @@ async def test_livepeer_sdk_text(protocol, streaming):
     wire = frame({"content": "Héllo"}) + b"".join(ending())
     # Fragment at every byte, including inside the Unicode code point.
     engine = scripted([wire[i : i + 1] for i in range(len(wire))])
-    app = create_app(LivepeerBackend(engine, OPTIONS))
+    app = create_app(validated_backend(engine, OPTIONS))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as http:
         if protocol == "openai":
             client = AsyncOpenAI(base_url="http://test/v1", api_key="local", http_client=http)
@@ -138,7 +138,7 @@ async def test_livepeer_sdk_text(protocol, streaming):
 @pytest.mark.parametrize("protocol", ["openai", "anthropic"])
 async def test_livepeer_sdk_tool_roundtrip(protocol):
     engine = scripted(tool_frames())
-    app = create_app(LivepeerBackend(engine, OPTIONS))
+    app = create_app(validated_backend(engine, OPTIONS))
     messages = [{"role": "user", "content": "weather?"}]
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as http:
         if protocol == "openai":
@@ -218,7 +218,7 @@ async def test_livepeer_sdk_tool_roundtrip(protocol):
 async def test_unknown_model_never_dispatches():
     engine = scripted([])
     with pytest.raises(UnknownModel):
-        await GenerationService(LivepeerBackend(engine, OPTIONS)).complete(
+        await GenerationService(validated_backend(engine, OPTIONS)).complete(
             replace(REQUEST, model="unknown")
         )
     assert engine.jobs.requests == []
@@ -226,7 +226,7 @@ async def test_unknown_model_never_dispatches():
 
 async def test_named_tool_and_upstream_model_are_preserved():
     options = LivepeerSettings(
-        routes=(ModelRoute(name="qwen", app=APP, upstream_model="qwen", disable_thinking=False),)
+        routes=(ModelRoute(name="qwen", capability=APP, disable_thinking=False),)
     )
     engine = scripted(tool_frames())
     request = replace(
@@ -235,7 +235,7 @@ async def test_named_tool_and_upstream_model_are_preserved():
         tool_choice=NamedTool("weather"),
         temperature=0.2,
     )
-    await GenerationService(LivepeerBackend(engine, options)).complete(request)
+    await GenerationService(validated_backend(engine, options)).complete(request)
     sent = engine.jobs.requests[0][1].payload
     assert sent["model"] == "qwen"
     assert sent["tool_choice"] == {"type": "function", "function": {"name": "weather"}}
@@ -252,7 +252,7 @@ async def test_tool_error_and_mixed_user_content_are_not_lost():
             Message("user", (ToolResult("c", "unavailable", True), Text("Try later"))),
         ),
     )
-    await GenerationService(LivepeerBackend(engine, OPTIONS)).complete(request)
+    await GenerationService(validated_backend(engine, OPTIONS)).complete(request)
     sent = engine.jobs.requests[0][1].payload["messages"]
     assert sent[-2] == {"role": "tool", "tool_call_id": "c", "content": "Tool error: unavailable"}
     assert sent[-1] == {"role": "user", "content": "Try later"}
@@ -274,7 +274,7 @@ async def test_bad_runner_stream_fails_without_success(chunks):
     # One raw chunk ensures the parser sees trailing data after DONE in the same read.
     engine = scripted([b"".join(chunks)])
     with pytest.raises(BackendError):
-        await GenerationService(LivepeerBackend(engine, OPTIONS)).complete(REQUEST)
+        await GenerationService(validated_backend(engine, OPTIONS)).complete(REQUEST)
     assert len(engine.jobs.requests) == 1
 
 
@@ -285,7 +285,7 @@ async def test_usage_report_failure_preserves_completed_reply(caplog):
         raise RuntimeError("private secret detail")
 
     engine.jobs.report_usage = fail
-    result = await GenerationService(LivepeerBackend(engine, OPTIONS)).complete(REQUEST)
+    result = await GenerationService(validated_backend(engine, OPTIONS)).complete(REQUEST)
     assert result.content == (Text("ok"),)
     assert "livepeer_usage_report_failed" in caplog.text
     assert "private secret" not in caplog.text
@@ -301,7 +301,7 @@ async def test_close_calls_engine_disconnect_before_iterator_close(monkeypatch):
 
     monkeypatch.setattr(FakeJobStream, "disconnected", record)
     engine = scripted([frame({"content": "first"}), *ending()])
-    events = LivepeerBackend(engine, OPTIONS).stream(REQUEST)
+    events = validated_backend(engine, OPTIONS).stream(REQUEST)
     assert isinstance(await anext(events), BlockStart)
     await events.aclose()
     assert len(streams) == 1 and streams[0].disconnected_called
@@ -320,7 +320,7 @@ async def test_close_calls_engine_disconnect_before_iterator_close(monkeypatch):
 async def test_paid_failure_does_not_retry(failure):
     engine = scripted([frame({"content": "partial"}), failure])
     with pytest.raises(BackendError):
-        await GenerationService(LivepeerBackend(engine, OPTIONS)).complete(REQUEST)
+        await GenerationService(validated_backend(engine, OPTIONS)).complete(REQUEST)
     assert len(engine.jobs.requests) == 1
     assert (await engine.jobs.list_jobs(ACTOR))[0].state == "uncertain"
 
@@ -334,14 +334,14 @@ async def test_real_engine_records_completion_or_abandonment(disconnect):
     )
     transport = ScriptedStreamTransport(opens=[StreamScript(events=events)])
     async with make_engine(
-        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
+        runners=[runner(APP, metadata=envelope("qwen", CHAT))],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
         shared_allocation_id="fixture-allocation",
         stream_settle_s=0.01,
     ) as engine:
-        backend = LivepeerBackend(engine, OPTIONS)
+        backend = validated_backend(engine, OPTIONS)
         if disconnect:
             stream = backend.stream(REQUEST)
             await anext(stream)
@@ -367,7 +367,7 @@ async def test_real_engine_records_completion_or_abandonment(disconnect):
 async def test_real_engine_timeout_preserves_paid_uncertainty():
     transport = ScriptedStreamTransport(opens=[StreamScript(events=[10.0])])
     async with make_engine(
-        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
+        runners=[runner(APP, metadata=envelope("qwen", CHAT))],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
@@ -377,7 +377,7 @@ async def test_real_engine_timeout_preserves_paid_uncertainty():
             update={"idle_timeout_seconds": 0.05, "first_byte_timeout_seconds": 0.05}
         )
         with pytest.raises(BackendDeadline):
-            await GenerationService(LivepeerBackend(engine, options)).complete(REQUEST)
+            await GenerationService(validated_backend(engine, options)).complete(REQUEST)
         job = (await engine.jobs.list_jobs(ACTOR))[0]
         assert job.state == "uncertain" and job.failure.kind == "timeout"
         assert len(transport.calls) == 1 and transport.streams[0].closed
@@ -397,12 +397,12 @@ async def test_real_engine_timeout_preserves_paid_uncertainty():
 async def test_engine_failures_map_to_safe_http_errors(protocol, kind, paid, status):
     engine = FakeEngine(
         streaming=True,
-        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
+        runners=[runner(APP, metadata=envelope("qwen", CHAT))],
         replies={
             (APP, PATH): Fails(kind=kind, message="upstream private secret", payment_sent=paid)
         },
     )
-    app = create_app(LivepeerBackend(engine, OPTIONS))
+    app = create_app(validated_backend(engine, OPTIONS))
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as c:
@@ -424,7 +424,7 @@ async def test_an_exhausted_allowance_is_insufficient_quota_not_unavailable(prot
     OpenAI's 429 insufficient_quota rather than a retryable 503, also after a paid failover."""
     engine = FakeEngine(
         streaming=True,
-        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
+        runners=[runner(APP, metadata=envelope("qwen", CHAT))],
         replies={
             (APP, PATH): Fails(
                 kind="payment",
@@ -435,7 +435,7 @@ async def test_an_exhausted_allowance_is_insufficient_quota_not_unavailable(prot
             )
         },
     )
-    app = create_app(LivepeerBackend(engine, OPTIONS))
+    app = create_app(validated_backend(engine, OPTIONS))
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as c:
@@ -462,15 +462,15 @@ async def test_no_capacity_failover_is_owned_by_engine_only():
     )
     async with make_engine(
         runners=[
-            runner(APP, metadata='{"model_name":"qwen"}', url="https://runner-a"),
-            runner(APP, metadata='{"model_name":"qwen"}', url="https://runner-b"),
+            runner(APP, metadata=envelope("qwen", CHAT), url="https://runner-a"),
+            runner(APP, metadata=envelope("qwen", CHAT), url="https://runner-b"),
         ],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
         shared_allocation_id="fixture-allocation",
     ) as engine:
-        result = await GenerationService(LivepeerBackend(engine, OPTIONS)).complete(REQUEST)
+        result = await GenerationService(validated_backend(engine, OPTIONS)).complete(REQUEST)
         assert result.content == (Text("second runner"),)
         jobs = await engine.jobs.list_jobs(ACTOR)
         assert len(jobs) == 1 and len(jobs[0].attempts) == 2
@@ -483,10 +483,10 @@ async def test_no_capacity_failover_is_owned_by_engine_only():
 async def test_default_sdk_retries_do_not_repeat_paid_failure(protocol, kind):
     engine = FakeEngine(
         streaming=True,
-        runners=[runner(APP, metadata='{"model_name":"qwen"}')],
+        runners=[runner(APP, metadata=envelope("qwen", CHAT))],
         replies={(APP, PATH): Fails(kind=kind, payment_sent=True)},
     )
-    app = create_app(LivepeerBackend(engine, OPTIONS))
+    app = create_app(validated_backend(engine, OPTIONS))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as http:
         messages = [{"role": "user", "content": "hello"}]
         if protocol == "openai":

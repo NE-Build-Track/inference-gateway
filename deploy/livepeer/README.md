@@ -106,22 +106,26 @@ python3 deploy/livepeer/orchestrator/render-config.py --mode offchain
 docker compose -f deploy/livepeer/orchestrator/compose.yaml up -d --build
 ```
 
-The node statically registers the local vLLM HTTP server, checks its health and advertises
-`RUNNER_APP`. vLLM is not exposed directly on the host. The orchestrator listens on host
+The node statically registers the local vLLM HTTP server under App ID `chat` with a
+[runner contract v1](../../docs/product-specs/runner-contract.md) envelope. A readiness service
+answers the node's health check, ready only after a self-test of the chat profile passes. The
+envelope's `deployment_revision` hashes the digest-pinned vLLM and readiness images, the model's
+`MODEL_ID` and `MODEL_REVISION`, and the tool parser, so change `MODEL_REVISION` with `MODEL_ID`.
+vLLM is not exposed directly on the host. The orchestrator listens on host
 loopback by default. Configure `ORCHESTRATOR_BIND` and `ORCHESTRATOR_SERVICE_URL` for remote
 access, with a TLS reverse proxy for public deployment. The advertised address must be
 reachable from gateway/discovery containers; their `localhost` is not the host machine.
 
-For gateway routing to this runner, set `GATEWAY_CHAT_APP=inference/chat/default` and
-`GATEWAY_MODEL_NAME` to the orchestrator's `SERVED_MODEL_NAME`, which defaults to `gateway-model`.
-The renderer advertises that name as runner metadata, and the gateway routes by it, so the two must
-match. Leave `GATEWAY_UPSTREAM_MODEL` empty. Configure discovery origins to reach this orchestrator.
+For gateway routing to this runner, set `GATEWAY_MODEL_NAME` to the orchestrator's
+`SERVED_MODEL_NAME`, which defaults to `gateway-model`. The envelope names that model, and the
+gateway routes by it, so the two must match. Configure discovery origins to reach this orchestrator.
 The existing gateway payment backend still requires its normal engine/signer configuration even
 when the runner is free.
 
 This stack serves vLLM through a validated route. For native routes and decision models, render a
-runner from the [live-runner bundle](../../live-runner/README.md) and add its route and approvals to
-the gateway's `.env`. See the [native contract](../../docs/product-specs/native-inference.md) and the
+runner from the [live-runner bundle](../../live-runner/README.md), add its route to the gateway's
+`.env`, and put its approvals in `config/approvals/approvals.json` with `GATEWAY_APPROVALS_FILE`
+set. See the [native contract](../../docs/product-specs/native-inference.md) and the
 [System One deployment steps](../../docs/product-specs/system-one.md#deploy).
 
 ### Paid on-chain configuration
