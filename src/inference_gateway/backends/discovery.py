@@ -1,13 +1,24 @@
-"""Constrain the engine's discovered supply to configured apps and approved origins."""
+"""Constrain the engine's discovered supply to approved origins and runner contract v1 envelopes."""
 
-import json
+import logging
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
 from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import DiscoverySource, SelectionPolicy
+from livepeer_runner_contract import Ineligible, RunnerKey, log_ignored
 
-from inference_gateway.adapters.runner_contract import PROFILES, RunnerMetadata
+from inference_gateway.backends.runner_contract import (
+    RunnerContract,
+    read_envelope,
+    runner_identity,
+)
+
+if TYPE_CHECKING:
+    from inference_gateway.backends.approvals import Approvals
+
+NATIVE = "native.http.v1"
 
 
 def origin(url: str) -> tuple[str, str, int]:
@@ -30,24 +41,28 @@ def origin(url: str) -> tuple[str, str, int]:
 
 
 class FilteredDiscovery:
+    """Keeps runners of the routes' capabilities, from approved origins, with a valid envelope.
+
+    Every runner whose record isn't a valid envelope is logged once with the reason and a link to
+    the standard, whatever its capability. A bad record excludes only its runner.
+    """
+
     def __init__(
         self,
         inner: DiscoverySource,
-        apps: frozenset[str],
+        capabilities: frozenset[str],
         approved: tuple[str, ...],
         *,
-        native_routes: frozenset[tuple[str, str]] | None = None,
+        logger: logging.Logger | None = None,
     ) -> None:
         self._inner = inner
-        self._apps = apps
-        self._native_routes = native_routes
+        self._capabilities = capabilities
         self._origins = frozenset(origin(url) for url in approved)
+        self._logger = logger or logging.getLogger("inference_gateway")
 
     async def fetch(self) -> tuple[Runner, ...]:
         selected: list[Runner] = []
         for runner in await self._inner.fetch():
-            if runner.app not in self._apps:
-                continue
             if self._origins:
                 try:
                     address = origin(runner.orchestrator_url or "")
@@ -55,99 +70,51 @@ class FilteredDiscovery:
                     continue
                 if address not in self._origins:
                     continue
-            native = (
-                self._native_routes is None
-                or (runner.app, model_name(runner)) in self._native_routes
-            )
-            normalized = normalize_native_identity(runner) if native else runner
-            if normalized is not None:
-                selected.append(normalized)
+            envelope = read_envelope(runner.metadata)
+            key = RunnerKey(runner.orchestrator_url or "", runner.runner_id or "")
+            if isinstance(envelope, Ineligible):
+                log_ignored(self._logger, key, envelope, level=logging.INFO)
+                continue
+            if runner.app not in self._capabilities:
+                continue
+            identity = runner_identity(runner, envelope)
+            if identity is None:
+                log_ignored(self._logger, key, "its envelope's runner_id differs from the node's")
+                continue
+            if identity and not runner.runner_id:
+                runner = runner.model_copy(update={"runner_id": identity})
+            selected.append(runner)
         return tuple(selected)
 
 
-def native_runner_id(runner: Runner, metadata: RunnerMetadata) -> str | None:
-    """Resolve a declaration, not an authorization; never infer identity from a URL."""
-    if metadata.runner_id is not None:
-        if runner.runner_id and runner.runner_id != metadata.runner_id:
-            return None
-        return metadata.runner_id
-    return runner.runner_id or None
+class ContractSelection:
+    """Builder Core's selection hook: only runners the contract and approvals admit, before Core
+    ranks, pays or fails over. Validated jobs need approval only for private runners; native jobs
+    need it for every runner. A ranking policy must not widen the admitted set.
+    """
 
-
-def normalize_native_identity(runner: Runner) -> Runner | None:
-    if len((runner.metadata or "").encode()) > 1024:
-        return (
-            runner  # Native selection rejects oversized declarations; leave legacy routes intact.
-        )
-    try:
-        value = json.loads(runner.metadata or "")
-    except (ValueError, TypeError):
-        return runner  # Legacy validated routes can carry opaque metadata.
-    if not isinstance(value, dict) or "inference_contract" not in value:
-        return runner
-    try:
-        metadata = RunnerMetadata.model_validate_json(runner.metadata or "")
-    except ValueError:
-        return None
-    identity = native_runner_id(runner, metadata)
-    if identity is None:
-        return None
-    return runner.model_copy(update={"runner_id": identity})
-
-
-def model_name(runner: Runner) -> str | None:
-    """Metadata is untrusted; app names and opaque text are never model identities."""
-    try:
-        metadata = json.loads(runner.metadata or "")
-    except (ValueError, TypeError):
-        return None
-    value = metadata.get("model_name") if isinstance(metadata, dict) else None
-    return value if isinstance(value, str) and value and value == value.strip() else None
-
-
-def declared_endpoints(runner: Runner) -> frozenset[str] | None:
-    """Endpoints in contract metadata, or None for the model-name-only form validated routes use."""
-    try:
-        metadata = json.loads(runner.metadata or "")
-    except (ValueError, TypeError):
-        return None
-    endpoints = metadata.get("endpoints") if isinstance(metadata, dict) else None
-    return frozenset(endpoints) if isinstance(endpoints, dict) else None
-
-
-def declares_path(runner: Runner, path: str) -> bool:
-    """Model-name-only metadata declares nothing, so only an explicit contract can exclude."""
-    declared = declared_endpoints(runner)
-    return declared is None or any(
-        name in PROFILES and PROFILES[name]["path"] == path for name in declared
-    )
-
-
-class ModelSelection:
-    """Filter before the engine ranks/retries; never cross the requested app boundary."""
-
-    def __init__(self, inner: "SelectionPolicy") -> None:
+    def __init__(
+        self, inner: SelectionPolicy, contract: RunnerContract, approvals: "Approvals"
+    ) -> None:
         self._inner = inner
-
-    def order(self, candidates: "Sequence[Runner]", request: "JobRequest") -> "Sequence[Runner]":
-        selected = [
-            r
-            for r in candidates
-            if r.app == request.app
-            and model_name(r) == request.model
-            and declares_path(r, request.path)
-            and (r.capacity_available is None or r.capacity_available > 0)
-        ]
-        ordered = self._inner.order(selected, request)
-        if not ordered:
-            raise NoCapacity("No eligible model runner")
-        return ordered
-
-
-class ProtocolSelection:
-    def __init__(self, validated: SelectionPolicy, native: SelectionPolicy) -> None:
-        self.validated, self.native = validated, native
+        self._contract = contract
+        self._approvals = approvals
 
     def order(self, candidates: Sequence[Runner], request: JobRequest) -> Sequence[Runner]:
-        policy = self.native if request.capability == "native.http.v1" else self.validated
-        return policy.order(candidates, request)
+        endpoint = self._contract.endpoint_for(request.path)
+        if endpoint is None or request.method != "POST":
+            raise NoCapacity("No admitted endpoint")
+        eligible = self._contract.eligible(
+            candidates,
+            capability=request.app,
+            model=request.model or "",
+            endpoint=endpoint,
+            approvals=self._approvals.approver(request.model or ""),
+            approved_only=request.capability == NATIVE,
+        )
+        if not eligible:
+            raise NoCapacity("No eligible runner")
+        ordered = [r for r in self._inner.order(eligible, request) if r in eligible]
+        if not ordered:
+            raise NoCapacity("No eligible runner")
+        return ordered

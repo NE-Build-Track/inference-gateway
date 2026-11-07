@@ -40,3 +40,4 @@ Use a short task note for small edits.
 - [Ledger work off the event loop](active/ledger-event-loop.md): report reads indexed, paged in SQL and threaded; reconciliation settles; writes on one thread; native logs. Operator confirmation pending.
 - [System One route](active/system-one-route.md): decision models and per-SDK model lists; verified offchain on four backends, paid acceptance pending.
 - [Upstream repin and publication](active/upstream-repin-publication.md): Core M3 and `livepeer/` dependencies accepted; image publication pending.
+- [Runner contract v1](active/runner-contract-v1.md): gateway and bundled runners on the live runner standard; verified offline, live cutover pending.

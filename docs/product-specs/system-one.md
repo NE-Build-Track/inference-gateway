@@ -114,6 +114,7 @@ warning, or reach something the client should not. Each of these fails before pa
 | Request | Status | Reason |
 | --- | --- | --- |
 | `stream: true` | 400 | Decisions have no stream; a backend that ignores the flag answers with JSON, which would read as a broken stream after payment |
+| Any top-level field but `model`, `state`, `questions` and `images`, including `stream: false` | 400 | The `typesafe.systemone.v1` entry's request schema allows no others, so a misspelled field can't pass unnoticed |
 | An `images` entry that is not an inline image | 400 | SGLang opens local paths, and SGLang and vLLM fetch URLs |
 | `audio`, `videos`, `files`, `assets`, `media_kwargs` | 400 | Backends differ, and some ignore these and answer anyway, so the customer would pay for a decision that never saw the media |
 | Compressed body | 400 | The gateway cannot read `model` |
@@ -123,8 +124,8 @@ warning, or reach something the client should not. Each of these fails before pa
 
 The backend owns everything else. An invalid question returns the backend's error, usually a 422 with
 a `detail` list. The gateway preserves it, adds `x-should-retry: false` and charges the customer
-nothing, though the paid attempt still costs wholesale. Most backends ignore unknown top-level fields,
-so a misspelled optional field may not fail.
+nothing, though the paid attempt still costs wholesale. A misspelled top-level field fails before
+payment, because the entry's schema allows none it doesn't define.
 
 ### Why audio and video are refused
 
@@ -164,17 +165,19 @@ loses money at that rate. Set Clef's rate from real token counts. The gateway ha
 Deploy the gateway first. A runner advertising `systemone` needs v0.2.0 or later on SGLang and v0.2.1
 or later on any other backend.
 
-1. Start a backend and register it with a node, following
+1. Start a backend and register it with a node under App ID `decision`, following
    [Run Clef-Flash](../../live-runner/runtimes/clef/README.md).
-2. Add a native route. `mode` defaults to `validated`, which cannot serve this route:
+2. Add a native route for the `decision` capability. `mode` defaults to `validated`, which cannot
+   serve this route:
 
    ```json
-   {"name":"Cloudflare/clef-flash","app":"inference/clef","mode":"native",
+   {"name":"Cloudflare/clef-flash","capability":"decision","mode":"native",
     "description":"Answers typed questions with probabilities.","release_date":"2026-10-09"}
    ```
 
-3. Add an approval to `GATEWAY_NATIVE_APPROVALS` with `"endpoint":"systemone"`. See the
-   [native contract](native-inference.md#configure-an-accepted-deployment).
+3. Add an approval for profile `typesafe.systemone.v1`, with the runner's passing conformance
+   report, to the file named by `GATEWAY_APPROVALS_FILE`. See
+   [admission and approvals](runner-contract.md#admission-and-approvals).
 4. Set a retail price, because the catalog and the route both require one in registry mode:
 
    ```sh

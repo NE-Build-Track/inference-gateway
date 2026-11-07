@@ -1,0 +1,3 @@
+# Operator approvals stay out of the repository.
+*
+!.gitignore

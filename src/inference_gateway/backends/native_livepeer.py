@@ -1,6 +1,7 @@
 """Opaque native requests through Builder Core's paid streaming API."""
 
-from collections.abc import AsyncGenerator, Callable, Sequence
+import json
+from collections.abc import AsyncGenerator
 from uuid import UUID
 
 from livepeer_builder import (
@@ -9,16 +10,15 @@ from livepeer_builder import (
     EngineError,
     JobFailed,
     JobRequest,
-    NoCapacity,
     OperationConflict,
     OperationExists,
-    Runner,
 )
 from livepeer_builder.api import JobStreamApi
+from livepeer_runner_contract import ResultReader
 
-from inference_gateway.adapters.runner_contract import PROFILES
-from inference_gateway.backends.discovery import origin
-from inference_gateway.backends.native_selection import Admission, NativeSelection
+from inference_gateway.backends.approvals import Approvals
+from inference_gateway.backends.discovery import NATIVE, origin
+from inference_gateway.backends.runner_contract import ENDPOINTS, RunnerContract
 from inference_gateway.config import LivepeerSettings, ModelRoute
 from inference_gateway.core.backend import (
     BackendConflict,
@@ -31,23 +31,19 @@ from inference_gateway.core.models import Finished
 from inference_gateway.core.native import NativeRequest
 
 
-class _PreserveOrder:
-    def order(self, candidates: Sequence[Runner], request: JobRequest) -> Sequence[Runner]:
-        return candidates
-
-
 class LivepeerNativeBackend:
     def __init__(
         self,
         engine: ActorApi,
         settings: LivepeerSettings,
-        approvals: Callable[[], tuple[Admission, ...]],
+        contract: RunnerContract,
+        approvals: Approvals,
     ) -> None:
         self.engine = engine
         self.settings = settings
         self.routes = tuple(r for r in settings.routes if r.mode == "native")
+        self.contract = contract
         self.approvals = approvals
-        self.selection = NativeSelection(_PreserveOrder(), approvals)
         self.actor = ActorContext(
             actor_id=settings.actor_id,
             application_id=settings.application_id,
@@ -57,51 +53,58 @@ class LivepeerNativeBackend:
     def accepts(self, model: str) -> bool:
         return any(r.name == model for r in self.routes)
 
-    def eligible(self, route: ModelRoute, path: str) -> bool:
+    def eligible(self, route: ModelRoute, endpoint: str) -> bool:
+        """Whether an approved runner with free capacity serves the route on this endpoint now."""
         health = self.engine.health()
         if not health.ready or not health.discovery_fresh:
             return False
+        if not self.contract.serves(route.capability, endpoint):
+            return False
         candidates = []
         approved = {origin(url) for url in self.settings.approved_orchestrators}
-        for candidate in self.engine.discovery.candidates(route.app):
+        for candidate in self.engine.discovery.candidates(route.capability):
             try:
                 if approved and origin(candidate.orchestrator_url or "") not in approved:
                     continue
             except ValueError:
                 continue
             candidates.append(candidate)
-        try:
-            self.selection.order(
+        return bool(
+            self.contract.eligible(
                 candidates,
-                JobRequest(app=route.app, model=route.name, path=path),
+                capability=route.capability,
+                model=route.name,
+                endpoint=endpoint,
+                approvals=self.approvals.approver(route.name),
+                approved_only=True,
             )
-            return True
-        except NoCapacity:
-            return False
+        )
 
     def supports(self, model: str, endpoint: str) -> bool:
-        apps = {r.app for r in self.routes if r.name == model}
-        return any(
-            a.model == model and a.endpoint == endpoint and a.app in apps for a in self.approvals()
-        )
+        profile = ENDPOINTS[endpoint]
+        if not any(
+            r.name == model and self.contract.serves(r.capability, endpoint) for r in self.routes
+        ):
+            return False
+        return any(a.model == model and a.profile == profile for a in self.approvals.current())
+
+    def problems(self, request: NativeRequest) -> tuple[str, ...]:
+        try:
+            body = json.loads(request.body)
+        except ValueError:
+            return ("the body isn't JSON",)
+        return self.contract.problems(request.endpoint, body)
 
     def models_for(self, endpoints: tuple[str, ...]) -> tuple[str, ...]:
         def serves(name: str, endpoint: str) -> bool:
-            path = PROFILES[endpoint]["path"]
-            return any(self.eligible(r, path) for r in self.routes if r.name == name)
+            return any(self.eligible(r, endpoint) for r in self.routes if r.name == name)
 
         names = {r.name for r in self.routes}
         return tuple(sorted(n for n in names if all(serves(n, e) for e in endpoints)))
 
     def models(self) -> tuple[str, ...]:
         return tuple(
-            sorted(
-                {
-                    r.name
-                    for r in self.routes
-                    if any(self.eligible(r, p["path"]) for p in PROFILES.values())
-                }
-            )
+            sorted({r.name for r in self.routes if any(self.eligible(r, e) for e in ENDPOINTS)})
         )
 
     async def report_usage(self, job_id: str, usage: Finished) -> None:
@@ -117,7 +120,11 @@ class LivepeerNativeBackend:
 
     async def open(self, request: NativeRequest) -> "LivepeerNativeStream":
         route = next(
-            (r for r in self.routes if r.name == request.model and self.eligible(r, request.path)),
+            (
+                r
+                for r in self.routes
+                if r.name == request.model and self.eligible(r, request.endpoint)
+            ),
             None,
         )
         streaming = self.engine.jobs.streaming
@@ -126,10 +133,10 @@ class LivepeerNativeBackend:
         headers = dict(request.headers)
         content_type = headers.pop("content-type", "application/json")
         job = JobRequest(
-            app=route.app,
-            path=request.path,
+            app=route.capability,
+            path=self.contract.path(request.endpoint),
             model=request.model,
-            capability="native.http.v1",
+            capability=NATIVE,
             raw_body=request.body,
             content_type=content_type,
             headers=tuple(headers.items()),
@@ -156,12 +163,16 @@ class LivepeerNativeBackend:
             raise BackendUnavailable("Native job could not start") from None
         except EngineError:
             raise BackendUnavailable("Native job could not start") from None
-        return LivepeerNativeStream(stream)
+        reader = self.contract.reader(
+            request.endpoint, status=stream.status_code, content_type=stream.content_type
+        )
+        return LivepeerNativeStream(stream, reader)
 
 
 class LivepeerNativeStream:
-    def __init__(self, stream: JobStreamApi) -> None:
+    def __init__(self, stream: JobStreamApi, reader: ResultReader) -> None:
         self.stream = stream
+        self.reader = reader
 
     @property
     def status_code(self) -> int:
@@ -187,11 +198,15 @@ class LivepeerNativeStream:
         iterator = self.stream.__aiter__()
         try:
             async for chunk in iterator:
+                self.reader.feed(chunk)
                 yield chunk
         except EngineError:
             raise BackendError("Native backend stream failed") from None
         finally:
             await iterator.aclose()
+
+    def succeeded(self) -> bool:
+        return self.reader.finish().success
 
     async def complete(self) -> None:
         await self.stream.complete()

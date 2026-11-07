@@ -4,13 +4,24 @@ from decimal import Decimal
 
 import httpx
 import pytest
+from contract_helpers import approval, envelope, policy
 from livepeer_builder.testing import Fails, FakeEngine, Reply, runner
 
 from inference_gateway.adapters.ledger import SQLiteLedger
-from inference_gateway.adapters.runner_contract import PROFILES
+from inference_gateway.adapters.native_request import SURFACES
 from inference_gateway.app import create_app
-from inference_gateway.config import LivepeerSettings, ModelRoute, NativeApproval, Settings
+from inference_gateway.config import LivepeerSettings, ModelRoute, Settings
 from inference_gateway.core.accounting import Price
+
+PATHS = {endpoint: path for path, endpoint in SURFACES.items()}
+REVISION = "sha256:" + "b" * 64
+# The smallest body each entry's request schema accepts.
+BODIES = {
+    "chat_completions": {"model": "m", "messages": [{"role": "user", "content": "hi"}]},
+    "responses": {"model": "m", "store": False, "input": "hi"},
+    "messages": {"model": "m", "max_tokens": 16, "messages": [{"role": "user", "content": "hi"}]},
+    "systemone": {"model": "m", "state": "s", "questions": {"q": {"type": "noul"}}},
+}
 
 USAGES = {
     "chat_completions": {"prompt_tokens": 5, "completion_tokens": 3},
@@ -19,46 +30,40 @@ USAGES = {
     "systemone": {"input_tokens": 5, "output_tokens": 3},
 }
 # System One has its own contract and rejects streaming and images; see test_system_one.py.
-GENERATION = [endpoint for endpoint in PROFILES if endpoint != "systemone"]
+GENERATION = [endpoint for endpoint in PATHS if endpoint != "systemone"]
 
 
 def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
-    meta = {
-        "inference_contract": 1,
-        "model_name": "m",
-        "runtime": {"name": "vllm", "image": "vllm/vllm-openai@sha256:" + "a" * 64},
-        "deployment_revision": "sha256:" + "b" * 64,
-        "endpoints": {endpoint: PROFILES[endpoint]},
-        "limits": {"context_tokens": 4096},
-        "admission": "candidate",
-    }
-    if metadata_identity:
-        meta["runner_id"] = "one"
+    capability = "decision" if endpoint == "systemone" else "chat"
+    meta = envelope(
+        "m",
+        (endpoint,),
+        revision=REVISION,
+        runner_id="one" if metadata_identity else None,
+        runtime={"name": "vllm", "image": "sha256:" + "a" * 64},
+        limits={"context_tokens": 4096},
+    )
     candidate = runner(
-        "chat",
-        metadata=json.dumps(meta, separators=(",", ":")),
-        orchestrator_url="https://orch",
-        capacity_available=1,
+        capability, metadata=meta, orchestrator_url="https://orch", capacity_available=1
     ).model_copy(update={"runner_id": None if metadata_identity else "one"})
     engine = FakeEngine(
-        streaming=True, runners=[candidate], replies={("chat", PROFILES[endpoint]["path"]): reply}
+        streaming=True, runners=[candidate], replies={(capability, PATHS[endpoint]): reply}
     )
     options = LivepeerSettings(
-        routes=(ModelRoute(name="m", app="chat", mode="native"),),
-        native_approvals=(
-            NativeApproval(
-                orchestrator="https://orch",
-                runner_id="one",
-                app="chat",
-                model="m",
-                deployment_revision=meta["deployment_revision"],
-                endpoint=endpoint,
-                expires_at=expiry or time.time() + 60,
-            ),
-        ),
+        routes=(ModelRoute(name="m", capability=capability, mode="native"),),
+    )
+    runner_policy = policy(
+        approval(
+            "https://orch",
+            "one",
+            "m",
+            endpoint,
+            revision=REVISION,
+            expires_at=expiry or time.time() + 60,
+        )
     )
 
-    async def factory(_):
+    async def factory(_settings, _policy):
         return engine
 
     ledger = None
@@ -72,14 +77,19 @@ def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
         backend="livepeer", accounting_db=str(tmp_path / "retail.db") if tmp_path else None
     )
     return (
-        create_app(settings=config, livepeer_settings=options, engine_factory=factory),
+        create_app(
+            settings=config,
+            livepeer_settings=options,
+            engine_factory=factory,
+            runner_policy=runner_policy,
+        ),
         engine,
         ledger,
         secret,
     )
 
 
-@pytest.mark.parametrize("endpoint", list(PROFILES))
+@pytest.mark.parametrize("endpoint", list(PATHS))
 @pytest.mark.parametrize("metadata_identity", [False, True])
 async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata_identity):
     raw_response = json.dumps(
@@ -94,10 +104,9 @@ async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata
     app, engine, ledger, secret = setup(
         endpoint, reply, tmp_path, metadata_identity=metadata_identity
     )
-    raw = (
-        b'{ "model":"m", "store":false, '
-        b'"tools":[{"strict":true,"parameters":{"$ref":"#/$defs/X"}}], "future":42 }'
-    )
+    # Unknown fields reach the runner unchanged where the entry allows them; System One's doesn't.
+    extension = {} if endpoint == "systemone" else {"future": 42}
+    raw = json.dumps({**BODIES[endpoint], **extension}, indent=1).encode()
     headers = {
         "content-type": "application/json",
         "authorization": "Bearer " + secret,
@@ -109,7 +118,7 @@ async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
-            result = await client.post(PROFILES[endpoint]["path"], content=raw, headers=headers)
+            result = await client.post(PATHS[endpoint], content=raw, headers=headers)
             assert result.status_code == 200, result.text
             assert result.content == raw_response and "set-cookie" not in result.headers
     request = engine.jobs.requests[0][1]
@@ -146,7 +155,7 @@ async def test_native_http_errors_keep_status_and_bytes_without_usage(tmp_path, 
                     b'{"model":"m","store":false,"input":[{"role":"user","content":'
                     b'[{"type":"input_image","image_url":"data:image/png;base64,broken"}]}]}'
                     if image_input
-                    else b'{"model":"m","store":false}'
+                    else b'{"model":"m","store":false,"input":"hi"}'
                 ),
                 headers={"authorization": "Bearer " + secret},
             )
@@ -168,7 +177,7 @@ async def test_forwarded_native_errors_disable_sdk_retries(status, streaming):
         "chat_completions",
         Reply(status_code=status, content_type="application/json", chunks=(raw,)),
     )
-    body = {"model": "m", "stream": streaming}
+    body = {**BODIES["chat_completions"], "stream": streaming}
     if streaming:
         body["stream_options"] = {"include_usage": True}
     async with app.router.lifespan_context(app):
@@ -198,7 +207,7 @@ async def test_native_exhausted_allowance_is_insufficient_quota():
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
-            response = await client.post("/v1/chat/completions", json={"model": "m"})
+            response = await client.post("/v1/chat/completions", json=BODIES["chat_completions"])
     assert response.status_code == 429
     assert response.headers["x-should-retry"] == "false"
     error = response.json()["error"]
@@ -247,7 +256,11 @@ async def test_native_stream_unknown_events_are_unchanged():
         ) as client:
             response = await client.post(
                 "/v1/chat/completions",
-                json={"model": "m", "stream": True, "stream_options": {"include_usage": True}},
+                json={
+                    **BODIES["chat_completions"],
+                    "stream": True,
+                    "stream_options": {"include_usage": True},
+                },
             )
     assert response.status_code == 200 and response.content == raw
     assert "x-should-retry" not in response.headers
@@ -255,15 +268,17 @@ async def test_native_stream_unknown_events_are_unchanged():
 
 
 @pytest.mark.parametrize(
-    "body,status",
+    "body,status,expiry",
     [
-        (b'{"model":"m","stream":true}', 400),
-        (b'{"model":"m","model":"m"}', 400),
-        (b'{"model":"m"}', 503),
+        (b'{"model":"m","messages":[],"stream":true}', 400, 1),
+        (b'{"model":"m","model":"m"}', 400, 1),
+        # Breaks the entry's request schema: no messages.
+        (b'{"model":"m"}', 400, None),
+        (json.dumps(BODIES["chat_completions"]).encode(), 503, 1),
     ],
 )
-async def test_invalid_envelope_or_expired_approval_never_dispatches(body, status):
-    app, engine, _, _ = setup("chat_completions", Reply(), expiry=1)
+async def test_invalid_request_or_expired_approval_never_dispatches(body, status, expiry):
+    app, engine, _, _ = setup("chat_completions", Reply(), expiry=expiry)
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -271,6 +286,52 @@ async def test_invalid_envelope_or_expired_approval_never_dispatches(body, statu
             response = await client.post("/v1/chat/completions", content=body)
             assert response.status_code == status
     assert not engine.jobs.requests
+
+
+async def test_a_schema_refusal_names_the_problem_and_never_quotes_the_request():
+    app, engine, _, _ = setup("chat_completions", Reply())
+    secret = "a-customers-private-path"
+    image = {"type": "image_url", "image_url": {"url": f"https://example.com/{secret}.png"}}
+    body = {**BODIES["chat_completions"], "messages": [{"role": "user", "content": [image]}]}
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post("/v1/chat/completions", json=body)
+    assert response.status_code == 400
+    assert "at /messages/0/content/0/image_url/url: doesn't match" in response.text
+    assert secret not in response.text
+    assert not engine.jobs.requests
+
+
+async def test_a_coding_agents_custom_tool_reaches_the_runner():
+    """The v2 entry passes tool types it doesn't describe; the runner decides."""
+    answer = {
+        "id": "chatcmpl_native",
+        "object": "chat.completion",
+        "created": 1,
+        "model": "m",
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "hello"},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": USAGES["chat_completions"],
+    }
+    reply = Reply(content_type="application/json", chunks=(json.dumps(answer).encode(),))
+    app, engine, _, _ = setup("chat_completions", reply)
+    tools = [{"type": "custom", "custom": {"name": "apply_patch"}}, {"type": "web_search"}]
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/v1/chat/completions", json={**BODIES["chat_completions"], "tools": tools}
+            )
+    assert response.status_code == 200
+    assert len(engine.jobs.requests) == 1
 
 
 @pytest.mark.parametrize("streaming", [False, True])
@@ -294,7 +355,7 @@ async def test_incomplete_response_keeps_provider_payload_and_measured_usage(tmp
         ) as client:
             response = await client.post(
                 "/v1/responses",
-                json={"model": "m", "store": False, "stream": streaming},
+                json={**BODIES["responses"], "stream": streaming},
                 headers={"authorization": "Bearer " + secret},
             )
     assert response.status_code == 200 and response.content == raw
@@ -312,7 +373,7 @@ async def test_encoded_response_is_not_returned_as_unencoded_json():
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
-            result = await client.post("/v1/responses", json={"model": "m", "store": False})
+            result = await client.post("/v1/responses", json=BODIES["responses"])
     assert result.status_code == 502
     assert b"compressed" not in result.content
 
@@ -341,6 +402,9 @@ async def test_native_deadline_before_headers_returns_504():
 
         def supports(self, model, endpoint):
             return True
+
+        def problems(self, request):
+            return ()
 
         async def open(self, request):
             try:
@@ -524,7 +588,7 @@ async def test_engine_failures_keep_timeout_and_availability_status(kind, paid, 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
-            response = await client.post("/v1/chat/completions", json={"model": "m"})
+            response = await client.post("/v1/chat/completions", json=BODIES["chat_completions"])
     assert response.status_code == expected
     assert "private backend detail" not in response.text
 
@@ -570,7 +634,14 @@ async def test_native_image_input_preserves_bytes_and_accounts(endpoint, streami
                 {"type": "message_stop"},
             ],
         }[endpoint]
-        response = b"".join(b"data: " + json.dumps(event).encode() + b"\n\n" for event in events)
+        # Anthropic's entry tells events apart by their SSE event type, as its API sends them.
+        response = b"".join(
+            (f"event: {event['type']}\n".encode() if endpoint == "messages" else b"")
+            + b"data: "
+            + json.dumps(event).encode()
+            + b"\n\n"
+            for event in events
+        )
         if endpoint == "chat_completions":
             response += b"data: [DONE]\n\n"
     app, engine, ledger, secret = setup(
@@ -587,7 +658,7 @@ async def test_native_image_input_preserves_bytes_and_accounts(endpoint, streami
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
             result = await client.post(
-                PROFILES[endpoint]["path"],
+                PATHS[endpoint],
                 content=raw,
                 headers={
                     "authorization": "Bearer " + secret,

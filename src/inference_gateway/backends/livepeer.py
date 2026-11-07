@@ -20,12 +20,14 @@ from livepeer_builder import (
     ProviderUnavailable,
 )
 
-from inference_gateway.backends.discovery import declared_endpoints, model_name, origin
+from inference_gateway.backends.approvals import Approvals
+from inference_gateway.backends.discovery import origin
 from inference_gateway.backends.livepeer_accounting import LivepeerAccounting
 from inference_gateway.backends.livepeer_request import runner_payload
 from inference_gateway.backends.native_responses import ResponsesDecoder
 from inference_gateway.backends.native_responses import payload as responses_payload
 from inference_gateway.backends.openai_events import CompletionDecoder
+from inference_gateway.backends.runner_contract import RunnerContract
 from inference_gateway.backends.sse import SSEDecoder
 from inference_gateway.config import LivepeerSettings, ModelRoute
 from inference_gateway.core.backend import (
@@ -46,6 +48,8 @@ class LivepeerBackend:
         self,
         engine: ActorApi,
         settings: LivepeerSettings,
+        contract: RunnerContract,
+        approvals: Approvals,
         usage_recorder: Callable[[str, Finished], None] | None = None,
         job_recorder: Callable[[str, str], None] | None = None,
         *,
@@ -58,6 +62,8 @@ class LivepeerBackend:
         if streaming is None:
             raise ValueError("Builder Core must provide streaming capability")
         self._engine = engine
+        self._contract = contract
+        self._approvals = approvals
         self._streaming = streaming
         self._settings = settings
         self._routes = settings.routes
@@ -91,24 +97,26 @@ class LivepeerBackend:
         )
 
     def _eligible(self, route: ModelRoute) -> list[int]:
+        """Free capacity of each runner serving the route; private runners need an approval."""
         approved = {origin(url) for url in self._settings.approved_orchestrators}
-        available = []
-        for runner in self._engine.discovery.candidates(route.app):
-            if model_name(runner) != route.name:
-                continue
-            # A decision runner refuses chat even if its route forgot `mode: native`.
-            declared = declared_endpoints(runner)
-            if declared is not None and route.upstream_api not in declared:
-                continue
+        candidates = []
+        for runner in self._engine.discovery.candidates(route.capability):
             if approved:
                 try:
                     if origin(runner.orchestrator_url or "") not in approved:
                         continue
                 except ValueError:
                     continue
-            if runner.capacity_available is None or runner.capacity_available > 0:
-                available.append(runner.capacity_available or 1)
-        return available
+            candidates.append(runner)
+        eligible = self._contract.eligible(
+            candidates,
+            capability=route.capability,
+            model=route.name,
+            endpoint=route.upstream_api,
+            approvals=self._approvals.approver(route.name),
+            approved_only=False,
+        )
+        return [runner.capacity_available or 1 for runner in eligible]
 
     def ready(self) -> bool:
         return bool(self.models())
@@ -127,7 +135,10 @@ class LivepeerBackend:
                 )
             except UnsupportedFeature:
                 continue
-            compatible.append((candidate, encoded))
+            # The entry's request schema is checked before payment, even for our own translation.
+            api = candidate.upstream_api
+            if not await asyncio.to_thread(self._contract.problems, api, encoded):
+                compatible.append((candidate, encoded))
         if not compatible:
             raise UnsupportedFeature("No eligible route supports the requested features")
         compatible = [(r, p) for r, p in compatible if self._eligible(r)]
@@ -136,8 +147,8 @@ class LivepeerBackend:
         route, encoded = max(compatible, key=lambda pair: max(self._eligible(pair[0]), default=-1))
         operation_ref = request.request_id or "req_" + uuid4().hex
         job_request = JobRequest(
-            app=route.app,
-            path="/v1/responses" if route.upstream_api == "responses" else "/v1/chat/completions",
+            app=route.capability,
+            path=self._contract.path(route.upstream_api),
             method="POST",
             model=request.model,
             payload=encoded,
@@ -169,6 +180,9 @@ class LivepeerBackend:
                 ):
                     raise BackendError("Runner did not return an SSE completion")
                 sse = SSEDecoder(self._settings.max_event_bytes)
+                verdict = self._contract.reader(
+                    route.upstream_api, status=stream.status_code, content_type=stream.content_type
+                )
                 decoder = (
                     ResponsesDecoder(self._settings.max_output_bytes)
                     if route.upstream_api == "responses"
@@ -186,11 +200,15 @@ class LivepeerBackend:
                 )
                 async for raw in iterator:
                     frames = sse.feed(raw)
+                    verdict.feed(raw)
                     output: list[Event] = []
                     for data in frames:
                         output.extend(decoder.feed(data))
                     if decoder.done:
                         sse.finish()
+                        if not verdict.finish().success:
+                            # The entry's error mappings and success rule decide, not our decoder.
+                            raise BackendError("Runner answer breaks its wire profile")
                         # A valid model terminal marker, not a client disconnect, ends delivery.
                         finish = next(e for e in output if isinstance(e, Finished))
                         # Persist measured usage before any cancellable settlement/reporting await.

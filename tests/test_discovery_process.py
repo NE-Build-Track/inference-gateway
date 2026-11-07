@@ -18,8 +18,10 @@ import pytest
 def test_discovery_process_preserves_native_runner_identity(tmp_path, metadata_identity):
     metadata = json.dumps(
         {
-            "model_name": "vision-model",
+            "runner_contract": 1,
             "deployment_revision": "sha256:" + "a" * 64,
+            "model": {"name": "vision-model", "source": "hf:test/vision-model"},
+            "endpoints": {"chat_completions": {"profile": "openai.chat.v1"}},
             "runner_id": "vision-runner",
         }
     )
@@ -34,7 +36,7 @@ def test_discovery_process_preserves_native_runner_identity(tmp_path, metadata_i
                             {
                                 **({} if metadata_identity else {"runner_id": "vision-runner"}),
                                 "url": "https://vision-runner.example",
-                                "app": "inference/vllm",
+                                "app": "chat",
                                 "mode": "single-shot",
                                 "capacity": 1,
                                 "capacity_available": 1,

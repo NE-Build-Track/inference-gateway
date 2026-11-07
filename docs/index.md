@@ -22,13 +22,14 @@ and tests together when behavior changes. Verification status is in [Quality](QU
   structured output, citations, hosted search, interleaving and media.
 - [Livepeer capability gaps](exec-plans/livepeer-capability-gaps.md): probe evidence and adapter work.
 
-- [Models and Responses](product-specs/models-and-responses.md): metadata routing and stateless API contract.
+- [Models and Responses](product-specs/models-and-responses.md): model routing and stateless API contract.
 
 - [Native inference direction](design-docs/native-inference-routing.md): vLLM, Ollama and SGLang; runner metadata, lean forwarding and accounting boundaries.
 
 - [Live-runner bundle](../live-runner/README.md): candidate contract, pinned runtimes and readiness.
 - [Native transport boundary](design-docs/native-transport-integration.md): implemented components and the NE dependency review chain.
 
+- [Runner contract v1](product-specs/runner-contract.md): the live runner standard as the gateway reads it; capabilities, selection, approvals and request checks.
 - [Native inference contract](product-specs/native-inference.md): explicit route mode, admission, forwarding and accounting.
 
 - [Native model inputs](product-specs/native-inputs.md): image request examples and modality limits.

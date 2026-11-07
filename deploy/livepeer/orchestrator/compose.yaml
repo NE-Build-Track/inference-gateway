@@ -20,15 +20,20 @@ services:
     depends_on:
       vllm:
         condition: service_healthy
+      readiness:
+        condition: service_started
     restart: unless-stopped
     logging: &logging
       driver: json-file
       options: {max-size: "20m", max-file: "3"}
   vllm:
-    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.11.0}
+    # Pinned by digest: the runner's deployment_revision hashes it (vllm/vllm-openai:v0.11.0).
+    image: ${VLLM_IMAGE:-vllm/vllm-openai@sha256:014a95f21c9edf6abe0aea6b07353f96baa4ec291c427bb1176dc7c93a85845c}
     command:
       - --model
       - ${MODEL_ID:-Qwen/Qwen2.5-0.5B-Instruct}
+      - --revision
+      - ${MODEL_REVISION:-7ae557604adf67be50417f59c2c2f167def9a775}
       - --served-model-name
       - ${SERVED_MODEL_NAME:-gateway-model}
       - --port
@@ -56,6 +61,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 60
+    restart: unless-stopped
+    logging: *logging
+  readiness:
+    # The node's HealthURL: ready only after the advertised profile's self-test passes.
+    image: ${READINESS_IMAGE:-python@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753}
+    command: [python, /app/readiness.py]
+    volumes:
+      - ./config/generated/readiness.py:/app/readiness.py:ro
+      - ./config/generated/readiness.json:/app/readiness.json:ro
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    read_only: true
+    depends_on:
+      vllm:
+        condition: service_healthy
     restart: unless-stopped
     logging: *logging
 volumes:

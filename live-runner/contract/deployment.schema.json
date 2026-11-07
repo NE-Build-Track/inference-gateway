@@ -38,6 +38,31 @@
       "title": "Model",
       "type": "object"
     },
+    "Price": {
+      "additionalProperties": false,
+      "description": "The wholesale price in USD: per hour of runner time, or a fixed price per call.",
+      "properties": {
+        "amount": {
+          "exclusiveMinimum": 0,
+          "title": "Amount",
+          "type": "number"
+        },
+        "unit": {
+          "enum": [
+            "hour",
+            "fixed"
+          ],
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "unit"
+      ],
+      "title": "Price",
+      "type": "object"
+    },
     "Runtime": {
       "additionalProperties": false,
       "properties": {
@@ -86,22 +111,9 @@
   },
   "additionalProperties": false,
   "properties": {
-    "contract_version": {
-      "const": 1,
-      "default": 1,
-      "title": "Contract Version",
-      "type": "integer"
-    },
     "runner_id": {
       "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
       "title": "Runner Id",
-      "type": "string"
-    },
-    "app": {
-      "maxLength": 96,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
-      "title": "App",
       "type": "string"
     },
     "runtime": {
@@ -130,24 +142,46 @@
       "title": "Capacity",
       "type": "integer"
     },
+    "price": {
+      "$ref": "#/$defs/Price"
+    },
     "public_url": {
       "title": "Public Url",
       "type": "string"
     },
     "admission": {
-      "const": "candidate",
       "default": "candidate",
+      "enum": [
+        "candidate",
+        "private"
+      ],
       "title": "Admission",
       "type": "string"
+    },
+    "reasoning": {
+      "anyOf": [
+        {
+          "enum": [
+            "on",
+            "off"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reasoning"
     }
   },
   "required": [
     "runner_id",
-    "app",
     "runtime",
     "model",
     "endpoints",
     "capacity",
+    "price",
     "public_url"
   ],
   "title": "Deployment",

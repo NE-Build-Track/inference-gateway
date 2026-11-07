@@ -1,25 +1,27 @@
 # Supported Livepeer inference runner bundle
 
-This directory is the gateway-owned deployment contract for **vLLM, Ollama and SGLang**.
-It contains exact integration code and digest-pinned upstream images, not copies of
-those engines. One manifest generates runtime settings, readiness configuration and
-Livepeer node registration, including `metadata.model_name`.
+This directory is the gateway-owned deployment bundle for **vLLM, Ollama and SGLang**, under
+[runner contract v1](../docs/product-specs/runner-contract.md). It contains exact integration code
+and digest-pinned upstream images, not copies of those engines. One manifest generates runtime
+settings, readiness configuration and, for each registration, the standard's `runner.toml`, its
+envelope and the node's `[[Runners]]` block.
 
 **Status:** candidate bundle with Qwen3.8 GPU acceptance and paid accounting evidence.
 Complete runtime conformance, chain finality and production admission remain pending.
-No image here is certified merely because its registry digest resolved. Generated
-runners are deliberately `idle`, and metadata says `admission: candidate`; they do not
-enter discovery as usable supply. Existing gateway traffic is unchanged.
+No image here is certified merely because its registry digest resolved. Generated blocks say
+`Status = "ready"`, as the standard's tool writes them, but the bundle's node is offchain and binds
+loopback, so a candidate serves no network traffic until an operator moves it. Configuration is
+never certification: approvals stay with the gateway operator.
 
 ## Layout
 
-- [contract](contract/README.md): deployment/metadata schemas and fixed endpoint profiles.
+- [contract](contract/README.md): the deployment schema and how registrations follow the standard.
 - [images.lock.json](images.lock.json): immutable runtime, readiness and node image references.
 - [vLLM](runtimes/vllm/README.md), [Ollama](runtimes/ollama/README.md),
   [SGLang](runtimes/sglang/README.md): model/parser configuration and limitations.
 - [Clef-Flash](runtimes/clef/README.md): a decision model on each backend, configured by hand.
-- [render.py](tooling/render.py): validates a manifest and emits a self-contained bundle.
-- [readiness.py](tooling/readiness.py): observes model availability without proxying generation.
+- [render.py](tooling/render.py): validates a manifest and emits a self-contained bundle, checked as the node reads it.
+- [readiness.py](tooling/readiness.py): answers ready only after a self-test of every advertised profile.
 - [orchestrator](orchestrator/README.md): node configuration and admission boundary.
 - [tests](tests/README.md): evidence and remaining runtime acceptance.
 
@@ -34,13 +36,19 @@ cp live-runner/runtimes/vllm/manifest.example.json live-runner/local/deployment.
 
 Edit the copied manifest. Supply the actual immutable model revision: a 40-character
 Hugging Face commit for vLLM/SGLang or the installed model manifest SHA-256 for Ollama.
-The templates intentionally contain invalid revision placeholders; the renderer refuses
-them rather than substituting a mutable model branch or claiming a fake pin.
+The templates intentionally contain invalid revision and price placeholders; the renderer refuses
+them rather than substituting a mutable model branch, a fake pin or a price the node doesn't charge.
+Set `price` to the wholesale rate in USD, per `hour` of runner time or `fixed` per call.
 
 Set the exact model name, capacity, context limit and required tool/reasoning parsers.
+Set `reasoning` to `on` for a model that reasons unless asked not to, such as Qwen3.8, or `off`
+for one that answers without reasoning; the envelope declares it, and gateways select by it.
+`on` requires a reasoning parser, which keeps the thinking out of the answer's text.
 Do not claim an endpoint because the family supports it in another version. Each
-`manifest.example.json` requests only the chat profile, and the Clef template requests only
-`systemone`; add other profiles only to a candidate being tested.
+`manifest.example.json` requests only the chat profile; add other profiles only to a candidate
+being tested. A manifest that lists chat endpoints and `systemone` renders two registrations,
+`<runner_id>-chat` (App `chat`) and `<runner_id>-decision` (App `decision`), sharing one
+`capacity_group`, because an App ID names one capability.
 
 ```sh
 uv run python live-runner/tooling/render.py \
@@ -71,11 +79,15 @@ acceptance; do not infer their support from upstream multi-platform image manife
 
 ## Release identity and drift
 
-`release.json` records the manifest-derived deployment revision, all image digests and
-integration code hashes. A model, image, parser, endpoint, context/capacity setting or
-integration-code change changes the revision. `metadata.json` stays within 1,024 UTF-8
-bytes for legacy compatibility. Metadata schema shape is checked by the shared Python
-contract; semantic endpoint mappings are also checked by that contract.
+Each registration's `deployment_revision` follows the standard's recipe: the runtime and readiness
+images, the model's source and revision, the registration's profiles, and the settings that change
+behavior (runtime, context length, tool and reasoning parsers). The URL, capacity, price and the
+bundle's own code stay out, so moving the node or raising capacity keeps approvals, and changing the
+model, an image or a parser voids them. `release.json` records each revision with the image digests
+and integration code hashes. The renderer checks every block as the node reads it, and the standard's
+`runner-contract` tool recomputes each revision from the written `<id>.runner.toml`:
+`runner-contract check <id>.block.toml --manifest <id>.runner.toml` checks one registration, and
+`runners.toml` holds every block for the node.
 
 Registry tags were resolved on 2026-10-27 into the checked-in lock. Generated Compose
 never uses `latest`. Measured runtime versions and GPU behavior are recorded in the remote GPU report;
@@ -83,18 +95,17 @@ the image digest remains the authoritative pin. Lock updates require a new relea
 and acceptance evidence, not an automatic pull on service restart.
 
 Do not edit generated files and keep the old evidence. Regenerate from the manifest.
-Readiness only observes a currently visible model/health status (and Ollama loaded model
-digest); it is not a certificate of tools, strict schemas, endpoint support or weight
-integrity. HF weights are requested at the configured revision; runtime attestation is
+Readiness answers 200 only after one small request to each advertised endpoint returns a served,
+usage-bearing answer, and returns to 503 when the model disappears; it is not a certificate of
+tools, strict schemas or weight integrity. HF weights are requested at the configured revision; runtime attestation is
 not implemented. Admission must bind evidence to the complete deployed artifact.
 
 ## Next integration boundary
 
-The gateway native path reads model/endpoint/profile metadata and observes usage while
-preserving payload bytes. It requires operator-owned, expiring deployment approvals; see
-[configuration](../docs/product-specs/native-inference.md). Validated routes retain their
-existing selection and output guarantees. Generated registrations stay idle until deployment
-acceptance and explicit promotion; metadata alone never grants native admission.
+The gateway reads each runner's envelope and observes usage while preserving payload bytes.
+Native routes need an operator-owned, expiring approval with a passing conformance report for every
+runner; see [admission and approvals](../docs/product-specs/runner-contract.md#admission-and-approvals).
+Validated routes select candidate runners without one. The envelope alone never grants admission.
 
 No automatic production promotion or approval-writing command is provided. Readiness is
 not endpoint certification. This bundle's node is pinned in the [image lock](images.lock.json) and
@@ -122,8 +133,8 @@ automatically promote deployments or certify every backend feature.
 
 ## Node compatibility
 
-The current bundle uses an unpatched node and advertises the registration ID as
-`metadata.runner_id`. Node PR #1 is no longer a dependency. See the
+The current bundle uses an unpatched node and names the registration ID in the envelope's
+`runner_id`. Node PR #1 is no longer a dependency. See the
 [identity contract](contract/README.md#runner-identity-without-a-node-patch) for conflict
-handling and gateway-first rollout. Older GPU reports describe the images used at that time;
+handling. Older GPU reports describe the images used at that time;
 the current lock and metadata-identity report supersede their node-patch requirement.

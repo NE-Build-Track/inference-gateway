@@ -11,6 +11,9 @@ dependencies = [
     "pydantic>=2.7,<3",
     "anyio>=4,<5",
     "livepeer-builder @ git+https://github.com/NE-Build-Track/livepeer-builder-core.git@15142129ebbf51103658f8ad48fd5adae052c56d",
+    # Runner contract v1: the gateway library at tag v0.3.0 and registry release 2026.11.3.
+    "livepeer-runner-contract @ git+https://github.com/NE-Build-Track/live-runner-standard.git@fa020206d8785a5768a54decd9479b106fe750ae#subdirectory=python/runner-contract",
+    "livepeer-runner-registry @ git+https://github.com/NE-Build-Track/live-runner-standard.git@1b71cabc5d70adb0378a8c5ff39e5fde11f28692#subdirectory=python/runner-registry",
 ]
 
 [project.urls]
