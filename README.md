@@ -182,9 +182,9 @@ forward the original bytes and only read usage. See [architecture](ARCHITECTURE.
 | `GATEWAY_BACKEND` | `fake` locally; `livepeer` in deployment |
 | `GATEWAY_ACCOUNTING_DB` | Enables registry authentication and durable retail accounting |
 | `GATEWAY_API_KEY` | Optional legacy shared key; cannot be combined with registry mode |
-| `GATEWAY_MODEL_ROUTES` | Public model names mapped to backend applications, with `mode` and optional list details |
-| `GATEWAY_NATIVE_APPROVALS` | Operator approvals for native routes, per runner and endpoint |
-| `GATEWAY_MODEL_NAME`, `GATEWAY_CHAT_APP` | Single-route settings used when `GATEWAY_MODEL_ROUTES` is empty |
+| `GATEWAY_MODEL_ROUTES` | Public model names, each with the capability its runners serve (`chat` by default), `mode` and optional list details |
+| `GATEWAY_APPROVALS_FILE` | Approvals for native routes and private runners, each with a passing conformance report; re-read when it changes |
+| `GATEWAY_MODEL_NAME` | Single-route setting used when `GATEWAY_MODEL_ROUTES` is empty |
 | `GATEWAY_TIMEOUT_SECONDS` | Generation deadline; defaults to 300 seconds |
 | `GATEWAY_APPROVED_ORCHESTRATORS` | Allowed discovery origins for Livepeer |
 | `LPB_DISCOVERY_URL` | Required runner inventory endpoint; separate from the signer |
@@ -212,7 +212,7 @@ reconciliation redrive. See [operations](docs/OPERATIONS.md) and the
 make check
 uv build
 scripts/build-images.sh gateway              # inference-gateway:local
-IMAGE_TAG=v0.2.3 scripts/build-images.sh     # All three images under one release tag
+IMAGE_TAG=v0.3.0 scripts/build-images.sh     # All three images under one release tag
 ```
 
 The script builds locally and never publishes.
