@@ -37,7 +37,8 @@ Runner bundle:
 - A deployment that advertises chat profiles and `systemone` renders two registrations, `chat` and
   `decision`, sharing a `capacity_group`.
 - Readiness answers 200 with `{"status":"ready"}` only after a self-test of every advertised profile
-  passes, and 503 with `starting` or `failed` otherwise.
+  passes, and 503 with `starting` or `failed` otherwise. It is the standard's `runner-contract ready`,
+  one service per registration.
 - The manifest requires a price.
 
 ## Decisions
@@ -60,6 +61,12 @@ Runner bundle:
   and item types coding agents send, and Responses v2 counts an `incomplete` answer as success, so
   the gateway's own exception for a capped Responses answer is gone. The request check runs in a
   worker thread, and a native refusal names the problem without quoting the request.
+- **Readiness is the standard's.** The bundle's own `readiness.py` is gone. Each registration's
+  readiness service runs `runner-contract ready` on its `runner.toml` (the deploy stack on its block),
+  so the self-test is the conformance suite's success cases. The user chose to install the tool when
+  the service starts, from `live-runner/tooling/readiness.txt`: the standard's commits the gateway
+  pins and the dependency versions in `uv.lock`, which a test keeps in step. No image to maintain;
+  the host needs GitHub and PyPI at start.
 - **System One follows the entry.** Its request schema allows no other top-level fields, so
   `stream: false` and misspelled optional fields now fail before payment. The TypeSafe SDK 0.7.5
   sends none of them.
@@ -77,6 +84,7 @@ Runner bundle:
 - [x] Deploy stack's vLLM runner: v1 envelope, digest-pinned images, model revision, readiness.
 - [x] Tests, documentation and the debt tracker.
 - [x] `make check` (700 tests) and `uv build`.
+- [x] Readiness: the standard's `runner-contract ready` replaces `readiness.py`.
 - [ ] Live cutover: the qwen registration on its node and the gateway deploy, in one window.
 - [ ] Conformance reports from the live runners, and approvals carrying them.
 
@@ -100,5 +108,4 @@ uv run runner-contract check live-runner/generated/vllm/<id>.block.toml \
 - Conformance reports against the live runners are produced on their hosts, outside this repository.
 - A passing report for the live qwen runner: `conform` 0.3.0 leaves reasoning models room in its
   success cases, and the bundle now declares `reasoning: on`. Native qwen routes wait on that
-  report. The bundle's own `readiness.py` should give way to the standard's `runner-contract ready`,
-  once its container has a pinned way to install the tool.
+  report.

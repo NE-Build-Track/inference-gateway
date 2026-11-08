@@ -101,9 +101,13 @@ Approvals bind to this value, so changing the image, model or settings needs a n
 moving the node or changing capacity doesn't. `runner_id` must match the node's `ID`.
 
 `HealthURL` must answer 200 only after a self-test of `systemone` passes, which a backend's own
-`/health` doesn't do. Run [readiness.py](../../tooling/readiness.py) beside the backend with a
-`readiness.json` naming the backend's URL, the model and the endpoint
-`{"name":"systemone","path":"/v1/systemone"}`, and point `HealthURL` at it.
+`/health` doesn't do. Run the standard's `runner-contract ready` beside the backend on the
+registration's block, installed as [readiness.txt](../../tooling/readiness.txt) pins it, and point
+`HealthURL` at it:
+
+```sh
+runner-contract ready --block runners.toml --runner-id <ID> --engine-health http://<backend>/health
+```
 
 The live test ran each backend with a capacity of 4. That shows four requests at once work, not that
 4 is the limit. llama.cpp runs with one slot and queues the rest.

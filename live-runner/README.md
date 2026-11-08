@@ -2,9 +2,9 @@
 
 This directory is the gateway-owned deployment bundle for **vLLM, Ollama and SGLang**, under
 [runner contract v1](../docs/product-specs/runner-contract.md). It contains exact integration code
-and digest-pinned upstream images, not copies of those engines. One manifest generates runtime
-settings, readiness configuration and, for each registration, the standard's `runner.toml`, its
-envelope and the node's `[[Runners]]` block.
+and digest-pinned upstream images, not copies of those engines. One manifest generates the runtime's
+settings and, for each registration, the standard's `runner.toml`, its envelope, the node's
+`[[Runners]]` block and a readiness service that runs the standard's `runner-contract ready` on it.
 
 **Status:** candidate bundle with Qwen3.8 GPU acceptance and paid accounting evidence.
 Complete runtime conformance, chain finality and production admission remain pending.
@@ -21,7 +21,7 @@ never certification: approvals stay with the gateway operator.
   [SGLang](runtimes/sglang/README.md): model/parser configuration and limitations.
 - [Clef-Flash](runtimes/clef/README.md): a decision model on each backend, configured by hand.
 - [render.py](tooling/render.py): validates a manifest and emits a self-contained bundle, checked as the node reads it.
-- [readiness.py](tooling/readiness.py): answers ready only after a self-test of every advertised profile.
+- [readiness.txt](tooling/readiness.txt): the standard's `runner-contract ready`, pinned as the gateway pins the standard; each readiness service installs it when it starts.
 - [orchestrator](orchestrator/README.md): node configuration and admission boundary.
 - [tests](tests/README.md): evidence and remaining runtime acceptance.
 
@@ -95,9 +95,12 @@ the image digest remains the authoritative pin. Lock updates require a new relea
 and acceptance evidence, not an automatic pull on service restart.
 
 Do not edit generated files and keep the old evidence. Regenerate from the manifest.
-Readiness answers 200 only after one small request to each advertised endpoint returns a served,
-usage-bearing answer, and returns to 503 when the model disappears; it is not a certificate of
-tools, strict schemas or weight integrity. HF weights are requested at the configured revision; runtime attestation is
+Each registration's readiness service is the standard's `runner-contract ready`. It answers 200 only
+after the success cases of each advertised profile's conformance suite pass against the runtime, and
+503 `failed` once the runtime's own health check stops answering; when that recovers, it tests again.
+It installs the tool from GitHub and PyPI each time it starts, so the host needs that access, and runs
+with a read-only root and the tool in memory. It is not a certificate of tools, strict schemas or
+weight integrity. HF weights are requested at the configured revision; runtime attestation is
 not implemented. Admission must bind evidence to the complete deployed artifact.
 
 ## Next integration boundary

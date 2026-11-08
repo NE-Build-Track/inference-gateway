@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Render a private, offchain candidate deployment for runner contract v1; starts nothing.
 
-One manifest gives the Compose file, the readiness configuration, and for each registration a
-standard `runner.toml`, its envelope and the node's `[[Runners]]` block. The standard's library
-builds the envelope and block, and checks every block as the node reads it, before anything is
-written.
+One manifest gives the Compose file and, for each registration, a standard `runner.toml`, its
+envelope and the node's `[[Runners]]` block. The standard's library builds the envelope and block,
+and checks every block as the node reads it, before anything is written. Each registration's
+health check is the standard's `runner-contract ready`, run on its `runner.toml`.
 """
 
 import argparse
@@ -25,7 +25,17 @@ from inference_gateway.backends.runner_contract import ENDPOINTS
 
 DIGEST = r"^[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}$"
 ROOT = Path(__file__).resolve().parents[1]
-HEALTH_URL = "http://readiness:8080/healthz"
+# What a readiness service installs when it starts, and how it then runs the standard's check.
+READINESS_REQUIREMENTS = ROOT / "tooling/readiness.txt"
+READINESS_INSTALL = (
+    "pip install --quiet --no-cache-dir --no-deps --target /opt/readiness"
+    " --requirement /app/readiness.txt"
+)
+
+
+def readiness_host(capability: str) -> str:
+    """One readiness service per registration, since each self-tests its own profiles."""
+    return f"readiness-{capability}"
 
 
 class ContractModel(BaseModel):
@@ -129,6 +139,7 @@ def manifest_toml(
     registration: tuple[str, str, list[str]],
     *,
     url: str,
+    health_url: str,
     images: list[str],
     runtime_image: str,
     grouped: bool,
@@ -145,7 +156,7 @@ def manifest_toml(
         'mode = "single-shot"',
         f"capacity = {deployment.capacity}",
         f"url = {q(url)}",
-        f"health_url = {q(HEALTH_URL)}",
+        f"health_url = {q(health_url)}",
     ]
     if deployment.admission == "private":
         lines.append('admission = "private"')
@@ -222,12 +233,14 @@ def render(deployment: Deployment, output: Path, registry: Registry | None = Non
         raise ValueError("All images must be digest-pinned")
     artifacts = {
         str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in [Path(__file__), ROOT / "tooling/readiness.py"]
+        for p in [Path(__file__), READINESS_REQUIREMENTS]
     }
     name = deployment.runtime.name
     model = deployment.model
     port = 11434 if name == "ollama" else 8000
     runtime_url = f"http://runtime:{port}"
+    # The engine's own health check, which says only that its server is up.
+    engine_health = runtime_url + ("/" if name == "ollama" else "/health")
     # The runtime and the readiness check that gates it; the node isn't part of the runner.
     revision_images = [images[name], images["readiness"]]
     plan = registrations(deployment, registry)
@@ -237,6 +250,7 @@ def render(deployment: Deployment, output: Path, registry: Registry | None = Non
             deployment,
             registration,
             url=runtime_url,
+            health_url=f"http://{readiness_host(registration[1])}:8080/healthz",
             images=revision_images,
             runtime_image=images[name],
             grouped=len(plan) > 1,
@@ -303,21 +317,41 @@ def render(deployment: Deployment, output: Path, registry: Registry | None = Non
     else:
         runtime["command"] = command
         runtime["environment"] = {"HF_TOKEN": "${HF_TOKEN:-}"}
+    readiness = {
+        readiness_host(capability): {
+            "image": images["readiness"],
+            # Ready only after the self-test of every profile this registration advertises.
+            "command": [
+                "sh",
+                "-c",
+                f"{READINESS_INSTALL} && exec python -m livepeer_runner_contract ready"
+                f" --manifest /app/runner.toml --engine-health {engine_health}"
+                " --listen 0.0.0.0:8080",
+            ],
+            "volumes": [
+                "./readiness.txt:/app/readiness.txt:ro",
+                f"./{ident}.runner.toml:/app/runner.toml:ro",
+            ],
+            # The root stays read-only; the tool installs into memory, and its compiled
+            # dependencies load from there.
+            "read_only": True,
+            "tmpfs": ["/tmp:exec", "/opt/readiness:exec"],
+            "environment": {
+                "HOME": "/tmp",
+                "PYTHONPATH": "/opt/readiness",
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+                "PIP_ROOT_USER_ACTION": "ignore",
+            },
+            "depends_on": ["runtime"],
+        }
+        for ident, capability, _ in plan
+    }
     compose = {
         "name": "runner-" + deployment.runner_id,
         "services": {
             "runtime": runtime,
-            "readiness": {
-                "image": images["readiness"],
-                "command": ["python", "/app/readiness.py"],
-                "volumes": [
-                    "./readiness.py:/app/readiness.py:ro",
-                    "./readiness.json:/app/readiness.json:ro",
-                ],
-                "depends_on": ["runtime"],
-                "read_only": True,
-                "environment": {"PYTHONDONTWRITEBYTECODE": "1"},
-            },
+            **readiness,
             "orchestrator": {
                 "image": images["node"],
                 "platform": "linux/amd64",
@@ -328,7 +362,7 @@ def render(deployment: Deployment, output: Path, registry: Registry | None = Non
                     "node-data:/home/livepeer/.lpData",
                 ],
                 "ports": ["127.0.0.1:8935:8935"],
-                "depends_on": ["readiness"],
+                "depends_on": sorted(readiness),
             },
         },
         "volumes": {"model-cache": {}, "node-data": {}},
@@ -341,20 +375,6 @@ def render(deployment: Deployment, output: Path, registry: Registry | None = Non
     write("compose.json", compose)
     write("manifest.json", deployment.model_dump())
     write("envelopes.json", {ident: envelope for ident, _, _, envelope, _ in rendered})
-    write(
-        "readiness.json",
-        {
-            "runtime": name,
-            "url": runtime_url,
-            "model": model.name,
-            "model_revision": model.revision,
-            # Every profile the registrations advertise is self-tested before health is ready.
-            "endpoints": [
-                {"name": e, "path": registry.operation(ENDPOINTS[e], e).path}
-                for e in deployment.endpoints
-            ],
-        },
-    )
     write(
         "release.json",
         {
@@ -370,13 +390,14 @@ def render(deployment: Deployment, output: Path, registry: Registry | None = Non
         # Per registration, for `runner-contract check` and `conform`: the manifest and its block.
         (output / f"{ident}.runner.toml").write_text(text)
         (output / f"{ident}.block.toml").write_text(block)
-    (output / "readiness.py").write_bytes((ROOT / "tooling/readiness.py").read_bytes())
+    (output / "readiness.txt").write_bytes(READINESS_REQUIREMENTS.read_bytes())
     (output / "runners.toml").write_text("\n".join(block for _, _, block, _, _ in rendered))
     (output / "orchestrator.toml").write_text(
         'Listen = "0.0.0.0:8935"\nMetricsListen = "127.0.0.1:8936"\n'
         + f"ServiceURL = {json.dumps(deployment.public_url)}\n"
         + 'RunnerConfig = "/etc/livepeer/runners.toml"\nNetwork = "offchain"\n'
-        + 'RunnerGrants = ["runtime"]\nHealthGrants = ["readiness:8080"]\n'
+        + 'RunnerGrants = ["runtime"]\n'
+        + f"HealthGrants = {json.dumps([f'{host}:8080' for host in sorted(readiness)])}\n"
     )
     return {ident: envelope for ident, _, _, envelope, _ in rendered}
 

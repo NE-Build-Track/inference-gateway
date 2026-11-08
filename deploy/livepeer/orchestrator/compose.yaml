@@ -64,15 +64,30 @@ services:
     restart: unless-stopped
     logging: *logging
   readiness:
-    # The node's HealthURL: ready only after the advertised profile's self-test passes.
+    # The node's HealthURL: the standard's `runner-contract ready`, ready only after the self-test
+    # of the profile the registration advertises passes. It installs the pinned tool at start.
     image: ${READINESS_IMAGE:-python@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753}
-    command: [python, /app/readiness.py]
+    command:
+      - sh
+      - -c
+      - >-
+        pip install --quiet --no-cache-dir --no-deps --target /opt/readiness
+        --requirement /app/readiness.txt
+        && exec python -m livepeer_runner_contract ready --block /app/runners.toml
+        --engine-health http://vllm:8000/health --listen 0.0.0.0:8080
     volumes:
-      - ./config/generated/readiness.py:/app/readiness.py:ro
-      - ./config/generated/readiness.json:/app/readiness.json:ro
+      - ./config/generated/readiness.txt:/app/readiness.txt:ro
+      - ./config/generated/runners.toml:/app/runners.toml:ro
     environment:
+      HOME: /tmp
+      PYTHONPATH: /opt/readiness
       PYTHONDONTWRITEBYTECODE: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_ROOT_USER_ACTION: ignore
+    # The root stays read-only; the tool installs into memory, and its compiled dependencies load
+    # from there.
     read_only: true
+    tmpfs: ["/tmp:exec", "/opt/readiness:exec"]
     depends_on:
       vllm:
         condition: service_healthy
