@@ -107,8 +107,11 @@ docker compose -f deploy/livepeer/orchestrator/compose.yaml up -d --build
 ```
 
 The node statically registers the local vLLM HTTP server under App ID `chat` with a
-[runner contract v1](../../docs/product-specs/runner-contract.md) envelope. A readiness service
-answers the node's health check, ready only after a self-test of the chat profile passes. The
+[runner contract v1](../../docs/product-specs/runner-contract.md) envelope. A readiness service, the
+standard's `runner-contract ready`, answers the node's health check, ready only after a self-test of
+the chat profile passes. It installs the tool pinned in
+[readiness.txt](../../live-runner/tooling/readiness.txt) each time it starts, so the host needs access
+to GitHub and PyPI. The
 envelope's `deployment_revision` hashes the digest-pinned vLLM and readiness images, the model's
 `MODEL_ID` and `MODEL_REVISION`, and the tool parser, so change `MODEL_REVISION` with `MODEL_ID`.
 vLLM is not exposed directly on the host. The orchestrator listens on host

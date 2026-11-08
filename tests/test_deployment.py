@@ -1,6 +1,5 @@
 """Validate generated deployment contracts without a GPU or paid network calls."""
 
-import json
 import subprocess
 import sys
 import tomllib
@@ -90,8 +89,16 @@ def test_rendered_runner_declares_the_model_the_gateway_routes_by(tmp_path, extr
         check_registrations(registrations, registry=registry, capabilities=registry.capabilities)
         == []
     )
-    health = json.loads((output / "readiness.json").read_text())
-    assert health["model"] == expected and (output / "readiness.py").exists()
+    # The readiness service installs the standard's tool, pinned as the bundle pins it, and
+    # self-tests the registration it reads from the rendered block.
+    requirements = ROOT / "live-runner/tooling/readiness.txt"
+    assert (output / "readiness.txt").read_bytes() == requirements.read_bytes()
+    compose = (ROOT / "deploy/livepeer/orchestrator/compose.yaml").read_text()
+    assert "./config/generated/runners.toml:/app/runners.toml:ro" in compose
+    assert (
+        "exec python -m livepeer_runner_contract ready --block /app/runners.toml\n"
+        "        --engine-health http://vllm:8000/health --listen 0.0.0.0:8080"
+    ) in compose
 
 
 def render_onchain(tmp_path, extra=""):

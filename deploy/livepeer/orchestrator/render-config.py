@@ -21,7 +21,8 @@ READINESS_IMAGE = "python@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306
 MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
 MODEL_REVISION = "7ae557604adf67be50417f59c2c2f167def9a775"
 DIGEST = re.compile(r"^[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}$")
-READINESS = Path(__file__).resolve().parents[3] / "live-runner/tooling/readiness.py"
+# What the readiness service installs when it starts: the standard's `runner-contract ready`.
+READINESS = Path(__file__).resolve().parents[3] / "live-runner/tooling/readiness.txt"
 STANDARD = "https://github.com/NE-Build-Track/live-runner-standard"
 
 
@@ -95,7 +96,6 @@ def main() -> None:
                 'RunnerConfig = "/etc/livepeer/runners.toml"',
                 'RunnerGrants = ["vllm"]',
                 'HealthGrants = ["readiness:8080"]',
-
             ]
         )
         + "\n"
@@ -158,20 +158,7 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "orchestrator.toml").write_text(config)
     (args.output / "runners.toml").write_text(runners)
-    (args.output / "readiness.py").write_bytes(READINESS.read_bytes())
-    (args.output / "readiness.json").write_text(
-        json.dumps(
-            {
-                "runtime": "vllm",
-                "url": "http://vllm:8000",
-                "model": served,
-                "model_revision": revision,
-                "endpoints": [{"name": "chat_completions", "path": "/v1/chat/completions"}],
-            },
-            indent=2,
-        )
-        + "\n"
-    )
+    (args.output / "readiness.txt").write_bytes(READINESS.read_bytes())
     print("Rendered " + args.mode + " configuration; no services started or funds moved.")
 
 

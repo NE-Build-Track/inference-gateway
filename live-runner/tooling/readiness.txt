@@ -1,0 +1,12 @@
+# The standard's readiness check, `runner-contract ready`, and the registry release whose
+# conformance suites it self-tests with. A readiness service installs these when it starts:
+# the commits pyproject.toml pins for the gateway, and the versions uv.lock holds for their
+# dependencies. tests/test_runner_bundle.py keeps the three in step.
+livepeer-runner-contract @ https://github.com/NE-Build-Track/live-runner-standard/archive/fa020206d8785a5768a54decd9479b106fe750ae.tar.gz#subdirectory=python/runner-contract
+livepeer-runner-registry @ https://github.com/NE-Build-Track/live-runner-standard/archive/1b71cabc5d70adb0378a8c5ff39e5fde11f28692.tar.gz#subdirectory=python/runner-registry
+attrs==26.1.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==2026.9.1
+typing-extensions==4.16.0

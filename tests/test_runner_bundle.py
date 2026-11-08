@@ -3,12 +3,15 @@
 import importlib.util
 import json
 import re
+import shlex
 import tomllib
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from contract_helpers import contract
 from livepeer_runner_contract import Envelope, parse_envelope
+from livepeer_runner_contract.cli import cmd_ready, parser
 from livepeer_runner_contract.manifest import parse_manifest, revision_of
 from pydantic import ValidationError
 
@@ -27,8 +30,6 @@ def module(name):
 
 renderer = module("render")
 Deployment, DIGEST = renderer.Deployment, renderer.DIGEST
-readiness = module("readiness")
-check_ready = readiness.check
 PRICE = {"amount": 0.5, "unit": "hour"}
 
 
@@ -54,26 +55,26 @@ def test_bundle_identity_config_and_health_are_aligned(tmp_path, family):
     compose = json.loads((tmp_path / "compose.json").read_text())
     [runner] = blocks(tmp_path)
     node = tomllib.loads((tmp_path / "orchestrator.toml").read_text())
-    health = json.loads((tmp_path / "readiness.json").read_text())
     runtime = compose["services"]["runtime"]
     assert json.loads(runner["Metadata"]) == advertised
     assert isinstance(parse_envelope(runner["Metadata"]), Envelope)
     assert advertised["runner_contract"] == 1
     assert advertised["runner_id"] == runner["ID"] == ident == deployment.runner_id
-    assert advertised["model"]["name"] == health["model"] == deployment.model.name
+    assert advertised["model"]["name"] == deployment.model.name
     origin = "ollama" if family == "ollama" else "hf"
     assert advertised["model"]["source"] == f"{origin}:{deployment.model.source}"
-    assert runner["RunnerURL"] == health["url"]
+    assert runner["RunnerURL"] == f"http://runtime:{11434 if family == 'ollama' else 8000}"
     # An App ID is a capability and nothing else.
     assert runner["App"] == "chat" and runner["Mode"] == "single-shot"
-    assert runner["Status"] == "ready" and runner["HealthURL"] == "http://readiness:8080/healthz"
+    assert runner["Status"] == "ready"
+    assert runner["HealthURL"] == "http://readiness-chat:8080/healthz"
+    assert node["HealthGrants"] == ["readiness-chat:8080"]
     assert runner["PriceInfo"] == {"Price": 0.5, "Currency": "usd", "Unit": "hour"}
     assert node["Network"] == "offchain"
     assert len(runner["Metadata"].encode()) <= 1024
     assert runtime["image"].endswith("@" + advertised["runtime"]["image"])
     assert "ports" not in runtime  # Runtime admin APIs are private to the compose network.
     assert all("@sha256:" in s["image"] for s in compose["services"].values())
-    assert health["endpoints"] == [{"name": "chat_completions", "path": "/v1/chat/completions"}]
     if family != "ollama":
         args = runtime["command"]
         assert args[args.index("--revision") + 1] == deployment.model.revision
@@ -169,8 +170,11 @@ def test_a_deployment_serving_chat_and_decisions_registers_once_per_capability(t
     # One engine behind both: the group says so; each revision covers its own profiles.
     assert chat["capacity_group"] == decision["capacity_group"] == {"id": "sglang-llm", "slots": 1}
     assert chat["deployment_revision"] != decision["deployment_revision"]
-    health = json.loads((tmp_path / "readiness.json").read_text())
-    assert [e["name"] for e in health["endpoints"]] == list(ENDPOINTS)
+    # Each registration's health check self-tests its own profiles.
+    assert by_app["chat"]["HealthURL"] == "http://readiness-chat:8080/healthz"
+    assert by_app["decision"]["HealthURL"] == "http://readiness-decision:8080/healthz"
+    node = tomllib.loads((tmp_path / "orchestrator.toml").read_text())
+    assert node["HealthGrants"] == ["readiness-chat:8080", "readiness-decision:8080"]
 
 
 @pytest.mark.parametrize("family", ["vllm", "ollama", "sglang"])
@@ -228,112 +232,88 @@ def test_published_schema_matches_code():
     )
 
 
-@pytest.mark.parametrize("family", ["vllm", "sglang"])
-def test_readiness_checks_model_and_health(family):
-    calls = []
-
-    def fetch(url):
-        calls.append(url)
-        return {"data": [{"id": "expected"}]} if url.endswith("models") else {}
-
-    config = {"runtime": family, "url": "http://runtime:8000", "model": "expected"}
-    assert check_ready(config, fetch)
-    assert calls == ["http://runtime:8000/v1/models", "http://runtime:8000/health"]
-    assert not check_ready({**config, "model": "wrong"}, fetch)
+READINESS_IMAGE = json.loads((BUNDLE / "images.lock.json").read_text())["images"]["readiness"]
 
 
-@pytest.mark.parametrize(
-    "loaded,digest,expected",
-    [(False, "a" * 64, False), (True, "b" * 64, False), (True, "a" * 64, True)],
-)
-def test_ollama_requires_loaded_matching_digest(loaded, digest, expected):
-    def fetch(url):
-        if url.endswith("models"):
-            return {"data": [{"id": "model:tag"}]}
-        return {"models": [{"name": "model:tag", "digest": digest}] if loaded else []}
-
-    config = {
-        "runtime": "ollama",
-        "url": "http://runtime:11434",
-        "model": "model:tag",
-        "model_revision": "sha256:" + "a" * 64,
-    }
-    assert check_ready(config, fetch) is expected
+def ready_command(service):
+    """The `runner-contract ready` arguments a readiness service runs once the tool installs."""
+    shell, flag, script = service["command"]
+    install, ready = script.split(" && exec ")
+    assert (shell, flag) == ("sh", "-c") and install == renderer.READINESS_INSTALL
+    words = shlex.split(ready)
+    assert words[:3] == ["python", "-m", "livepeer_runner_contract"]
+    return words[3:]
 
 
-SERVED = {
-    "/v1/chat/completions": {"choices": [{"index": 0}], "usage": {}},
-    "/v1/responses": {"status": "completed", "usage": {}},
-    "/v1/messages": {"type": "message", "usage": {}},
-    "/v1/systemone": {"answers": {"sky": {"type": "noul", "noul": 0.9}}, "usage": {}},
-}
-HEALTH_CONFIG = {
-    "runtime": "vllm",
-    "url": "http://runtime:8000",
-    "model": "m",
-    "endpoints": [{"name": e, "path": p} for e, p in zip(ENDPOINTS, SERVED, strict=True)],
-}
-
-
-def visible(url):
-    return {"data": [{"id": "m"}]} if url.endswith("models") else {}
-
-
-def test_readiness_self_tests_every_profile_before_answering_ready():
-    sent = []
-
-    def post(url, body):
-        sent.append((url, body["model"]))
-        return 200, SERVED[url.removeprefix("http://runtime:8000")]
-
-    state = readiness.Readiness(HEALTH_CONFIG, visible, post)
-    assert readiness.answer(state.state) == (503, b'{"status": "starting"}')
-    assert state.step() == "ready"
-    assert [url for url, _ in sent] == [f"http://runtime:8000{p}" for p in SERVED]
-    assert {model for _, model in sent} == {"m"}
-    assert readiness.answer("ready") == (200, b'{"status": "ready"}')
-    state.step()
-    assert len(sent) == 4  # Ready stays ready without testing again while the model is listed.
-
-
-@pytest.mark.parametrize(
-    "broken",
-    [
-        (500, None),
-        (200, {"choices": [{"index": 0}]}),  # no work report
-        (200, {"error": {"message": "unsupported"}, "usage": {}}),
-    ],
-)
-def test_a_failed_self_test_answers_failed_and_retries(broken):
-    def post(url, body):
-        if url.endswith("/v1/messages"):
-            return broken
-        return 200, SERVED[url.removeprefix("http://runtime:8000")]
-
-    state = readiness.Readiness(HEALTH_CONFIG, visible, post)
-    assert state.step() == "failed" and readiness.answer("failed")[0] == 503
-    state.post = lambda url, body: (200, SERVED[url.removeprefix("http://runtime:8000")])
-    assert state.step() == "ready"
-
-
-def test_losing_the_model_returns_health_to_503_and_tests_again():
-    tests = []
-
-    def post(url, body):
-        tests.append(url)
-        return 200, SERVED[url.removeprefix("http://runtime:8000")]
-
-    listed = {"value": False}
-    state = readiness.Readiness(
-        HEALTH_CONFIG, lambda url: visible(url) if listed["value"] else {"data": []}, post
+@pytest.mark.parametrize("family", ["vllm", "ollama", "sglang"])
+def test_each_registration_is_ready_by_the_standards_check(tmp_path, family):
+    raw = manifest(family)
+    raw["endpoints"] = list(ENDPOINTS)
+    render(Deployment.model_validate(raw), tmp_path)
+    services = json.loads((tmp_path / "compose.json").read_text())["services"]
+    engine = "http://runtime:11434/" if family == "ollama" else "http://runtime:8000/health"
+    for block in blocks(tmp_path):
+        host = urlsplit(block["HealthURL"]).hostname
+        service = services[host]
+        args = parser().parse_args(ready_command(service))
+        assert args.run is cmd_ready
+        assert (args.manifest, args.engine_health, args.listen) == (
+            "/app/runner.toml",
+            engine,
+            "0.0.0.0:8080",
+        )
+        # It reads the manifest this registration was rendered from, so it self-tests exactly
+        # the profiles the block advertises, against the engine the block names.
+        mounted = f"./{block['ID']}.runner.toml:/app/runner.toml:ro"
+        assert mounted in service["volumes"]
+        assert "./readiness.txt:/app/readiness.txt:ro" in service["volumes"]
+        text = (tmp_path / f"{block['ID']}.runner.toml").read_text()
+        parsed = parse_manifest(text, capabilities=contract().registry.capabilities)
+        assert parsed.health_url == block["HealthURL"] and parsed.url == block["RunnerURL"]
+        assert service["read_only"] and service["image"] == READINESS_IMAGE
+    assert services["orchestrator"]["depends_on"] == sorted(
+        urlsplit(b["HealthURL"]).hostname for b in blocks(tmp_path)
     )
-    assert state.step() == "starting" and not tests  # loading: never a self-test yet
-    listed["value"] = True
-    assert state.step() == "ready"
-    listed["value"] = False
-    assert state.step() == "failed"
-    listed["value"] = True
-    assert state.step() == "ready" and len(tests) == 8
+    assert (tmp_path / "readiness.txt").read_bytes() == renderer.READINESS_REQUIREMENTS.read_bytes()
+
+
+def requirement_lines(path):
+    return [
+        line for line in path.read_text().splitlines() if line.strip() and not line.startswith("#")
+    ]
+
+
+def test_readiness_installs_the_library_the_gateway_pins():
+    """The readiness check runs the same standard, at the same commits and dependency versions,
+    as the gateway that reads the envelopes."""
+    pinned = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
+    lock = {p["name"]: p for p in tomllib.loads((ROOT / "uv.lock").read_text())["package"]}
+    wanted, exact = {}, {}
+    for line in requirement_lines(renderer.READINESS_REQUIREMENTS):
+        if " @ " in line:
+            name, url = line.split(" @ ")
+            match = re.fullmatch(
+                r"https://github\.com/NE-Build-Track/live-runner-standard/archive/([0-9a-f]{40})"
+                r"\.tar\.gz#subdirectory=(python/[a-z-]+)",
+                url,
+            )
+            assert match, line
+            wanted[name] = match.groups()
+        else:
+            name, version = line.split("==")
+            exact[name] = version
+    for name, (commit, subdirectory) in wanted.items():
+        [gateway] = [d for d in pinned if d.startswith(name + " @ ")]
+        assert gateway.endswith(f"@{commit}#subdirectory={subdirectory}"), (name, gateway)
+    # Every dependency of the two packages, at the version the gateway was tested with.
+    needed, queue = set(), list(wanted)
+    while queue:
+        for dependency in lock[queue.pop()].get("dependencies", []):
+            if dependency["name"] not in needed:
+                needed.add(dependency["name"])
+                queue.append(dependency["name"])
+    assert set(exact) == needed
+    assert all(lock[name]["version"] == version for name, version in exact.items())
 
 
 CLEF = BUNDLE / "runtimes/clef"
