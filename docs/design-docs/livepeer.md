@@ -6,8 +6,8 @@ serve the configured Livepeer model; an Anthropic interface does not imply that 
 [Native routes](../product-specs/native-inference.md), including System One, forward the original
 request instead. The rest of this page describes validated routes unless it says otherwise.
 
-Builder Core is pinned to `releases/m3` at `15142129ebbf51103658f8ad48fd5adae052c56d`, the M3
-merge, which includes the native HTTP merge `2134e29`. Since M3 a job that never reached a runner,
+Builder Core is pinned to its `v0.2.0` tag, `28ae6a953ba993eaa2839a97d53ed3f7f6101bca`, the M3
+release, which includes the native HTTP merge `2134e29`. Since M3 a job that never reached a runner,
 such as one whose payment the signer refused, is dispatched again by a repeat of its request id
 (Core D57); both jobs carry the id, and accounting reads the newer one. Core pins the Python gateway SDK to upstream `2017a80`,
 recorded in `uv.lock`; no fork is pinned.
@@ -21,8 +21,8 @@ it, and closes it through FastAPI lifespan. Startup failure also closes acquired
 An explicitly injected backend is borrowed; its creator remains responsible for its engine.
 
 The deployed engine requires `LPB_ALLOCATION_MODE=per_application`, `LPB_SIGNER_URL` (payments only),
-`LPB_DISCOVERY_URL` (runners, from builder-core's discovery service; the signer is not a discovery
-source, builder-core D43), `LPB_BATTERIES_URL`, `LPB_BATTERIES_TOKEN`, `LPB_SHARED_PAYMENT_KEY`,
+`LPB_DISCOVERY_URL` (runners, from livepeer/node's `livepeer-discovery`, builder-core D63; the signer
+is not a discovery source), `LPB_BATTERIES_URL`, `LPB_BATTERIES_TOKEN`, `LPB_SHARED_PAYMENT_KEY`,
 `LPB_SHARED_ALLOCATION_ID`, and `LPB_SECRET_KEY`. Settings errors omit secret values.
 `LPB_MAX_PAID_ATTEMPTS` (default 2, Compose sets it explicitly) bounds the paid attempts a job may
 fail over from; `1` turns paid failover off and keeps unpaid failover.
@@ -59,7 +59,9 @@ for [model lists](../product-specs/models-and-responses.md#model-lists). Routes 
 Missing metadata excludes runners. See [model routing and Responses](../product-specs/models-and-responses.md)
 for capacity selection, the injected selection policy, and native Responses transport.
 Discovery is filtered to configured apps and, when supplied, approved origins including
-scheme and port. The default Qwen route sends `chat_template_kwargs.enable_thinking=false`.
+scheme and port. Builder Core sets a runner's `orchestrator_url` only when the runner URL is on
+that orchestrator's origin (its D63), so a runner served from another host matches no origin.
+The default Qwen route sends `chat_template_kwargs.enable_thinking=false`.
 Routes for other runners can omit that extension with `disable_thinking=false`.
 
 ## Request and response path

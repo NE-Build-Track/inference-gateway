@@ -42,12 +42,12 @@ in this candidate scaffold. Do not admit stored/background calls on this basis.
 ## Runner identity without a node patch
 
 New bundles place `runner_id` in metadata using the same value as the node registration ID.
-When discovery omits its top-level `runner_id`, the gateway's discovery adapter fills it
-from validated metadata before Core caches or selects runners. If both IDs are present,
-they must match; conflicts are excluded from discovery and rejected by native selection.
-Missing IDs are never guessed from app names, URL paths or proxy hostnames. Transport
-continues to use the original advertised URL. Legacy metadata without a runner ID remains
-compatible when discovery supplies a top-level ID.
+That declaration is the only runner ID: Builder Core v0.2.0's runners carry none of their own
+(its D63). For a native route, the gateway's discovery adapter keeps a runner with contract
+metadata only when that metadata is valid and declares a runner ID, and native selection
+rejects the rest as well. Missing IDs are never guessed from app names, URL paths or proxy
+hostnames. Transport uses the advertised URL unchanged. Contract metadata without a runner ID
+is no longer admissible; regenerate the runner from the bundle and approve its new revision.
 
 This is identification, not authorization. The independent approval still binds the
 orchestrator origin, runner ID, app, model, deployment revision, endpoint and expiry. Capacity
