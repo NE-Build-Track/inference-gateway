@@ -62,7 +62,7 @@ class NativeSelection:
                 address = origin(runner.orchestrator_url or "")
             except (ValueError, ValidationError):
                 continue
-            identity = native_runner_id(runner, meta)
+            identity = native_runner_id(meta)
             if (
                 identity is None
                 or meta.model_name != request.model

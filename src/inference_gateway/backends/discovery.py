@@ -59,40 +59,34 @@ class FilteredDiscovery:
                 self._native_routes is None
                 or (runner.app, model_name(runner)) in self._native_routes
             )
-            normalized = normalize_native_identity(runner) if native else runner
-            if normalized is not None:
-                selected.append(normalized)
+            if not native or declares_native_identity(runner):
+                selected.append(runner)
         return tuple(selected)
 
 
-def native_runner_id(runner: Runner, metadata: RunnerMetadata) -> str | None:
-    """Resolve a declaration, not an authorization; never infer identity from a URL."""
-    if metadata.runner_id is not None:
-        if runner.runner_id and runner.runner_id != metadata.runner_id:
-            return None
-        return metadata.runner_id
-    return runner.runner_id or None
+def native_runner_id(metadata: RunnerMetadata) -> str | None:
+    """Resolve a declaration, not an authorization; never infer identity from a URL.
+
+    Builder Core's runners carry no top-level ID (its D63); validated metadata is the only source.
+    """
+    return metadata.runner_id
 
 
-def normalize_native_identity(runner: Runner) -> Runner | None:
+def declares_native_identity(runner: Runner) -> bool:
+    """Keep a runner unless its contract metadata is invalid or declares no runner ID."""
     if len((runner.metadata or "").encode()) > 1024:
-        return (
-            runner  # Native selection rejects oversized declarations; leave legacy routes intact.
-        )
+        return True  # Native selection rejects oversized declarations; leave legacy routes intact.
     try:
         value = json.loads(runner.metadata or "")
     except (ValueError, TypeError):
-        return runner  # Legacy validated routes can carry opaque metadata.
+        return True  # Legacy validated routes can carry opaque metadata.
     if not isinstance(value, dict) or "inference_contract" not in value:
-        return runner
+        return True
     try:
         metadata = RunnerMetadata.model_validate_json(runner.metadata or "")
     except ValueError:
-        return None
-    identity = native_runner_id(runner, metadata)
-    if identity is None:
-        return None
-    return runner.model_copy(update={"runner_id": identity})
+        return False
+    return native_runner_id(metadata) is not None
 
 
 def model_name(runner: Runner) -> str | None:

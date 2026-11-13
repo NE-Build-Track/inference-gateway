@@ -71,9 +71,10 @@ def test_explicit_stateless_responses_and_stream_usage():
     )
 
 
-def supply():
+def supply(runner_id="one"):
     meta = {
         "inference_contract": 1,
+        "runner_id": runner_id,  # Builder Core carries no top-level runner ID (its D63)
         "model_name": "m",
         "runtime": {"name": "vllm", "image": "vllm/vllm-openai@sha256:" + "a" * 64},
         "deployment_revision": "sha256:" + "b" * 64,
@@ -81,12 +82,15 @@ def supply():
         "limits": {"context_tokens": 4096},
         "admission": "candidate",
     }
+    # Node advertises runner URLs on the orchestrator's origin, and Builder Core keeps
+    # orchestrator_url only when the two origins match.
     r = runner(
         "app",
+        f"https://orch/apps/{runner_id}/app",
         orchestrator_url="https://orch",
         metadata=json.dumps(meta, separators=(",", ":")),
         capacity_available=1,
-    ).model_copy(update={"runner_id": "one"})
+    )
     approval = Admission(
         "https://orch", "one", "app", "m", meta["deployment_revision"], "chat_completions", 200
     )
@@ -440,23 +444,14 @@ def test_optional_usage_details_still_reject_malformed_values(details):
         observer.finish()
 
 
-@pytest.mark.parametrize("metadata_identity", [False, True])
 @pytest.mark.parametrize("status", [200, 400])
-async def test_native_selection_embeds_in_real_engine_before_transport(metadata_identity, status):
+async def test_native_selection_embeds_in_real_engine_before_transport(status):
     from livepeer_builder import ActorContext, EngineSupply
     from livepeer_builder.testing import ScriptedStreamTransport, StreamScript, make_engine
 
     right, approval = supply()
-    wrong = right.model_copy(
-        update={"url": "https://wrong", "runner_id": "wrong", "capacity_available": 100}
-    )
-    if metadata_identity:
-        right = right.model_copy(
-            update={
-                "runner_id": None,
-                "metadata": json.dumps({**json.loads(right.metadata), "runner_id": "one"}),
-            }
-        )
+    # Same origin and more capacity, but its declared identity has no approval.
+    wrong = supply("wrong")[0].model_copy(update={"capacity_available": 100})
     from inference_gateway.backends.discovery import FilteredDiscovery
 
     def decorate(parts):
@@ -524,74 +519,65 @@ def test_native_image_counts_toward_request_size_limit():
     assert request(raw, max_bytes=len(raw)).body is raw
 
 
-@pytest.mark.parametrize("advertised", [None, "", "one"])
-async def test_metadata_runner_identity_is_normalized_without_changing_transport(advertised):
+async def test_metadata_runner_identity_is_kept_without_changing_transport():
     from inference_gateway.backends.discovery import FilteredDiscovery
 
     original, approval = supply()
-    meta = {**json.loads(original.metadata), "runner_id": "one"}
-    candidate = original.model_copy(
-        update={
-            "runner_id": advertised,
-            "metadata": json.dumps(meta),
-            "url": "https://opaque.proxy.example",
-        }
-    )
+    # The URL path names no runner ID; identity comes from metadata alone.
+    candidate = original.model_copy(update={"url": "https://orch/apps/opaque-proxy-path/app"})
 
     class Source:
         async def fetch(self):
             return (candidate,)
 
     discovered = await FilteredDiscovery(Source(), frozenset({"app"}), ("https://orch",)).fetch()
-    assert len(discovered) == 1
-    normalized = discovered[0]
-    assert normalized.runner_id == "one"
-    assert normalized.url == candidate.url
-    assert normalized.metadata == candidate.metadata
-    assert normalized.orchestrator_url == candidate.orchestrator_url
+    assert discovered == (candidate,)
     policy = NativeSelection(MostCapacityFirst(), lambda: (approval,), now=lambda: 100)
     assert policy.order(
         discovered, JobRequest(app="app", model="m", path="/v1/chat/completions")
     ) == list(discovered)
-    # Metadata is not authorization, including when the top-level ID is absent.
+    # Metadata is not authorization.
     with pytest.raises(NoCapacity):
         NativeSelection(MostCapacityFirst(), lambda: (), now=lambda: 100).order(
             discovered, JobRequest(app="app", model="m", path="/v1/chat/completions")
         )
 
 
-@pytest.mark.parametrize(
-    "declared,top", [("other", "one"), (None, None), ("bad id", None), ("", None)]
-)
-async def test_missing_invalid_or_conflicting_identity_fails_closed(declared, top):
+@pytest.mark.parametrize("declared", [None, "bad id", ""])
+async def test_missing_or_invalid_identity_fails_closed(declared):
     from inference_gateway.backends.discovery import FilteredDiscovery
 
     original, approval = supply()
     meta = json.loads(original.metadata)
+    del meta["runner_id"]
     if declared is not None:
         meta["runner_id"] = declared
-    candidate = original.model_copy(update={"runner_id": top, "metadata": json.dumps(meta)})
+    candidate = original.model_copy(update={"metadata": json.dumps(meta)})
 
     class Source:
         async def fetch(self):
             return (candidate,)
 
     assert await FilteredDiscovery(Source(), frozenset({"app"}), ("https://orch",)).fetch() == ()
-    # The admission layer also rejects conflicts if a custom source bypasses normalization.
+    # The admission layer also rejects it if a custom source bypasses the discovery filter.
     policy = NativeSelection(MostCapacityFirst(), lambda: (approval,), now=lambda: 100)
     with pytest.raises(NoCapacity):
         policy.order([candidate], JobRequest(app="app", model="m", path="/v1/chat/completions"))
 
 
-def test_legacy_identity_is_compatible_and_not_inferred_from_urls():
-    from inference_gateway.backends.discovery import normalize_native_identity
+def test_identity_is_declared_in_metadata_and_never_inferred_from_urls():
+    from inference_gateway.backends.discovery import declares_native_identity
 
     candidate, _ = supply()
-    assert normalize_native_identity(candidate) == candidate
-    legacy = candidate.model_copy(update={"metadata": "opaque legacy metadata", "runner_id": None})
-    assert normalize_native_identity(legacy) == legacy
-    missing = candidate.model_copy(update={"runner_id": None, "url": "https://orch/apps/one/app"})
-    assert normalize_native_identity(missing) is None
+    assert declares_native_identity(candidate)
+    legacy = candidate.model_copy(update={"metadata": "opaque legacy metadata"})
+    assert declares_native_identity(legacy)
+    meta = json.loads(candidate.metadata)
+    del meta["runner_id"]
+    # The URL path holds "one", the approved ID, but a URL is never an identity.
+    missing = candidate.model_copy(update={"metadata": json.dumps(meta)})
+    assert missing.url == "https://orch/apps/one/app"
+    assert not declares_native_identity(missing)
 
 
 def test_optional_identity_does_not_reduce_legacy_metadata_size_budget():
@@ -599,6 +585,7 @@ def test_optional_identity_does_not_reduce_legacy_metadata_size_budget():
 
     candidate, _ = supply()
     meta = json.loads(candidate.metadata)
+    del meta["runner_id"]
     raw = json.dumps(meta, separators=(",", ":"))
     meta["runtime"]["image"] = "a" * (1024 - len(raw.encode())) + meta["runtime"]["image"]
     raw = json.dumps(meta, separators=(",", ":"))
@@ -606,12 +593,12 @@ def test_optional_identity_does_not_reduce_legacy_metadata_size_budget():
     assert RunnerMetadata.model_validate_json(raw).runner_id is None
 
 
-async def test_identity_normalization_does_not_change_validated_routes():
+async def test_identity_check_does_not_change_validated_routes():
     from inference_gateway.backends.discovery import FilteredDiscovery
 
     original, _ = supply()
     candidate = original.model_copy(
-        update={"metadata": json.dumps({**json.loads(original.metadata), "runner_id": "conflict"})}
+        update={"metadata": json.dumps({**json.loads(original.metadata), "runner_id": "bad id"})}
     )
 
     class Source:
