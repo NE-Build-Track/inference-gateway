@@ -95,7 +95,7 @@ report covers.
 
 ## Dependency and release status
 
-The gateway pins Builder Core `releases/m3` at `1514212`, the M3 merge, which includes `2134e29`, the merge of
+The gateway pins Builder Core's hardened `releases/m4` (`719378f`: the M3 release `v0.2.0` plus its hardening tickets), which includes `2134e29`, the merge of
 [NE-Build-Track PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55).
 Core pins the SDK to upstream `livepeer/livepeer-python-gateway` `2017a80`; the earlier SDK fork
 pin (`cd6ed5e`, NE PR #6) is gone. Deployment images build Node and Clearinghouse Batteries from
@@ -116,11 +116,11 @@ does not decode media or certify a model capability merely because it accepts JS
 ## Runner identity without a node patch
 
 Bundles place `runner_id` in the envelope with the same value as the node registration ID, which the
-standard allows when the node doesn't report one. When discovery omits its top-level `runner_id`,
-the gateway's discovery adapter fills it from the envelope before Core caches or selects runners. If
-both IDs are present, they must match; conflicts are excluded from discovery and from selection.
-Missing IDs are never guessed from App IDs, URL paths or proxy hostnames, and a runner without one
-can't match an approval. Transport continues to use the original advertised URL.
+standard allows when the node doesn't report one.
+That declaration is the only runner ID: Builder Core's runners carry none of their own (its D63),
+and the gateway hands a discovered runner on unchanged. A runner whose envelope names no ID is still
+listed and serves where no approval is needed; it can't match an approval. Missing IDs are never
+guessed from App IDs, URL paths or proxy hostnames. Transport uses the advertised URL unchanged.
 
 This is identification, not authorization. The approval still binds the orchestrator origin, runner
 ID, model, deployment revision, profile and expiry. Capacity and freshness checks still apply. The
@@ -131,5 +131,5 @@ Native startup requires Core's raw-body, content-type, protocol-header and HTTP-
 request fields plus its response-header stream facade. An incompatible dependency
 installation fails before engine creation with a diagnostic to restore the locked
 versions. The [28 October review](../references/repository-compatibility-2026-10-28.md) found
-M3 `efb9c03` lacked them; the pinned Core `1514212` has them (see the
+M3 `efb9c03` lacked them; the pinned Core `v0.2.0` has them (see the
 [29 October repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md)).

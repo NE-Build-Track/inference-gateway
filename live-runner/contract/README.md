@@ -38,10 +38,11 @@ Hugging Face commit or the Ollama manifest digest. There is no App ID fallback o
 ## Runner identity without a node patch
 
 The envelope's `runner_id` holds the node registration ID, because this node doesn't report it in
-discovery; the standard allows the key for exactly that. When discovery omits its top-level
-`runner_id`, the gateway fills it from the envelope before Core caches or selects runners. If both
-are present they must match; a conflict excludes the runner. IDs are never guessed from App IDs, URL
-paths or proxy hostnames. Transport continues to use the original advertised URL.
+discovery; the standard allows the key for exactly that.
+That declaration is the only runner ID: Builder Core's runners carry none of their own (its D63),
+and the gateway hands a discovered runner on unchanged. A runner whose envelope names no ID is still
+listed and serves where no approval is needed; it can't match an approval. Missing IDs are never
+guessed from App IDs, URL paths or proxy hostnames. Transport uses the advertised URL unchanged.
 
 This is identification, not authorization. The gateway's approval binds the orchestrator origin,
 runner ID, model, deployment revision, profile and expiry, and carries a conformance report. The

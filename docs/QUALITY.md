@@ -182,6 +182,12 @@ native vLLM acceptance passed on the rebuilt images with exact wholesale reconci
 the image built from `main` and exercised live paid failover between two orchestrators. The repository's
 live suites still assume validated-route tool semantics that native vLLM does not meet.
 
+On 18 November the gateway, at runner contract v1 (v0.3.0), moved to Builder Core's hardened `releases/m4`
+(`719378f`). Discovery is now livepeer/node `f45d83f`'s `livepeer-discovery` (Core D63), and a runner's
+identity comes only from its envelope. `make check` passes 700 tests, including the gateway's engine
+reading a node-shaped document from a local server. No paid job has run on this combination: on
+18 November no runner on the network declared the v2 chat profiles the gateway selects.
+
 System One and per-SDK model lists pass `make check` with 589 tests, including round trips and model
 lists through the real `typesafe-sdk`, OpenAI and Anthropic clients and one decision through Builder
 Core's real engine with a scripted transport. See the [plan](exec-plans/active/system-one-route.md).

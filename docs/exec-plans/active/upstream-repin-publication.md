@@ -41,6 +41,8 @@ infrastructure only; nothing is pushed to upstream Livepeer repositories.
       as all three: the gateway built from `main`, and the tested `inference-node:a4b68ed` (signer,
       orchestrator and runner bundle) and `inference-clearinghouse:d47d1ff` retagged, since their
       sources are unchanged. Record the manifest digests here. Leave `v0.0.1` unchanged.
+- [ ] From the Builder Core `v0.2.0` move on, a release is four images: also publish
+      `inference-discovery`, livepeer/node `f45d83f`'s `livepeer-discovery`.
 - [ ] Update `live-runner/images.lock.json` with the published node digest; regenerate
       bundles and issue approvals for the new deployment revision. Then update the node-lock
       statements in `docs/product-specs/native-inference.md` and `live-runner/contract/README.md`.
