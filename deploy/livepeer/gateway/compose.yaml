@@ -41,26 +41,24 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Use the same image/Core revision as the gateway; the signer only signs payments.
+  # livepeer/node's livepeer-discovery in static mode, as Builder Core v0.2.0 expects (its D63): the
+  # list is config/discovery.toml, and the signer only signs payments. Built from the node commit the
+  # engine's discovery reader is tested against, not the signer's. No healthcheck: its /readyz is on a
+  # loopback metrics port, says only that the process listens, and the image has no HTTP client.
   discovery:
-    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-gateway:${IMAGE_TAG:-local}
+    image: ${IMAGE_REGISTRY:+${IMAGE_REGISTRY}/}inference-discovery:${IMAGE_TAG:-f45d83f}
     build:
-      context: ../../..
-      dockerfile: deploy/livepeer/gateway/Dockerfile
-    command: [lpb, discovery]
+      context: https://github.com/livepeer/node.git#f45d83fd68f73d195dffe8b45f6cac296d023c49
+      dockerfile: docker/Dockerfile
+      args:
+        COMMIT: f45d83fd68f73d195dffe8b45f6cac296d023c49
+    entrypoint: ["/usr/local/bin/livepeer-discovery"]
+    command: [--config, /etc/livepeer/discovery.toml]
     environment:
-      LPD_ORCHESTRATORS: /etc/lpd/orchestrators.txt
-      LPD_HTTP_HOST: 0.0.0.0
-      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/pinned
+      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/pinned  # Go reads both, as OpenSSL did
     volumes:
-      - ./config/orchestrators.txt:/etc/lpd/orchestrators.txt:ro
+      - ./config/discovery.toml:/etc/livepeer/discovery.toml:ro
       - ./config/runner-trust:/etc/ssl/pinned:ro
-    healthcheck:
-      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8939/healthz')"]
-      interval: 15s
-      timeout: 3s
-      start_period: 10s
-      retries: 3
     read_only: true
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
