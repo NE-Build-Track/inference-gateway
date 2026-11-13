@@ -19,16 +19,17 @@ scripts/build-images.sh
 ```
 
 Set `IMAGE_TAG` to name a release, for example `IMAGE_TAG=v0.2.3 scripts/build-images.sh`. The script
-builds locally and never publishes. Node and Clearinghouse images come from the commits pinned in
-Compose, so a new tag on them does not imply a source change. Rebuilding them installs current
+builds locally and never publishes. Node, discovery and Clearinghouse images come from the commits
+pinned in Compose, so a new tag on them does not imply a source change. Rebuilding them installs current
 `apt` packages and produces different bytes, so when only the gateway changed, build it alone and
 retag the images already tested with `docker tag`.
 
 To use published images instead of building, set `IMAGE_REGISTRY` and `IMAGE_TAG` in `.env`,
 then `docker compose -f deploy/livepeer/gateway/compose.yaml pull` and start services with
 `up --no-build`. Image names match the registry repositories: `inference-gateway`,
-`inference-node` (signer and orchestrator) and `inference-clearinghouse`. A single release
-tag covers all three; `--build` would overwrite that tag with a local build.
+`inference-node` (signer and orchestrator, livepeer/node `a4b68ed`), `inference-discovery`
+(livepeer/node `f45d83f`'s `livepeer-discovery`) and `inference-clearinghouse`. A single release
+tag covers all four; `--build` would overwrite that tag with a local build.
 
 Edit `.env` with your routing and payment settings. `GATEWAY_ACCOUNTING_DB=/data/gateway.db`
 enables registry authentication. Leave `GATEWAY_API_KEY` unset in this mode. The gateway uses
@@ -52,12 +53,22 @@ actions. Never run two signers using the same payer/state. To use independently 
 payment services, omit the profile and set their reachable `LPB_SIGNER_URL` and
 `LPB_BATTERIES_URL` instead. No external Docker network is required by the manifests.
 
-The committed `gateway/config/orchestrators.txt` contains example public orchestrator
-origins. Replace those and `GATEWAY_APPROVED_ORCHESTRATORS` together for your deployment.
-The separate `lpb discovery` service reads that directory; the signer only signs payments.
-`LPB_DISCOVERY_URL` defaults to `http://discovery:8939/discovery` in Compose and is required
-for direct gateway startup. Set it explicitly when using an external discovery service.
-Discovery and gateway use the same image/Core revision and TLS trust directory. Do not bypass
+The `discovery` service is livepeer/node's `livepeer-discovery` in static mode, as Builder Core
+v0.2.0 expects (its D63); the signer only signs payments. The committed
+`gateway/config/discovery.toml` lists example public orchestrator origins in `Nodes`. Replace
+those and `GATEWAY_APPROVED_ORCHESTRATORS` together for your deployment. Discovery queries each
+listed origin's `/discovery` every 30 seconds and drops runners without an `observed_at` stamp,
+so orchestrators on node v1.0.2 or earlier do not appear. A private address, such as a local
+orchestrator, also needs a `Grants` entry. Builder Core keeps a runner's `orchestrator_url`
+only when the runner URL is on its orchestrator's origin, so the allowlist and native approvals
+never admit a runner served from another host. `LPB_DISCOVERY_URL` defaults to
+`http://discovery:8939/discovery` in Compose and is required: Builder Core does not start
+without it. Set it explicitly when using an external discovery service.
+
+Discovery has no Compose healthcheck: its `/readyz` is on a loopback metrics port and reports
+only that the process listens. Read `GET /discovery` from the gateway container, or the
+gateway's own `/readyz`, to see whether runners arrive. Discovery and gateway share the TLS
+trust directory. Do not bypass
 TLS verification: public certificates use system trust; intentionally pinned certificates can
 be placed in `gateway/config/pinned-certs` and processed with:
 
@@ -115,7 +126,8 @@ reachable from gateway/discovery containers; their `localhost` is not the host m
 For gateway routing to this runner, set `GATEWAY_CHAT_APP=inference/chat/default` and
 `GATEWAY_MODEL_NAME` to the orchestrator's `SERVED_MODEL_NAME`, which defaults to `gateway-model`.
 The renderer advertises that name as runner metadata, and the gateway routes by it, so the two must
-match. Leave `GATEWAY_UPSTREAM_MODEL` empty. Configure discovery origins to reach this orchestrator.
+match. Leave `GATEWAY_UPSTREAM_MODEL` empty. Add this orchestrator to `Nodes` in
+`gateway/config/discovery.toml`, with a `Grants` entry when its address is private.
 The existing gateway payment backend still requires its normal engine/signer configuration even
 when the runner is free.
 

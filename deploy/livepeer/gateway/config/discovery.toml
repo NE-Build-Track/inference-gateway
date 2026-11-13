@@ -1,0 +1,19 @@
+# livepeer/node's livepeer-discovery in static mode (Builder Core D63). Each listed orchestrator is
+# queried at <URL>/discovery at start and every RefreshInterval. Replace these and
+# GATEWAY_APPROVED_ORCHESTRATORS together. Discovery trusts the same certificates as the gateway
+# (system roots plus config/runner-trust), so an orchestrator with an untrusted certificate is left
+# out; pin one with config/pin-orchestrator-certs.py and scripts/prepare-runner-trust.py to keep it.
+# A runner without an observed_at stamp (node v1.0.2 and earlier) is dropped. A private address,
+# such as a local orchestrator, also needs a Grants entry (IP[:port] or CIDR).
+# A non-loopback listener needs the unsafe@ prefix; /readyz and /metrics stay on loopback.
+Listen = "unsafe@0.0.0.0:8939"
+MetricsListen = "127.0.0.1:8940"
+Nodes = [
+  "https://orch-us-central.xodeapp.xyz:18935",
+  "https://us-central-metrics.speedybird.xyz:28935",
+  "https://orch-eu-central.open-pool.com:443",
+  "https://hky.eliteencoder.net:8936",
+  "https://ai1.eliteencoder.net:8936",
+  "https://livepeer-ai.xodeapp.xyz:38935",
+]
+RefreshInterval = "30s"

@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 services=("$@")
-[ ${#services[@]} -eq 0 ] && services=(clearinghouse signer gateway)
+[ ${#services[@]} -eq 0 ] && services=(clearinghouse signer discovery gateway)
 for service in "${services[@]}"; do
   docker compose -f deploy/livepeer/gateway/compose.yaml build "$service"
 done
