@@ -81,4 +81,4 @@ Qwen3.8 matrix, four paid calls and published NE candidate images. The node lock
 includes the discovery identity fix. Chain finality and production admission remain open.
 
 Superseding the earlier node-patch requirement: [metadata runner identity](../completed/metadata-runner-identity.md)
-normalizes IDs in this gateway. The current node lock is unpatched; node PR #1 is optional.
+takes IDs from metadata in this gateway; Builder Core v0.2.0 has no top-level runner ID. The current node lock is unpatched; node PR #1 is optional.

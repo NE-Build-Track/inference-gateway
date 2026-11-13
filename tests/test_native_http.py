@@ -22,9 +22,10 @@ USAGES = {
 GENERATION = [endpoint for endpoint in PROFILES if endpoint != "systemone"]
 
 
-def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
+def setup(endpoint, reply, tmp_path=None, expiry=None):
     meta = {
         "inference_contract": 1,
+        "runner_id": "one",  # Builder Core carries no top-level runner ID (its D63)
         "model_name": "m",
         "runtime": {"name": "vllm", "image": "vllm/vllm-openai@sha256:" + "a" * 64},
         "deployment_revision": "sha256:" + "b" * 64,
@@ -32,14 +33,13 @@ def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
         "limits": {"context_tokens": 4096},
         "admission": "candidate",
     }
-    if metadata_identity:
-        meta["runner_id"] = "one"
     candidate = runner(
         "chat",
+        "https://orch/apps/one/app",
         metadata=json.dumps(meta, separators=(",", ":")),
         orchestrator_url="https://orch",
         capacity_available=1,
-    ).model_copy(update={"runner_id": None if metadata_identity else "one"})
+    )
     engine = FakeEngine(
         streaming=True, runners=[candidate], replies={("chat", PROFILES[endpoint]["path"]): reply}
     )
@@ -80,8 +80,7 @@ def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
 
 
 @pytest.mark.parametrize("endpoint", list(PROFILES))
-@pytest.mark.parametrize("metadata_identity", [False, True])
-async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata_identity):
+async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path):
     raw_response = json.dumps(
         {"id": "native", "status": "completed", "usage": USAGES[endpoint], "future": "untouched"},
         indent=2,
@@ -91,9 +90,7 @@ async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata
         chunks=(raw_response[:10], raw_response[10:]),
         headers=(("Content-Type", "application/json"), ("Set-Cookie", "secret")),
     )
-    app, engine, ledger, secret = setup(
-        endpoint, reply, tmp_path, metadata_identity=metadata_identity
-    )
+    app, engine, ledger, secret = setup(endpoint, reply, tmp_path)
     raw = (
         b'{ "model":"m", "store":false, '
         b'"tools":[{"strict":true,"parameters":{"$ref":"#/$defs/X"}}], "future":42 }'

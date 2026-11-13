@@ -74,6 +74,7 @@ def gateway(*supply, replies=None, tmp_path=None, prices=None, routes=None):
             if item.validated
             else {
                 "inference_contract": 1,
+                "runner_id": runner_id,
                 "model_name": item.model,
                 "runtime": {"name": "sglang", "image": "lmsysorg/sglang@sha256:" + "a" * 64},
                 "deployment_revision": revision,
@@ -85,10 +86,11 @@ def gateway(*supply, replies=None, tmp_path=None, prices=None, routes=None):
         runners.append(
             runner(
                 app,
+                f"https://orch/apps/{runner_id}/app",
                 metadata=json.dumps(metadata, separators=(",", ":")),
                 orchestrator_url="https://orch",
                 capacity_available=item.capacity,
-            ).model_copy(update={"runner_id": runner_id})
+            )
         )
         if item.validated:
             continue
@@ -575,6 +577,7 @@ async def test_real_engine_selects_pays_and_records_a_decision():
     revision = "sha256:" + "b" * 64
     metadata = {
         "inference_contract": 1,
+        "runner_id": "one",
         "model_name": "clef",
         "runtime": {"name": "sglang", "image": "lmsysorg/sglang@sha256:" + "a" * 64},
         "deployment_revision": revision,
@@ -582,21 +585,25 @@ async def test_real_engine_selects_pays_and_records_a_decision():
         "limits": {"context_tokens": 32768},
         "admission": "candidate",
     }
+    # The engine's discovery reader keeps orchestrator_url only on the runner URL's origin (D63).
     decision_runner = runner(
         "decide",
+        "https://orch/apps/one/app",
         orchestrator_url="https://orch",
         metadata=json.dumps(metadata, separators=(",", ":")),
         capacity_available=1,
-    ).model_copy(update={"runner_id": "one"})
+    )
     # A chat runner on the same app must never be chosen for a decision.
     chat_runner = runner(
         "decide",
+        "https://orch/apps/chat/app",
         orchestrator_url="https://orch",
         metadata=json.dumps(
-            {**metadata, "endpoints": {CHAT: PROFILES[CHAT]}}, separators=(",", ":")
+            {**metadata, "runner_id": "chat", "endpoints": {CHAT: PROFILES[CHAT]}},
+            separators=(",", ":"),
         ),
         capacity_available=100,
-    ).model_copy(update={"runner_id": "chat", "url": "https://chat-runner"})
+    )
     admission = Admission("https://orch", "one", "decide", "clef", revision, SYSTEM_ONE, 2e10)
     raw_reply = json.dumps(DECISION).encode()
     transport = ScriptedStreamTransport(
@@ -910,16 +917,17 @@ def test_validated_selection_skips_a_runner_that_does_not_declare_the_job_path()
 
     def candidate(name, capacity, **fields):
         metadata = json.dumps({"model_name": "m", **fields})
-        return runner("app", metadata=metadata, capacity_available=capacity).model_copy(
-            update={"runner_id": name}
-        )
+        return runner(
+            "app", f"https://orch.example/apps/{name}/app", metadata=metadata,
+            capacity_available=capacity,
+        )  # fmt: skip
 
     decision = candidate("decision", 100, endpoints={SYSTEM_ONE: PROFILES[SYSTEM_ONE]})
     chat = candidate("chat", 1, endpoints={CHAT: PROFILES[CHAT]})
     legacy = candidate("legacy", 1)  # Model-name-only metadata declares nothing, so it stays.
     policy = ModelSelection(MostCapacityFirst())
     job = JobRequest(app="app", model="m", path="/v1/chat/completions")
-    assert {r.runner_id for r in policy.order([decision, chat, legacy], job)} == {"chat", "legacy"}
+    assert {r.url for r in policy.order([decision, chat, legacy], job)} == {chat.url, legacy.url}
     with pytest.raises(NoCapacity):
         policy.order([decision], job)
 

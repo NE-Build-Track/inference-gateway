@@ -25,7 +25,7 @@ still goes through Builder Core; no separate HTTP client bypasses payment/sessio
 
 ## Dependency review chain
 
-The gateway pins Builder Core `releases/m3` at `1514212`, the M3 merge, which includes `2134e29`, the merge of
+The gateway pins Builder Core `v0.2.0` (`28ae6a9`), the M3 release, which includes `2134e29`, the merge of
 [Builder Core PR #55](https://github.com/NE-Build-Track/livepeer-builder-core/pull/55) into
 `releases/m3` (28 October). Core sends the paid runner request itself (its D53), so native
 transport lives in Core: bounded raw bodies, content type, validated headers, operation identity,
@@ -64,11 +64,11 @@ The [cross-repository review](../references/repository-compatibility-2026-10-27.
 current M3 plus native patches and restores the separate discovery service in Compose.
 Use the locked dependency revisions, because native startup depends on them.
 
-Node PR #1 is no longer required: gateway discovery normalizes runner identity from
-validated metadata and rejects conflicting IDs. See the [identity contract](../../live-runner/contract/README.md#runner-identity-without-a-node-patch).
+Node PR #1 is no longer required: runner identity comes only from validated metadata, since
+Builder Core v0.2.0's runners carry no top-level ID (its D63). See the [identity contract](../../live-runner/contract/README.md#runner-identity-without-a-node-patch).
 
 The [28 October review](../references/repository-compatibility-2026-10-28.md) superseded
 that overlay result for newer M3: Core now owns the paid runner call, so PR #55 had to port
 native behavior onto that implementation. It did, and merged as `2134e29`, which the pinned
-`1514212` includes, so the upstream SDK is used unpatched. Native startup still rejects an installed Core that lacks the required request
+Builder Core `v0.2.0` includes, so the upstream SDK is used unpatched. Native startup still rejects an installed Core that lacks the required request
 fields or response-header facade.

@@ -17,7 +17,6 @@ Repository maintainers own these entries. None is represented as implemented beh
 | Native stream outcomes | A native SSE request that was delivered and charged can record the outcome `disconnected`. Charges are correct; the outcome misleads reports. Find where the stream ends early and record success |
 | SGLang local media paths | SGLang's image loader opens `file://` and `/path` values, and `--allowed-media-domains` covers only HTTP(S). System One admits only inline images, but native chat bodies are not inspected, so an SGLang vision route may have the same exposure; this path has not been traced end to end. Test and restrict it before admitting one |
 | Per-call wholesale versus per-token retail | Decisions are short, so a flat wholesale price can exceed retail at ordinary input rates. Price from real token counts; add a per-call fee only if rates cannot cover it |
-| Discovery process test timing | `test_discovery_process_preserves_native_runner_identity` failed once in a full local run and passed when repeated; the cause is unknown. It allows about 5 seconds for a subprocess to start. Widen the window if it recurs |
 | Reporting scale | Request lists page in SQL without a cap. A bucket report still totals its page's rows in Python and fails above 10,000 requests per page; aggregate in SQL if pages grow past that |
 | Ledger write throughput | One writer thread commits each write separately: about 12 ms per metered request on NVMe and 40 ms on a slow SSD, so metered requests top out near 80 or 25 per second. Batch commits if load approaches that |
 | Accounting operations | Automate backups and reconciliation alerts; incomplete usage remains explicit and may require an operator adjustment |
@@ -39,8 +38,8 @@ shared-capacity multi-model layouts, compressed payload observation and stateful
 separate work; see the [native plan](active/native-inference-forwarding.md).
 
 Remote GPU acceptance found deployment-specific gaps; see the
-[Qwen3.8 results](../../live-runner/tests/qwen38-followup-2026-10-27.md). The node-patch dependency is removed: runner identity now comes from validated metadata
-when the top-level discovery field is absent; the lock pins an unpatched node. SGLang rejects forced tools combined with structured output and
+[Qwen3.8 results](../../live-runner/tests/qwen38-followup-2026-10-27.md). The node-patch dependency is removed: runner identity now comes only from validated metadata
+(Builder Core v0.2.0 has no top-level runner ID); the lock pins an unpatched node. SGLang rejects forced tools combined with structured output and
 the tested Responses auto combination; Ollama fails forced-tool choice and strict argument
 constraints. Endpoint admission is not feature certification. Cached capacity can cause
 temporary 503s around cancellation and discovery refresh (15 seconds by default);
@@ -48,7 +47,7 @@ load/concurrency acceptance must address this. Four paid calls reconciled expect
 costs; winning-ticket chain finality remains separately observable in the retained paid node.
 
 Builder Core M3 upgrade: done on 29 October (Core `d3df806`, which includes the PR #55 merge
-`2134e29`; moved to the M3 merge `1514212` on 2 November; upstream SDK; `livepeer/` Node and Batteries); see the
+`2134e29`; moved to the M3 merge `1514212` on 2 November and to the `v0.2.0` tag `28ae6a9` on 13 November; upstream SDK; `livepeer/` Node and Batteries); see the
 [repin evidence](../../live-runner/tests/m3-upstream-2026-10-29.md). Paid failover is kept: Core
 may fail a paid 503, 404 or 409 over to another orchestrator, at most `LPB_MAX_PAID_ATTEMPTS` (2)
 paid attempts; set it to `1` to turn paid failover off. Live paid failover between two
