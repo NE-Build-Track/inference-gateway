@@ -23,6 +23,20 @@ Each gateway endpoint speaks one profile, and each profile serves one capability
 | `/v1/messages` | `anthropic.messages.v2` | `chat` |
 | `/v1/systemone` | `typesafe.systemone.v1` | `decision` |
 
+**A runner on `openai.chat.v1` serves validated routes too.** The two chat entries read an answer the
+same way and differ only in what a request may hold: v1 refuses the tools and content parts it
+doesn't describe, such as a coding agent's custom tools, and v2 passes them to the runner. So a
+validated job whose translated body has no problems under v1 may go to a runner that declares v1;
+any other job goes only to a v2 runner. The gateway checks the body against both entries before
+payment and marks the job (`capability: validated.earlier-profile`), and selection reads the mark.
+A model is listed when a runner of either version serves it. This does not reach further:
+
+- `openai.responses.stateless.v1` and `anthropic.messages.v1` are not selected. The two Responses
+  entries map errors and success differently, and validated routes send only Chat Completions or
+  Responses upstream.
+- Native routes need an approval, and an approval names the current profile.
+- A `private` v1 runner is not selected, for the same reason.
+
 A route names a capability, not an operator's App ID. `capability` defaults to `chat`:
 
 ```json

@@ -68,7 +68,9 @@ version 4. v0.2.2 and earlier refuse a version 4 database, so back up the databa
 v0.3.0 reads only [runner contract v1](product-specs/runner-contract.md) and ignores runners in
 earlier metadata formats, logging each once with the reason. It speaks the v2 chat profiles, so a
 runner must advertise `openai.chat.v2`, `anthropic.messages.v2` or `openai.responses.stateless.v2`
-to be selected. Before upgrading, change each route's `app` in `GATEWAY_MODEL_ROUTES` to the
+to be selected. One exception: a validated route also uses a runner that advertises
+`openai.chat.v1`, for requests that version describes
+([runner contract](product-specs/runner-contract.md#what-the-gateway-serves)). Before upgrading, change each route's `app` in `GATEWAY_MODEL_ROUTES` to the
 capability its runners serve (`"capability":"chat"`, the default), remove `GATEWAY_CHAT_APP`,
 `GATEWAY_UPSTREAM_MODEL` and `GATEWAY_NATIVE_APPROVALS`, and move native approvals into
 `GATEWAY_APPROVALS_FILE` with each runner's conformance report. The accounting database is unchanged.
