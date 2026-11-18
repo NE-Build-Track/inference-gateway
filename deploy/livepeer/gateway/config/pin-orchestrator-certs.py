@@ -1,21 +1,21 @@
-"""Pin the TLS certificates of the orchestrators in config/orchestrators.txt (trust on first use).
+"""Pin the TLS certificates of the orchestrators in config/discovery.toml (trust on first use).
 
-Livepeer orchestrators commonly serve self-signed certificates. The gateway's engine and builder-core's
-discovery service verify TLS, so without a pin they cannot use such an orchestrator. This script fetches
+Livepeer orchestrators commonly serve self-signed certificates. The gateway's engine and livepeer/node's
+livepeer-discovery verify TLS, so without a pin they cannot use such an orchestrator. This script fetches
 each orchestrator's current leaf certificate into config/pinned-certs/; scripts/prepare-runner-trust.py
 turns them into config/runner-trust, which both containers trust beside the system CAs through
 SSL_CERT_DIR. Re-run both when an orchestrator rotates its certificate. Only pin hosts you intend to pay.
 """
 
 import ssl
+import tomllib
 from pathlib import Path
 from urllib.parse import urlparse
 
 here = Path(__file__).resolve().parent
 target = here / "pinned-certs"
 target.mkdir(exist_ok=True)
-lines = (line.split("#", 1)[0].strip() for line in (here / "orchestrators.txt").read_text().splitlines())
-orchestrators = [line for line in lines if line]
+orchestrators = tomllib.loads((here / "discovery.toml").read_text()).get("Nodes", [])
 for url in orchestrators:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname:

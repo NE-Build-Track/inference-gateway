@@ -101,7 +101,9 @@ manually parsed request bodies; this document and request models define the cont
 ## Livepeer backend
 
 Livepeer mode requires a configured model route; the default public name is `qwen3.8-27b`.
-It preserves the interfaces above but uses real runner output and usage. It supports one
+It selects only runners that publish a [runner contract v1](runner-contract.md) envelope under a
+route's capability, and ignores every other metadata format. It preserves the interfaces above but
+uses real runner output and usage. It supports one
 choice and a runner that streams OpenAI chat chunks with usage and `[DONE]`. Explicit parallel
 requests on enabled routes stream independently indexed calls; other requests preserve sequential
 normalization. Missing usage, malformed/truncated output, unsupported finish reasons, unenabled
@@ -122,6 +124,8 @@ provider-shaped reporting endpoints and their supported subsets.
 Native forwarding is an explicit per-model route mode, tested offline. Validated routes
 retain the compatibility guarantees above. In native mode the backend owns tools, schemas
 and generation controls; the gateway owns auth, admission, transport and usage accounting.
-See the [native contract](native-inference.md) for configuration, constraints and remaining
-live acceptance, and the [System One contract](system-one.md) for decision models. Dependencies pin Builder Core `releases/m3`; Node, Clearinghouse Batteries
+Native request bodies must match their endpoint's request schema in the pinned registry, and native
+answers succeed only by the entry's success rule. See the [native contract](native-inference.md) for
+configuration, constraints and remaining live acceptance, and the [System One contract](system-one.md)
+for decision models. Dependencies pin Builder Core `releases/m3`; Node, Clearinghouse Batteries
 and the Python SDK come from `livepeer/` `main`.

@@ -85,7 +85,8 @@ async def forward(
                     finally:
                         persist()
                     await stream.complete()
-                    outcome = "failed" if observer.failed else "succeeded"
+                    # Usage alone isn't success: the entry's error mappings and success rule decide.
+                    outcome = "failed" if observer.failed or not stream.succeeded() else "succeeded"
                     try:
                         if observer.measured is not None:
                             await asyncio.wait_for(

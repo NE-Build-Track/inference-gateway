@@ -100,7 +100,7 @@ async def test_probe_completes_or_disconnects_and_closes(terminal):
             return stream
 
     engine = SimpleNamespace(jobs=SimpleNamespace(streaming=Streaming()))
-    route = ModelRoute(name="fake", app="test/chat")
+    route = ModelRoute(name="fake")
     result = await probes.probe(engine, LivepeerSettings(routes=(route,)), route, "baseline", {})
     assert result["status"] == ("observed" if terminal else "Unsupported Response")
     assert stream.complete_count == int(terminal)

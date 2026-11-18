@@ -1,7 +1,5 @@
 {
-  "contract_version": 1,
   "runner_id": "qwen38-vllm",
-  "app": "inference/vllm",
   "runtime": {
     "name": "vllm",
     "tool_parser": "qwen3_coder",
@@ -19,6 +17,11 @@
     "messages"
   ],
   "capacity": 8,
+  "price": {
+    "amount": "REPLACE_WITH_USD_PRICE",
+    "unit": "hour"
+  },
   "public_url": "http://127.0.0.1:8935",
-  "admission": "candidate"
+  "admission": "candidate",
+  "reasoning": "on"
 }

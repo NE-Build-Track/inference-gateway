@@ -18,17 +18,18 @@ chmod 600 deploy/livepeer/gateway/.env
 scripts/build-images.sh
 ```
 
-Set `IMAGE_TAG` to name a release, for example `IMAGE_TAG=v0.2.3 scripts/build-images.sh`. The script
-builds locally and never publishes. Node and Clearinghouse images come from the commits pinned in
-Compose, so a new tag on them does not imply a source change. Rebuilding them installs current
+Set `IMAGE_TAG` to name a release, for example `IMAGE_TAG=v0.3.0 scripts/build-images.sh`. The script
+builds locally and never publishes. Node, discovery and Clearinghouse images come from the commits
+pinned in Compose, so a new tag on them does not imply a source change. Rebuilding them installs current
 `apt` packages and produces different bytes, so when only the gateway changed, build it alone and
 retag the images already tested with `docker tag`.
 
 To use published images instead of building, set `IMAGE_REGISTRY` and `IMAGE_TAG` in `.env`,
 then `docker compose -f deploy/livepeer/gateway/compose.yaml pull` and start services with
 `up --no-build`. Image names match the registry repositories: `inference-gateway`,
-`inference-node` (signer and orchestrator) and `inference-clearinghouse`. A single release
-tag covers all three; `--build` would overwrite that tag with a local build.
+`inference-node` (signer and orchestrator, livepeer/node `a4b68ed`), `inference-discovery`
+(livepeer/node `f45d83f`'s `livepeer-discovery`) and `inference-clearinghouse`. A single release
+tag covers all four; `--build` would overwrite that tag with a local build.
 
 Edit `.env` with your routing and payment settings. `GATEWAY_ACCOUNTING_DB=/data/gateway.db`
 enables registry authentication. Leave `GATEWAY_API_KEY` unset in this mode. The gateway uses
@@ -52,12 +53,22 @@ actions. Never run two signers using the same payer/state. To use independently 
 payment services, omit the profile and set their reachable `LPB_SIGNER_URL` and
 `LPB_BATTERIES_URL` instead. No external Docker network is required by the manifests.
 
-The committed `gateway/config/orchestrators.txt` contains example public orchestrator
-origins. Replace those and `GATEWAY_APPROVED_ORCHESTRATORS` together for your deployment.
-The separate `lpb discovery` service reads that directory; the signer only signs payments.
-`LPB_DISCOVERY_URL` defaults to `http://discovery:8939/discovery` in Compose and is required
-for direct gateway startup. Set it explicitly when using an external discovery service.
-Discovery and gateway use the same image/Core revision and TLS trust directory. Do not bypass
+The `discovery` service is livepeer/node's `livepeer-discovery` in static mode, as Builder Core
+v0.2.0 expects (its D63); the signer only signs payments. The committed
+`gateway/config/discovery.toml` lists example public orchestrator origins in `Nodes`. Replace
+those and `GATEWAY_APPROVED_ORCHESTRATORS` together for your deployment. Discovery queries each
+listed origin's `/discovery` every 30 seconds and drops runners without an `observed_at` stamp,
+so orchestrators on node v1.0.2 or earlier do not appear. A private address, such as a local
+orchestrator, also needs a `Grants` entry. Builder Core keeps a runner's `orchestrator_url`
+only when the runner URL is on its orchestrator's origin, so the allowlist and native approvals
+never admit a runner served from another host. `LPB_DISCOVERY_URL` defaults to
+`http://discovery:8939/discovery` in Compose and is required: Builder Core does not start
+without it. Set it explicitly when using an external discovery service.
+
+Discovery has no Compose healthcheck: its `/readyz` is on a loopback metrics port and reports
+only that the process listens. Read `GET /discovery` from the gateway container, or the
+gateway's own `/readyz`, to see whether runners arrive. Discovery and gateway share the TLS
+trust directory. Do not bypass
 TLS verification: public certificates use system trust; intentionally pinned certificates can
 be placed in `gateway/config/pinned-certs` and processed with:
 
@@ -106,22 +117,30 @@ python3 deploy/livepeer/orchestrator/render-config.py --mode offchain
 docker compose -f deploy/livepeer/orchestrator/compose.yaml up -d --build
 ```
 
-The node statically registers the local vLLM HTTP server, checks its health and advertises
-`RUNNER_APP`. vLLM is not exposed directly on the host. The orchestrator listens on host
+The node statically registers the local vLLM HTTP server under App ID `chat` with a
+[runner contract v1](../../docs/product-specs/runner-contract.md) envelope. A readiness service, the
+standard's `runner-contract ready`, answers the node's health check, ready only after a self-test of
+the chat profile passes. It installs the tool pinned in
+[readiness.txt](../../live-runner/tooling/readiness.txt) each time it starts, so the host needs access
+to GitHub and PyPI. The
+envelope's `deployment_revision` hashes the digest-pinned vLLM and readiness images, the model's
+`MODEL_ID` and `MODEL_REVISION`, and the tool parser, so change `MODEL_REVISION` with `MODEL_ID`.
+vLLM is not exposed directly on the host. The orchestrator listens on host
 loopback by default. Configure `ORCHESTRATOR_BIND` and `ORCHESTRATOR_SERVICE_URL` for remote
 access, with a TLS reverse proxy for public deployment. The advertised address must be
 reachable from gateway/discovery containers; their `localhost` is not the host machine.
 
-For gateway routing to this runner, set `GATEWAY_CHAT_APP=inference/chat/default` and
-`GATEWAY_MODEL_NAME` to the orchestrator's `SERVED_MODEL_NAME`, which defaults to `gateway-model`.
-The renderer advertises that name as runner metadata, and the gateway routes by it, so the two must
-match. Leave `GATEWAY_UPSTREAM_MODEL` empty. Configure discovery origins to reach this orchestrator.
+For gateway routing to this runner, set `GATEWAY_MODEL_NAME` to the orchestrator's
+`SERVED_MODEL_NAME`, which defaults to `gateway-model`. The envelope names that model, and the
+gateway routes by it, so the two must match. Add this orchestrator to `Nodes` in
+`gateway/config/discovery.toml`, with a `Grants` entry when its address is private.
 The existing gateway payment backend still requires its normal engine/signer configuration even
 when the runner is free.
 
 This stack serves vLLM through a validated route. For native routes and decision models, render a
-runner from the [live-runner bundle](../../live-runner/README.md) and add its route and approvals to
-the gateway's `.env`. See the [native contract](../../docs/product-specs/native-inference.md) and the
+runner from the [live-runner bundle](../../live-runner/README.md), add its route to the gateway's
+`.env`, and put its approvals in `config/approvals/approvals.json` with `GATEWAY_APPROVALS_FILE`
+set. See the [native contract](../../docs/product-specs/native-inference.md) and the
 [System One deployment steps](../../docs/product-specs/system-one.md#deploy).
 
 ### Paid on-chain configuration

@@ -35,8 +35,9 @@ application. Identity and retail accounting have durable state in a separate gat
 | `testing.py` | Reusable deterministic fake | Core, standard library |
 | `core/native.py` | Opaque native transport port | Core models |
 | `native.py` | Native forwarding lifecycle and usage observation | Core, native usage adapter |
-| `adapters/native_request.py`, `native_usage.py`, `native_http.py` | Inspect the routing envelope, read usage, deliver over ASGI | Core, runner contract |
-| `adapters/runner_contract.py` | Endpoint profiles and runner metadata | Pydantic, standard library |
+| `adapters/native_request.py`, `native_usage.py`, `native_http.py` | Inspect the routing envelope, read usage, deliver over ASGI | Core |
+| `backends/runner_contract.py` | Runner contract v1: envelopes, the pinned registry, selection, request and answer rules | `livepeer-runner-contract`, public Livepeer API |
+| `backends/approvals.py` | Operator approvals with conformance reports, reloaded from a file | Runner contract, Pydantic |
 | `backends/` | Encode runner requests, decode SSE, call Builder Core, filter discovery | Core, configuration, runner contract, public Livepeer API |
 | `config.py` | Frozen gateway and routing settings | Standard library, Pydantic |
 | `runtime.py` | Load environment, construct/start/stop the engine | Configuration, backends, public Livepeer API |

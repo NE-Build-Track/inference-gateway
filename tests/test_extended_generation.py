@@ -9,6 +9,7 @@ from dataclasses import replace
 import httpx
 import pytest
 from anthropic import AsyncAnthropic
+from contract_helpers import validated_backend
 from openai import AsyncOpenAI
 
 from inference_gateway.adapters.schemas import AnthropicRequest, OpenAIRequest
@@ -429,7 +430,7 @@ async def test_invalid_structured_backend_response_has_explicit_error(stream):
 def test_livepeer_rejects_unverified_features_before_payload(change):
     request = replace(Generate("fake", (Message("user", (Text("hello"),)),)), **change)
     with pytest.raises(UnsupportedFeature):
-        runner_payload(request, ModelRoute(name="fake", app="test/chat"))
+        runner_payload(request, ModelRoute(name="fake", capability="chat"))
 
 
 @pytest.mark.parametrize(
@@ -550,12 +551,11 @@ async def test_cancelling_an_interleaved_stream_closes_backend():
 async def test_livepeer_feature_guard_is_public_and_never_dispatches(protocol, streaming):
     from livepeer_builder.testing import FakeEngine
 
-    from inference_gateway.backends.livepeer import LivepeerBackend
     from inference_gateway.config import LivepeerSettings
 
     engine = FakeEngine(streaming=True)
-    backend = LivepeerBackend(
-        engine, LivepeerSettings(routes=(ModelRoute(name="fake", app="test/chat"),))
+    backend = validated_backend(
+        engine, LivepeerSettings(routes=(ModelRoute(name="fake", capability="chat"),))
     )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=create_app(backend)), base_url="http://test"

@@ -9,9 +9,9 @@ and readiness URLs, explicit destination grants, and offchain operation. The def
 registration status is `idle`, so a successful health check alone cannot admit it.
 No GPU deployment or end-to-end node acceptance was performed during scaffold creation.
 
-The node polls the readiness observer. vLLM/SGLang must expose the configured model in
-`/v1/models` and answer `/health`. Ollama must additionally report that exact installed
-model digest in `/api/ps`; an installed-but-unloaded model is not ready.
+The node polls each registration's readiness service, the standard's `runner-contract ready`. It
+answers ready once the self-tests of the registration's profiles pass against the runtime, and
+follows the runtime's own health check (`/health`, or `/` for Ollama) after that.
 
 Production/payment configuration is intentionally not generated here. Paid admission
 must supply node identity, TLS/public ingress, signer/allocation configuration and

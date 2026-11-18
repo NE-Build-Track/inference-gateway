@@ -6,12 +6,12 @@ from dataclasses import replace
 import httpx
 import pytest
 from anthropic import AsyncAnthropic
+from contract_helpers import CHAT, envelope, validated_backend
 from livepeer_builder.testing import FakeEngine, FakeJobStream, Reply, runner
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 
 from inference_gateway.app import create_app
-from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.backends.livepeer_request import runner_payload
 from inference_gateway.backends.openai_events import CompletionDecoder
 from inference_gateway.backends.stop_sequences import StopFilter
@@ -31,8 +31,8 @@ from inference_gateway.core.models import (
 from inference_gateway.core.service import GenerationService
 
 CAPS = frozenset({"structured_output", "reasoning", "stop", "parallel_tools"})
-ROUTE = ModelRoute(name="extended", app="test/chat", capabilities=CAPS)
-OPTIONS = LivepeerSettings(routes=(ROUTE, ModelRoute(name="basic", app="test/chat")))
+ROUTE = ModelRoute(name="extended", capability="chat", capabilities=CAPS)
+OPTIONS = LivepeerSettings(routes=(ROUTE, ModelRoute(name="basic", capability="chat")))
 REQUEST = Generate("extended", (Message("user", (Text("hello"),)),))
 SCHEMA = {
     "type": "object",
@@ -68,9 +68,9 @@ def ending(reason="stop", stop=None):
 def scripted(frames):
     return FakeEngine(
         streaming=True,
-        runners=[runner(ROUTE.app, metadata='{"model_name":"extended"}')],
+        runners=[runner(ROUTE.capability, metadata=envelope("extended", CHAT))],
         replies={
-            (ROUTE.app, "/v1/chat/completions"): Reply(
+            (ROUTE.capability, "/v1/chat/completions"): Reply(
                 content_type="text/event-stream", chunks=frames
             )
         },
@@ -149,7 +149,7 @@ async def test_extended_sdk_contract(protocol, streaming, feature):
     raw = b"".join(fixtures(feature))
     # Arbitrary byte fragmentation includes reasoning, stop prefixes and tool arguments.
     engine = scripted(tuple(raw[i : i + 3] for i in range(0, len(raw), 3)))
-    app = create_app(LivepeerBackend(engine, OPTIONS))
+    app = create_app(validated_backend(engine, OPTIONS))
     options, extra = body(feature, protocol)
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as http:
         if protocol == "openai":
@@ -218,7 +218,7 @@ async def test_extended_sdk_contract(protocol, streaming, feature):
 
 def test_capabilities_are_explicit_and_route_specific():
     with pytest.raises(ValidationError):
-        ModelRoute(name="bad", app="a", capabilities=["everything"])
+        ModelRoute(name="bad", capability="a", capabilities=["everything"])
     request = replace(REQUEST, output_format=OutputFormat(SCHEMA))
     assert runner_payload(request, ROUTE)["response_format"]["type"] == "json_schema"
     with pytest.raises(UnsupportedFeature):
@@ -255,7 +255,7 @@ async def test_invalid_structured_response_has_no_success(streaming, protocol):
     engine = scripted([frame({"content": '{"city":"Wrong"}'}), *ending()])
     options, _ = body("structured_output", protocol)
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=create_app(LivepeerBackend(engine, OPTIONS))),
+        transport=httpx.ASGITransport(app=create_app(validated_backend(engine, OPTIONS))),
         base_url="http://test",
     ) as http:
         response = await http.post(
@@ -285,7 +285,7 @@ async def test_extended_close_notifies_engine(monkeypatch, feature):
         output_format=OutputFormat(SCHEMA) if feature == "structured_output" else None,
         sampling=Sampling(stop=("END",)) if feature == "stop" else Sampling(),
     )
-    events = LivepeerBackend(scripted(fixtures(feature)), OPTIONS).stream(request)
+    events = validated_backend(scripted(fixtures(feature)), OPTIONS).stream(request)
     await anext(events)
     await events.aclose()
     assert len(closed) == 1 and closed[0].closed and closed[0].disconnected_called
@@ -367,7 +367,7 @@ def test_invalid_extended_runner_responses(invalid):
 
 async def test_reasoning_and_structured_truncation_remain_length():
     engine = scripted([frame({"reasoning_content": "think"}), *ending("length")])
-    result = await GenerationService(LivepeerBackend(engine, OPTIONS)).complete(
+    result = await GenerationService(validated_backend(engine, OPTIONS)).complete(
         replace(REQUEST, reasoning=True, output_format=OutputFormat(SCHEMA))
     )
     assert result.content == (Reasoning("think"),) and result.finish.reason == "length"
@@ -391,7 +391,7 @@ async def test_real_engine_extended_disconnect_and_deadline(tmp_path, feature, e
         sampling=Sampling(stop=("END",)) if feature == "stop" else Sampling(),
     )
     async with make_engine(
-        runners=[runner(ROUTE.app, metadata='{"model_name":"extended"}')],
+        runners=[runner(ROUTE.capability, metadata=envelope("extended", CHAT))],
         supply=EngineSupply(transport=transport),
         allocation_mode="per_application",
         shared_payment_key="fixture-key",
@@ -400,7 +400,7 @@ async def test_real_engine_extended_disconnect_and_deadline(tmp_path, feature, e
         stream_settle_s=0.01,
     ) as engine:
         options = OPTIONS.model_copy(update={"idle_timeout_seconds": 0.05})
-        service = GenerationService(LivepeerBackend(engine, options))
+        service = GenerationService(validated_backend(engine, options))
         if expire_deadline:
             with pytest.raises(BackendDeadline):
                 await service.complete(request)
@@ -445,7 +445,7 @@ def test_sampling_controls_preserved_and_route_guarded(field, value):
 def test_reasoning_controls_require_explicit_route_support():
     route = ModelRoute(
         name="extended",
-        app="test/chat",
+        capability="chat",
         capabilities=CAPS | {"reasoning_budget"},
         reasoning_efforts={"low"},
     )
@@ -489,7 +489,7 @@ def test_media_input_preserves_order_and_explicit_kind_support(kind, mime, wire)
     media = Media(kind, "YWJj", mime, detail="high")
     request = replace(REQUEST, messages=(Message("user", (Text("before"), media, Text("after"))),))
     route = ModelRoute(
-        name="extended", app="test/chat", capabilities={"media_input"}, input_media={kind}
+        name="extended", capability="chat", capabilities={"media_input"}, input_media={kind}
     )
     assert runner_payload(request, route)["messages"][0]["content"] == [
         {"type": "text", "text": "before"},
@@ -513,7 +513,7 @@ def test_media_input_preserves_order_and_explicit_kind_support(kind, mime, wire)
 )
 def test_incoherent_route_controls_rejected(options):
     with pytest.raises(ValidationError):
-        ModelRoute(name="bad", app="test/chat", **options)
+        ModelRoute(name="bad", capability="chat", **options)
 
 
 @pytest.mark.parametrize("protocol", ["openai", "anthropic"])
@@ -522,7 +522,7 @@ def test_incoherent_route_controls_rejected(options):
 async def test_remaining_request_controls_through_sdk(protocol, streaming, feature):
     route = ModelRoute(
         name="extended",
-        app=ROUTE.app,
+        capability=ROUTE.capability,
         capabilities=CAPS | {"sampling", "reasoning_budget", "media_input"},
         reasoning_efforts={"low"},
         input_media={"image"},
@@ -532,7 +532,7 @@ async def test_remaining_request_controls_through_sdk(protocol, streaming, featu
         if feature == "reasoning_control"
         else [frame({"content": "Hello"}), *ending()]
     )
-    backend = LivepeerBackend(engine, LivepeerSettings(routes=(route,)))
+    backend = validated_backend(engine, LivepeerSettings(routes=(route,)))
     options = {"model": "extended", "messages": [{"role": "user", "content": "hello"}]}
     if protocol == "anthropic":
         options["max_tokens"] = 2048

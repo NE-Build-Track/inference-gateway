@@ -37,7 +37,8 @@ def test_orchestrator_config_rendering(tmp_path, mode):
     assert config["ServiceURL"] == "https://inference.example"
     assert config["RunnerConfig"] == "/etc/livepeer/runners.toml"
     assert runners["Runners"][0]["RunnerURL"] == "http://vllm:8000"
-    assert runners["Runners"][0]["PriceInfo"]["Price"] == "1.25"
+    # A TOML number: the node reads Price as a json.Number.
+    assert runners["Runners"][0]["PriceInfo"]["Price"] == 1.25
     assert ("Network" in config) == (mode == "onchain")
 
 
@@ -46,9 +47,8 @@ def test_orchestrator_config_rendering(tmp_path, mode):
     [("", "gateway-model"), ("SERVED_MODEL_NAME=team/model:v1\n", "team/model:v1")],
 )
 def test_rendered_runner_declares_the_model_the_gateway_routes_by(tmp_path, extra, expected):
-    from livepeer_builder.testing import runner
-
-    from inference_gateway.backends.discovery import model_name
+    from livepeer_runner_contract import Envelope, Registry, deployment_revision, parse_envelope
+    from livepeer_runner_contract.check import check_registrations, read_registrations
 
     env = tmp_path / ".env"
     env.write_text(extra)
@@ -66,9 +66,39 @@ def test_rendered_runner_declares_the_model_the_gateway_routes_by(tmp_path, extr
         ],
         check=True,
     )
-    rendered = tomllib.loads((output / "runners.toml").read_text())["Runners"][0]
-    # Model routing excludes a runner without this; the gateway reads it through discovery.
-    assert model_name(runner("app", metadata=rendered["Metadata"])) == expected
+    text = (output / "runners.toml").read_text()
+    rendered = tomllib.loads(text)["Runners"][0]
+    # Runner contract v1: the App ID is a capability, and the envelope names the model.
+    assert rendered["App"] == "chat"
+    envelope = parse_envelope(rendered["Metadata"])
+    assert isinstance(envelope, Envelope) and envelope.model.name == expected
+    assert envelope.endpoints["chat_completions"].profile == "openai.chat.v2"
+    # The renderer's own copy of the recipe agrees with the standard's library.
+    assert envelope.deployment_revision == deployment_revision(
+        [
+            "vllm/vllm-openai@sha256:" + envelope.runtime.image.removeprefix("sha256:"),
+            "python@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753",
+        ],
+        ["openai.chat.v2"],
+        {"runtime": "vllm", "tool_parser": "hermes"},
+        envelope.model,
+    )
+    registry = Registry.load()
+    registrations = read_registrations(text, name="runners.toml")
+    assert (
+        check_registrations(registrations, registry=registry, capabilities=registry.capabilities)
+        == []
+    )
+    # The readiness service installs the standard's tool, pinned as the bundle pins it, and
+    # self-tests the registration it reads from the rendered block.
+    requirements = ROOT / "live-runner/tooling/readiness.txt"
+    assert (output / "readiness.txt").read_bytes() == requirements.read_bytes()
+    compose = (ROOT / "deploy/livepeer/orchestrator/compose.yaml").read_text()
+    assert "./config/generated/runners.toml:/app/runners.toml:ro" in compose
+    assert (
+        "exec python -m livepeer_runner_contract ready --block /app/runners.toml\n"
+        "        --engine-health http://vllm:8000/health --listen 0.0.0.0:8080"
+    ) in compose
 
 
 def render_onchain(tmp_path, extra=""):

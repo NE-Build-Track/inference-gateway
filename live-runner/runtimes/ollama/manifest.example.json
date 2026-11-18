@@ -1,7 +1,5 @@
 {
-  "contract_version": 1,
   "runner_id": "ollama-llm",
-  "app": "inference/ollama",
   "runtime": {
     "name": "ollama",
     "tool_parser": null,
@@ -17,6 +15,10 @@
     "chat_completions"
   ],
   "capacity": 1,
+  "price": {
+    "amount": "REPLACE_WITH_USD_PRICE",
+    "unit": "hour"
+  },
   "public_url": "http://127.0.0.1:8935",
   "admission": "candidate"
 }

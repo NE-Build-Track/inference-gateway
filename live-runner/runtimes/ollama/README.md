@@ -8,7 +8,9 @@ The model name must equal the installed Ollama name, including its tag. Install 
 model using the pinned server, obtain its actual manifest digest from the server's
 model listing, and put `sha256:<digest>` in `model.revision`. Provisioning is operator
 work: the renderer never pulls a mutable model silently. Warm/load the model and keep
-it resident for service; readiness requires a matching entry in `/api/ps`. Parser flags
+it resident for service. Readiness doesn't check the loaded digest: its self-test names the model,
+and Ollama serves whatever is installed under that name, so keep the installed digest equal to
+`model.revision`. Parser flags
 are rejected because Ollama owns its model-specific parsing. The configured context
 setting applies through `OLLAMA_CONTEXT_LENGTH`; verify actual model behavior live.
 

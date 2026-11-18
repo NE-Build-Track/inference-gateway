@@ -59,7 +59,7 @@ route. Additional guarded adapter paths cover sampling, reasoning effort/budgets
 remain unverified and disabled locally. Citations,
 hosted search and media output have fake contracts only.
 A [stateless Responses subset and per-SDK model lists](docs/product-specs/models-and-responses.md)
-are also implemented. Livepeer model routing now requires runner metadata `model_name`.
+are also implemented. Livepeer routing reads [runner contract v1](docs/product-specs/runner-contract.md) envelopes only.
 The gateway does not execute tools,
 collect customer payments or replay generated responses. See the
 [compatibility contract](docs/product-specs/compatibility.md).
@@ -182,9 +182,9 @@ forward the original bytes and only read usage. See [architecture](ARCHITECTURE.
 | `GATEWAY_BACKEND` | `fake` locally; `livepeer` in deployment |
 | `GATEWAY_ACCOUNTING_DB` | Enables registry authentication and durable retail accounting |
 | `GATEWAY_API_KEY` | Optional legacy shared key; cannot be combined with registry mode |
-| `GATEWAY_MODEL_ROUTES` | Public model names mapped to backend applications, with `mode` and optional list details |
-| `GATEWAY_NATIVE_APPROVALS` | Operator approvals for native routes, per runner and endpoint |
-| `GATEWAY_MODEL_NAME`, `GATEWAY_CHAT_APP` | Single-route settings used when `GATEWAY_MODEL_ROUTES` is empty |
+| `GATEWAY_MODEL_ROUTES` | Public model names, each with the capability its runners serve (`chat` by default), `mode` and optional list details |
+| `GATEWAY_APPROVALS_FILE` | Approvals for native routes and private runners, each with a passing conformance report; re-read when it changes |
+| `GATEWAY_MODEL_NAME` | Single-route setting used when `GATEWAY_MODEL_ROUTES` is empty |
 | `GATEWAY_TIMEOUT_SECONDS` | Generation deadline; defaults to 300 seconds |
 | `GATEWAY_APPROVED_ORCHESTRATORS` | Allowed discovery origins for Livepeer |
 | `LPB_DISCOVERY_URL` | Required runner inventory endpoint; separate from the signer |
@@ -212,7 +212,7 @@ reconciliation redrive. See [operations](docs/OPERATIONS.md) and the
 make check
 uv build
 scripts/build-images.sh gateway              # inference-gateway:local
-IMAGE_TAG=v0.2.3 scripts/build-images.sh     # All three images under one release tag
+IMAGE_TAG=v0.3.0 scripts/build-images.sh     # All four images under one release tag
 ```
 
 The script builds locally and never publishes.
@@ -249,8 +249,9 @@ should follow [SECURITY.md](SECURITY.md). The project is licensed under [MIT](LI
 Related repository upgrades must preserve native transport. The
 [28 October compatibility review](docs/references/repository-compatibility-2026-10-28.md)
 found that native transport had to move into Core after M3 moved the paid call there. Core PR
-#55 did that and merged as `2134e29`. The gateway pins the M3 merge, `releases/m3` commit
-`1514212` (2 November), which includes it; Core pins the upstream Python SDK, and deployment images build
-Node and Clearinghouse Batteries from `livepeer/` `main`. The
+#55 did that and merged as `2134e29`. The gateway pins Builder Core's hardened `releases/m4` (`719378f`: the M3 release `v0.2.0`
+plus its hardening tickets #112 to #115), which includes it; Core pins the upstream Python SDK, and deployment images build
+Node and Clearinghouse Batteries from `livepeer/` `main`. Discovery is livepeer/node `f45d83f`'s
+`livepeer-discovery` (Core D63). The
 [29 October repin evidence](live-runner/tests/m3-upstream-2026-10-29.md) records the tested
 combination. Use the locked dependencies (`uv sync --locked`).

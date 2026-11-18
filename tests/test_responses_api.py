@@ -2,13 +2,13 @@ import json
 
 import httpx
 import pytest
+from contract_helpers import CHAT, envelope, validated_backend
 from livepeer_builder.testing import FakeEngine, Reply, runner
 from openai import AsyncOpenAI
 
 from inference_gateway.adapters.response_api import stream
 from inference_gateway.adapters.responses import ResponseIdentity
 from inference_gateway.app import Settings, create_app
-from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.backends.native_responses import ResponsesDecoder
 from inference_gateway.config import LivepeerSettings, ModelRoute
 from inference_gateway.core.backend import UnsupportedResponse
@@ -31,7 +31,7 @@ async def native_frames(tool=False):
 def backend(frames):
     engine = FakeEngine(
         streaming=True,
-        runners=[runner("chat", metadata='{"model_name":"gemma"}')],
+        runners=[runner("chat", metadata=envelope("gemma", CHAT))],
         replies={
             ("chat", "/v1/responses"): Reply(
                 content_type="text/event-stream", chunks=tuple(f.encode() for f in frames)
@@ -39,9 +39,9 @@ def backend(frames):
         },
     )
     route = ModelRoute(
-        name="gemma", app="chat", upstream_api="responses", capabilities={"parallel_tools"}
+        name="gemma", capability="chat", upstream_api="responses", capabilities={"parallel_tools"}
     )
-    return LivepeerBackend(engine, LivepeerSettings(routes=(route,))), engine
+    return validated_backend(engine, LivepeerSettings(routes=(route,))), engine
 
 
 @pytest.mark.parametrize("streaming", [False, True])
@@ -73,6 +73,34 @@ async def test_responses_sdk_text_and_usage(native, streaming):
             sent = engine.jobs.requests[0][1]
             assert sent.path == "/v1/responses" and sent.model == "gemma"
             assert sent.payload["model"] == "gemma" and sent.payload["store"] is False
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_runner_answer_capped_by_max_output_tokens_is_delivered(streaming):
+    """The entry calls a capped answer `output_failed`, but the caller set the cap: deliver it."""
+
+    async def events():
+        yield BlockStart(0)
+        yield Delta(0, "Hel")
+        yield BlockEnd(0)
+        yield Finished("length", 12, 3, 0)
+
+    frames = [f async for f in stream(events(), ResponseIdentity("resp_runner", "gemma", 123))]
+    selected, _ = backend(frames)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(selected))) as http:
+        client = AsyncOpenAI(
+            api_key="test", base_url="http://test/v1", http_client=http, max_retries=0
+        )
+        result = await client.responses.create(
+            model="gemma", input="hello", store=False, max_output_tokens=3, stream=streaming
+        )
+        if streaming:
+            events = [e async for e in result]
+            assert events[-1].type == "response.incomplete"
+            result = events[-1].response
+    assert result.status == "incomplete"
+    assert result.incomplete_details.reason == "max_output_tokens"
+    assert result.output_text == "Hel" and result.usage.output_tokens == 3
 
 
 @pytest.mark.parametrize("streaming", [False, True])
@@ -276,7 +304,7 @@ async def test_responses_image_input_forwarding():
     selected._routes = (
         ModelRoute(
             name="gemma",
-            app="chat",
+            capability="chat",
             upstream_api="responses",
             capabilities={"media_input"},
             input_media={"image"},

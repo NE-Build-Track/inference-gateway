@@ -1,5 +1,9 @@
 # Native inference forwarding and runner contracts
 
+> Runner metadata has since moved to [runner contract v1](../product-specs/runner-contract.md), the
+> network's live runner standard. The metadata fields proposed below describe the earlier
+> `inference_contract` format, which the gateway now ignores.
+
 Status: accepted architectural direction, 2026-10-27. Native forwarding is implemented behind explicit route configuration and
 operator admission, with offline acceptance. The [live-runner bundle](../../live-runner/README.md) implements an offline-tested
 candidate deployment/metadata contract. Its schemas supersede illustrative metadata

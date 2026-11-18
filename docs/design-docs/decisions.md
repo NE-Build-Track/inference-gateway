@@ -154,3 +154,34 @@ means both chat and Responses, so a chat-only native model is callable but unlis
 chat-only runners become a supported target; the alternative is to list them and accept a 400 for
 Responses clients. `X-TypeSafe-SDK` is an SDK detail rather than a protocol field. If TypeSafe
 renames it, that SDK receives the OpenAI format and fails loudly, so it never shows a wrong model.
+
+## Runner contract v1
+
+Accepted 5 November 2026. Read runners only through the [live runner standard](https://github.com/NE-Build-Track/live-runner-standard),
+runner contract v1, with no compatibility for this repository's earlier `inference_contract`
+metadata. The standard is the network's shared contract between runners and gateways; a gateway
+format of our own would make every runner speak it. Runners and the gateway move together.
+
+Use the standard's Python library for envelopes, selection, request schemas and answer rules,
+rather than reimplementing them, and pin both it and a registry release by commit. Keep it behind
+`backends/`, like Builder Core, so the HTTP layer reaches schema checks through the native port.
+
+Route by capability and envelope model name. App IDs no longer separate models, so two routes for
+one model must differ by capability.
+
+Require a passing conformance report with every approval, at the user's choice. Reports aren't
+signed, so an approval records the operator's acceptance of the evidence, not a proof. Revisit when
+the standard settles on continuous checks or attested evidence. Keep approvals in a file the gateway
+re-reads, because the standard requires reloading without a restart and a report doesn't fit an
+environment variable.
+
+Validated routes admit `candidate` runners without approval, as before v1 they admitted any runner
+on an allowlisted orchestrator; `private` runners need one. Native routes need one for every runner.
+
+Follow each entry as written, including System One's closed request schema: `stream: false` and
+unknown top-level fields now fail before payment. Revisit by proposing a new major of the entry, not
+by loosening the gateway.
+
+Keep `runner_id` in bundle envelopes while the pinned node doesn't report runner IDs in discovery.
+Don't select runners whose envelope moves an entry's path or method, because Builder Core sends one
+path per job and couldn't fail over between paths.

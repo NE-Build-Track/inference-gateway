@@ -65,6 +65,14 @@ On its first start, v0.2.3 builds two report indexes in the accounting database 
 version 4. v0.2.2 and earlier refuse a version 4 database, so back up the database before upgrading. To roll back, follow the
 [ledger plan](exec-plans/active/ledger-event-loop.md#rollback).
 
+v0.3.0 reads only [runner contract v1](product-specs/runner-contract.md) and ignores runners in
+earlier metadata formats, logging each once with the reason. It speaks the v2 chat profiles, so a
+runner must advertise `openai.chat.v2`, `anthropic.messages.v2` or `openai.responses.stateless.v2`
+to be selected. Before upgrading, change each route's `app` in `GATEWAY_MODEL_ROUTES` to the
+capability its runners serve (`"capability":"chat"`, the default), remove `GATEWAY_CHAT_APP`,
+`GATEWAY_UPSTREAM_MODEL` and `GATEWAY_NATIVE_APPROVALS`, and move native approvals into
+`GATEWAY_APPROVALS_FILE` with each runner's conformance report. The accounting database is unchanged.
+
 
 ## Capability probes
 
@@ -123,21 +131,22 @@ because an endpoint presents a different certificate.
 
 ## Models and Responses rollout
 
-The new routing contract requires each runner to register JSON metadata containing the exact
-served model name, for example `{"model_name":"gemma4:26b"}`. Update runner registration first.
-Do not replace missing metadata with the app name. Configure the gateway's approved orchestrators,
-existing signer/payment settings and retail prices as before, then configure the model route:
+Each runner registers under [runner contract v1](product-specs/runner-contract.md): App ID `chat`,
+and an envelope naming the exact served model, for example `"model":{"name":"gemma4:26b",…}`, and
+the profiles it speaks. Update runner registration and the gateway together: the gateway ignores
+runners in earlier metadata formats, and logs each once with the reason. Configure the gateway's
+approved orchestrators, existing signer/payment settings and retail prices as before, then
+configure the model route:
 
 ```sh
-# Replace your-team/gemma-app with the actual registered application ID.
-GATEWAY_MODEL_ROUTES='[{"name":"gemma4:26b","app":"your-team/gemma-app","upstream_api":"responses","capabilities":["parallel_tools","media_input"],"input_media":["image"]}]'
+GATEWAY_MODEL_ROUTES='[{"name":"gemma4:26b","upstream_api":"responses","capabilities":["parallel_tools","media_input"],"input_media":["image"]}]'
 ```
 
-Declare only capabilities verified on every matching runner in that model/app route. Use
+Declare only capabilities verified on every matching runner of that route. Use
 `upstream_api:"chat_completions"` to expose the stateless Responses subset through a chat runner;
-use `responses` when the runner implements the native endpoint. Duplicate names on different
-apps add alternative offerings, selected before paid dispatch. Names must match `model_name`;
-legacy aliases and different `upstream_model` values are no longer accepted.
+use `responses` when the runner declares `openai.responses.stateless.v2`. Route names must equal the
+envelope's `model.name`. A runner whose envelope says `admission: private` serves only with an
+approval in `GATEWAY_APPROVALS_FILE`.
 
 Build a candidate without replacing the published v0.0.1 image:
 
@@ -146,7 +155,7 @@ IMAGE_TAG=models-responses scripts/build-images.sh gateway
 ```
 
 Set the same `IMAGE_TAG` in an isolated deployment with a separate engine ID/database and port while retaining
-approved TLS trust. Readiness requires eligible model metadata. A 200 empty `/v1/models` list can
+approved TLS trust. Readiness requires an eligible runner envelope. A 200 empty `/v1/models` list can
 mean no approved available supply or no retail price; 401/403 indicates authentication/scope issues.
 Bearer authentication works for every caller; Anthropic clients can also use `x-api-key`. The
 contents depend on the caller: see [model lists](product-specs/models-and-responses.md#model-lists).
