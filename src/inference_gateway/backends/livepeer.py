@@ -1,6 +1,7 @@
 """Livepeer inference through the public, borrowed Builder Core actor API."""
 
 import asyncio
+import functools
 import json
 import logging
 from collections.abc import AsyncGenerator, Callable
@@ -21,7 +22,7 @@ from livepeer_builder import (
 )
 
 from inference_gateway.backends.approvals import Approvals
-from inference_gateway.backends.discovery import origin
+from inference_gateway.backends.discovery import EARLIER, origin
 from inference_gateway.backends.livepeer_accounting import LivepeerAccounting
 from inference_gateway.backends.livepeer_request import runner_payload
 from inference_gateway.backends.native_responses import ResponsesDecoder
@@ -96,8 +97,12 @@ class LivepeerBackend:
             )
         )
 
-    def _eligible(self, route: ModelRoute) -> list[int]:
-        """Free capacity of each runner serving the route; private runners need an approval."""
+    def _eligible(self, route: ModelRoute, *, earlier: bool = True) -> list[int]:
+        """Free capacity of each runner serving the route; private runners need an approval.
+
+        A runner on the version before the route's profile counts when `earlier` is set: for the
+        model list, where the request isn't known yet, and for a request that version describes.
+        """
         approved = {origin(url) for url in self._settings.approved_orchestrators}
         candidates = []
         for runner in self._engine.discovery.candidates(route.capability):
@@ -115,6 +120,7 @@ class LivepeerBackend:
             endpoint=route.upstream_api,
             approvals=self._approvals.approver(route.name),
             approved_only=False,
+            earlier=earlier,
         )
         return [runner.capacity_available or 1 for runner in eligible]
 
@@ -125,7 +131,7 @@ class LivepeerBackend:
         routes = [r for r in self._routes if r.name == request.model and r.mode == "validated"]
         if not routes:
             raise UnknownModel("Unknown configured model")
-        compatible: list[tuple[ModelRoute, dict[str, object]]] = []
+        compatible: list[tuple[ModelRoute, dict[str, object], bool]] = []
         for candidate in routes:
             try:
                 encoded = (
@@ -137,14 +143,21 @@ class LivepeerBackend:
                 continue
             # The entry's request schema is checked before payment, even for our own translation.
             api = candidate.upstream_api
-            if not await asyncio.to_thread(self._contract.problems, api, encoded):
-                compatible.append((candidate, encoded))
+            if await asyncio.to_thread(self._contract.problems, api, encoded):
+                continue
+            # A runner on the version before the profile serves only a body that version describes.
+            fits_earlier = self._contract.has_earlier(api) and not await asyncio.to_thread(
+                functools.partial(self._contract.problems, api, encoded, earlier=True)
+            )
+            compatible.append((candidate, encoded, fits_earlier))
         if not compatible:
             raise UnsupportedFeature("No eligible route supports the requested features")
-        compatible = [(r, p) for r, p in compatible if self._eligible(r)]
+        compatible = [c for c in compatible if self._eligible(c[0], earlier=c[2])]
         if request.model not in self.models() or not compatible:
             raise BackendUnavailable("No fresh model offering")
-        route, encoded = max(compatible, key=lambda pair: max(self._eligible(pair[0]), default=-1))
+        route, encoded, fits_earlier = max(
+            compatible, key=lambda c: max(self._eligible(c[0], earlier=c[2]), default=-1)
+        )
         operation_ref = request.request_id or "req_" + uuid4().hex
         job_request = JobRequest(
             app=route.capability,
@@ -152,6 +165,7 @@ class LivepeerBackend:
             method="POST",
             model=request.model,
             payload=encoded,
+            capability=EARLIER if fits_earlier else None,
             operation_ref=operation_ref,
             max_attempts=self._settings.max_attempts,
             timeout_s=self._settings.timeout_seconds,

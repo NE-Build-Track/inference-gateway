@@ -17,7 +17,12 @@ from livepeer_builder.testing import (
 from livepeer_runner_contract import forget_ignored
 
 from inference_gateway.backends.approvals import FixedApprovals
-from inference_gateway.backends.discovery import NATIVE, ContractSelection, FilteredDiscovery
+from inference_gateway.backends.discovery import (
+    EARLIER,
+    NATIVE,
+    ContractSelection,
+    FilteredDiscovery,
+)
 from inference_gateway.config import LivepeerSettings, ModelRoute
 from inference_gateway.core.backend import BackendUnavailable
 from inference_gateway.core.models import Generate, Message, Text
@@ -41,7 +46,15 @@ def selection(*approvals, inner=None):
     return ContractSelection(inner or MostCapacityFirst(), contract(), FixedApprovals(approvals))
 
 
-def eligible(candidates, *, model="gemma", endpoint="chat_completions", approvals=(), only=False):
+def eligible(
+    candidates,
+    *,
+    model="gemma",
+    endpoint="chat_completions",
+    approvals=(),
+    only=False,
+    earlier=False,
+):
     return contract().eligible(
         candidates,
         capability="chat",
@@ -49,7 +62,14 @@ def eligible(candidates, *, model="gemma", endpoint="chat_completions", approval
         endpoint=endpoint,
         approvals=FixedApprovals(approvals).approver(model),
         approved_only=only,
+        earlier=earlier,
     )
+
+
+def v1_envelope(model="gemma", **fields):
+    """A runner that declares the earlier chat profiles, as the network's chat runner did in
+    November 2026."""
+    return envelope(model, CHAT, **fields).replace(".v2", ".v1")
 
 
 @pytest.mark.parametrize("metadata", INVALID)
@@ -246,3 +266,71 @@ async def test_no_matching_candidate_never_opens_paid_transport():
         assert len(jobs) == 1 and jobs[0].state == "failed"
         assert not transport.calls and not jobs[0].attempts
         assert jobs[0].failure.payment_sent is False
+
+
+# -- a runner on the earlier chat profile ---------------------------------------------------------
+
+
+def test_a_v1_chat_runner_is_eligible_only_where_the_caller_allows_the_earlier_profile():
+    v1 = runner("chat", url="https://v1", metadata=v1_envelope())
+    v2 = runner("chat", url="https://v2", metadata=envelope("gemma", CHAT))
+    assert eligible([v1, v2]) == [v2]
+    assert eligible([v1, v2], earlier=True) == [v1, v2]  # in the candidates' order
+    assert eligible([v1], earlier=True) == [v1]
+    # The two Responses entries read an answer differently, so the earlier one is never admitted.
+    assert eligible([v1, v2], endpoint="responses", earlier=True) == [v2]
+    # Capacity, model and the envelope's own validity still decide.
+    busy = v1.model_copy(update={"url": "https://busy", "capacity_available": 0})
+    other = runner("chat", url="https://other", metadata=v1_envelope("qwen"))
+    assert eligible([busy, other], earlier=True) == []
+
+
+def test_an_approval_for_the_current_profile_does_not_admit_a_v1_runner():
+    """An approval names its profile and a native job needs one: v1 runners serve validated jobs."""
+    v1 = runner("chat", url="https://runner", metadata=v1_envelope(runner_id="runner"))
+    granted = approval("https://orch.example", "runner", "gemma")
+    assert eligible([v1], approvals=(granted,), only=True, earlier=True) == []
+    private = runner("chat", url="https://p", metadata=v1_envelope(admission="private"))
+    assert eligible([private], earlier=True) == []
+
+
+def test_selection_sends_a_job_to_a_v1_runner_only_when_the_job_is_marked_for_it():
+    v1 = runner("chat", url="https://v1", metadata=v1_envelope())
+    v2 = runner("chat", url="https://v2", metadata=envelope("gemma", CHAT))
+    marked = JobRequest(app="chat", model="gemma", path=CHAT_PATH, capability=EARLIER)
+    unmarked = JobRequest(app="chat", model="gemma", path=CHAT_PATH)
+    assert {r.url for r in selection().order([v1, v2], marked)} == {"https://v1", "https://v2"}
+    assert selection().order([v1, v2], unmarked) == [v2]
+    with pytest.raises(NoCapacity):
+        selection().order([v1], unmarked)
+    with pytest.raises(NoCapacity):  # a native job is never one
+        native = JobRequest(app="chat", model="gemma", path=CHAT_PATH, capability=NATIVE)
+        selection().order([v1], native)
+
+
+@pytest.mark.parametrize(
+    ("body", "fits"),
+    [
+        ({"model": "m", "messages": [{"role": "user", "content": "hi"}]}, True),
+        (
+            {
+                "model": "m",
+                "messages": [{"role": "user", "content": "hi"}],
+                "tools": [{"type": "function", "function": {"name": "weather"}}],
+            },
+            True,
+        ),
+        (
+            {
+                "model": "m",
+                "messages": [{"role": "user", "content": "hi"}],
+                "tools": [{"type": "custom", "custom": {"name": "apply_patch"}}],
+            },
+            False,
+        ),
+    ],
+)
+def test_the_earlier_chat_profile_refuses_what_only_the_current_one_passes(body, fits):
+    assert contract().problems("chat_completions", body) == ()
+    assert (contract().problems("chat_completions", body, earlier=True) == ()) is fits
+    assert contract().has_earlier("chat_completions") and not contract().has_earlier("responses")

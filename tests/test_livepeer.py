@@ -5,7 +5,7 @@ import httpx
 import pytest
 from anthropic import APIStatusError as AnthropicStatusError
 from anthropic import AsyncAnthropic
-from contract_helpers import CHAT, envelope, validated_backend
+from contract_helpers import CHAT, contract, envelope, validated_backend
 from livepeer_builder import ActorContext, EngineSupply, RunnerCallError
 from livepeer_builder.testing import (
     Fails,
@@ -21,8 +21,14 @@ from openai import APIStatusError as OpenAIStatusError
 from openai import AsyncOpenAI
 
 from inference_gateway.app import create_app
+from inference_gateway.backends.livepeer import LivepeerBackend
 from inference_gateway.config import LivepeerSettings, ModelRoute
-from inference_gateway.core.backend import BackendDeadline, BackendError, UnknownModel
+from inference_gateway.core.backend import (
+    BackendDeadline,
+    BackendError,
+    BackendUnavailable,
+    UnknownModel,
+)
 from inference_gateway.core.models import (
     BlockStart,
     Generate,
@@ -519,3 +525,61 @@ async def test_default_sdk_retries_do_not_repeat_paid_failure(protocol, kind):
                 await client.messages.create(model="qwen", max_tokens=50, messages=messages)
         assert caught.value.response.headers["x-should-retry"] == "false"
     assert len(engine.jobs.requests) == 1
+
+
+# -- a runner on the earlier chat profile (openai.chat.v1) ----------------------------------------
+
+
+def v1_chat_runner():
+    return runner(APP, metadata=envelope("qwen", CHAT).replace(".v2", ".v1"))
+
+
+async def test_a_v1_chat_runner_serves_a_request_the_earlier_profile_describes():
+    """On 18 November 2026 the network's one chat runner declared openai.chat.v1."""
+    from livepeer_builder.services.discovery import MostCapacityFirst
+
+    from inference_gateway.backends.approvals import FixedApprovals
+    from inference_gateway.backends.discovery import EARLIER, ContractSelection
+
+    candidate = v1_chat_runner()
+    transport = ScriptedStreamTransport(
+        opens=[StreamScript(events=[frame({"content": "done"}), *ending()])]
+    )
+    selection = ContractSelection(MostCapacityFirst(), contract(), FixedApprovals())
+    async with make_engine(
+        runners=[candidate],
+        supply=EngineSupply(transport=transport, selection=selection),
+        allocation_mode="per_application",
+        shared_payment_key="fixture-key",
+        shared_allocation_id="fixture-allocation",
+        stream_settle_s=0.01,
+    ) as engine:
+        backend = validated_backend(engine, OPTIONS)
+        assert backend.models() == ("qwen",)  # listed, so the gateway is ready
+        result = await GenerationService(backend).complete(REQUEST)
+        assert result.content == (Text("done"),)
+        assert len(transport.calls) == 1 and transport.calls[0][0] == candidate.url
+        job = (await engine.jobs.list_jobs(ACTOR))[0]
+        assert (job.state, job.capability) == ("succeeded", EARLIER)
+
+
+async def test_a_request_the_earlier_profile_refuses_is_not_sent_to_a_v1_runner():
+    """Nothing is dispatched or paid: the job would be one only a current-profile runner serves."""
+    from inference_gateway.backends.approvals import FixedApprovals
+    from inference_gateway.backends.runner_contract import RunnerContract
+
+    class RefusedByEarlier(RunnerContract):
+        def problems(self, endpoint, body, *, earlier=False):
+            return ("at /tools/0: is missing function",) if earlier else ()
+
+    engine = FakeEngine(
+        streaming=True,
+        runners=[v1_chat_runner()],
+        replies={(APP, PATH): Reply(content_type="text/event-stream", chunks=ending())},
+    )
+    backend = LivepeerBackend(
+        engine, OPTIONS, RefusedByEarlier(contract().registry), FixedApprovals()
+    )
+    with pytest.raises(BackendUnavailable):
+        await GenerationService(backend).complete(REQUEST)
+    assert engine.jobs.requests == []

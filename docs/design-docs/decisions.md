@@ -185,3 +185,18 @@ by loosening the gateway.
 Keep `runner_id` in bundle envelopes while the pinned node doesn't report runner IDs in discovery.
 Don't select runners whose envelope moves an entry's path or method, because Builder Core sends one
 path per job and couldn't fail over between paths.
+
+## Runners on the earlier chat profile
+
+On 18 November 2026 the network's one chat runner declared `openai.chat.v1`, and v0.3.0 selected
+only v2 runners, so the gateway had no model to serve. Use a v1 runner on validated routes, for a
+request v1 describes, rather than wait for every runner to redeclare (owner's decision, 18 November).
+
+The registry makes this safe to state exactly. The v1 and v2 chat entries have the same path,
+method, errors and success rule; only the request schema differs, and v1 is the stricter one. A
+body valid under v1 is valid under v2, so a v1 runner is never sent something its entry refuses.
+The check runs before payment, where the v2 check already ran.
+
+Don't extend this to Responses or to native routes without new evidence: the two Responses entries
+read an answer differently, and an approval and its conformance report name one profile.
+

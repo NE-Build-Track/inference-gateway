@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     from inference_gateway.backends.approvals import Approvals
 
 NATIVE = "native.http.v1"
+# A validated job whose body the version before its profile describes: a runner that declares that
+# version may serve it (`EARLIER` in runner_contract.py). Builder Core records the mark on the job.
+EARLIER = "validated.earlier-profile"
 
 
 def origin(url: str) -> tuple[str, str, int]:
@@ -102,6 +105,7 @@ class ContractSelection:
             endpoint=endpoint,
             approvals=self._approvals.approver(request.model or ""),
             approved_only=request.capability == NATIVE,
+            earlier=request.capability == EARLIER,
         )
         if not eligible:
             raise NoCapacity("No eligible runner")

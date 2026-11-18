@@ -33,6 +33,12 @@ ENDPOINTS = {
     "systemone": "typesafe.systemone.v1",
 }
 
+# The version before, where a runner that still declares it may serve a validated job. Only where
+# the two versions differ in what a request may hold and read an answer the same way: v1 of the chat
+# entry refuses the tools and content parts it doesn't describe, which v2 passes on to the runner.
+# The two Responses entries map errors and success differently, so there is no earlier one for it.
+EARLIER = {"chat_completions": "openai.chat.v1"}
+
 Approver = Callable[[ApprovalKey], bool]
 
 
@@ -89,15 +95,23 @@ class RunnerContract:
     def is_profile(self, profile: str) -> bool:
         return self.registry.canonical(profile) == profile
 
-    def problems(self, endpoint: str, body: Any) -> tuple[str, ...]:
+    def has_earlier(self, endpoint: str) -> bool:
+        """Whether a runner on the version before this endpoint's profile may serve a job."""
+        return endpoint in EARLIER
+
+    def problems(self, endpoint: str, body: Any, *, earlier: bool = False) -> tuple[str, ...]:
         """How a request body breaks the entry's request schema; empty when it matches.
 
         Checked before payment. Each line says where and what the schema wants, never the value,
         so it can go back to the caller. Types the entry doesn't describe, such as a coding agent's
         custom tools, pass and the runner decides. Pure CPU, tens of milliseconds for a large
         conversation, so async callers run it in a worker thread.
+
+        With `earlier`, the check is against the version before (`EARLIER`), which refuses what it
+        doesn't describe: a body with no problems there may go to a runner that declares it.
         """
-        return validate_request(self.registry, ENDPOINTS[endpoint], endpoint, body).problems
+        profile = EARLIER[endpoint] if earlier else ENDPOINTS[endpoint]
+        return validate_request(self.registry, profile, endpoint, body).problems
 
     def reader(self, endpoint: str, *, status: int, content_type: str | None) -> ResultReader:
         """Reads an answer by the entry's error mappings and success rule as it streams."""
@@ -118,16 +132,22 @@ class RunnerContract:
         endpoint: str,
         approvals: Approver,
         approved_only: bool,
+        earlier: bool = False,
     ) -> list[Runner]:
         """Runners serving `model` on `endpoint`, in their given order.
+
+        With `earlier`, a runner that declares the version before the endpoint's profile serves
+        too, where there is one (`EARLIER`) and no approval is asked for: an approval names the
+        current profile. The caller sets it only for a body that version describes.
 
         A runner needs an approval where its endpoint is private, or for every endpoint when
         `approved_only` is set. Builder Core sends one path per job, so a runner whose envelope
         overrides the entry's path or method doesn't match. A runner reporting no free capacity
         doesn't match; one reporting none at all does only where approvals aren't required.
         """
-        profile = ENDPOINTS[endpoint]
-        operation = self.registry.operation(profile, endpoint)
+        profiles = [ENDPOINTS[endpoint]]
+        if earlier and not approved_only and endpoint in EARLIER:
+            profiles.append(EARLIER[endpoint])
         runners: dict[int, Runner] = {}
         contract_runners = []
         for runner in candidates:
@@ -146,20 +166,22 @@ class RunnerContract:
             )
             runners[id(contract)] = runner
             contract_runners.append(contract)
-        selected: dict[int, Runner] = {}
-        for choice in select(
-            contract_runners,
-            capability,
-            model=model,
-            profile=profile,
-            approvals=approvals,
-            registry=self.registry,
-            approved_only=approved_only,
-        ):
-            if (
-                choice.name == endpoint
-                and choice.path == operation.path
-                and choice.method == operation.method
+        selected: set[int] = set()
+        for profile in profiles:
+            operation = self.registry.operation(profile, endpoint)
+            for choice in select(
+                contract_runners,
+                capability,
+                model=model,
+                profile=profile,
+                approvals=approvals,
+                registry=self.registry,
+                approved_only=approved_only,
             ):
-                selected.setdefault(id(choice.runner), runners[id(choice.runner)])
-        return list(selected.values())
+                if (
+                    choice.name == endpoint
+                    and choice.path == operation.path
+                    and choice.method == operation.method
+                ):
+                    selected.add(id(choice.runner))
+        return [runners[id(c)] for c in contract_runners if id(c) in selected]
