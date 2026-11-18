@@ -9,11 +9,7 @@ from livepeer_builder import JobRequest, NoCapacity, Runner
 from livepeer_builder.protocols import DiscoverySource, SelectionPolicy
 from livepeer_runner_contract import Ineligible, RunnerKey, log_ignored
 
-from inference_gateway.backends.runner_contract import (
-    RunnerContract,
-    read_envelope,
-    runner_identity,
-)
+from inference_gateway.backends.runner_contract import RunnerContract, read_envelope
 
 if TYPE_CHECKING:
     from inference_gateway.backends.approvals import Approvals
@@ -71,18 +67,13 @@ class FilteredDiscovery:
                 if address not in self._origins:
                     continue
             envelope = read_envelope(runner.metadata)
-            key = RunnerKey(runner.orchestrator_url or "", runner.runner_id or "")
             if isinstance(envelope, Ineligible):
+                # No envelope, so no ID: Builder Core's runners carry none of their own (its D63).
+                key = RunnerKey(runner.orchestrator_url or "", "")
                 log_ignored(self._logger, key, envelope, level=logging.INFO)
                 continue
             if runner.app not in self._capabilities:
                 continue
-            identity = runner_identity(runner, envelope)
-            if identity is None:
-                log_ignored(self._logger, key, "its envelope's runner_id differs from the node's")
-                continue
-            if identity and not runner.runner_id:
-                runner = runner.model_copy(update={"runner_id": identity})
             selected.append(runner)
         return tuple(selected)
 

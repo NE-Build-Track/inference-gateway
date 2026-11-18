@@ -48,15 +48,14 @@ def read_envelope(raw: str | None) -> Envelope | Ineligible:
     return _parse(raw)
 
 
-def runner_identity(runner: Runner, envelope: Envelope) -> str | None:
-    """The node's runner ID, else the envelope's; None when the two disagree.
+def runner_identity(envelope: Envelope) -> str:
+    """The runner ID the envelope declares, or "" when it declares none.
 
+    Builder Core's runners carry no ID of their own (its D63), so the envelope is the only source.
     Identification, not authorization: an ID is never guessed from an App ID, URL or hostname. An
     empty ID can't match an approval, so such a runner serves only where none is required.
     """
-    if runner.runner_id and envelope.runner_id and runner.runner_id != envelope.runner_id:
-        return None
-    return runner.runner_id or envelope.runner_id or ""
+    return envelope.runner_id or ""
 
 
 class RunnerContract:
@@ -138,12 +137,9 @@ class RunnerContract:
                 continue
             if approved_only and available is None:
                 continue
-            identity = runner_identity(runner, envelope)
-            if identity is None:
-                continue
             contract = ContractRunner(
                 orchestrator=runner.orchestrator_url or "",
-                runner_id=identity,
+                runner_id=runner_identity(envelope),
                 app=runner.app,
                 envelope=envelope,
                 url=runner.url,

@@ -33,19 +33,19 @@ USAGES = {
 GENERATION = [endpoint for endpoint in PATHS if endpoint != "systemone"]
 
 
-def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
+def setup(endpoint, reply, tmp_path=None, expiry=None):
     capability = "decision" if endpoint == "systemone" else "chat"
     meta = envelope(
         "m",
         (endpoint,),
         revision=REVISION,
-        runner_id="one" if metadata_identity else None,
+        runner_id="one",  # Builder Core's runners carry no ID of their own (its D63)
         runtime={"name": "vllm", "image": "sha256:" + "a" * 64},
         limits={"context_tokens": 4096},
     )
     candidate = runner(
         capability, metadata=meta, orchestrator_url="https://orch", capacity_available=1
-    ).model_copy(update={"runner_id": None if metadata_identity else "one"})
+    )
     engine = FakeEngine(
         streaming=True, runners=[candidate], replies={(capability, PATHS[endpoint]): reply}
     )
@@ -90,8 +90,7 @@ def setup(endpoint, reply, tmp_path=None, expiry=None, metadata_identity=False):
 
 
 @pytest.mark.parametrize("endpoint", list(PATHS))
-@pytest.mark.parametrize("metadata_identity", [False, True])
-async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata_identity):
+async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path):
     raw_response = json.dumps(
         {"id": "native", "status": "completed", "usage": USAGES[endpoint], "future": "untouched"},
         indent=2,
@@ -101,9 +100,7 @@ async def test_native_http_keeps_bytes_and_accounts(endpoint, tmp_path, metadata
         chunks=(raw_response[:10], raw_response[10:]),
         headers=(("Content-Type", "application/json"), ("Set-Cookie", "secret")),
     )
-    app, engine, ledger, secret = setup(
-        endpoint, reply, tmp_path, metadata_identity=metadata_identity
-    )
+    app, engine, ledger, secret = setup(endpoint, reply, tmp_path)
     # Unknown fields reach the runner unchanged where the entry allows them; System One's doesn't.
     extension = {} if endpoint == "systemone" else {"future": 42}
     raw = json.dumps({**BODIES[endpoint], **extension}, indent=1).encode()

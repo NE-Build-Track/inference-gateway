@@ -79,16 +79,20 @@ async def test_discovery_logs_each_ignored_runner_once_and_keeps_refreshing(meta
     assert "gemma" not in lines[0]  # reasons quote the schema, never the runner's values
 
 
-async def test_discovery_fills_the_runner_id_from_the_envelope_and_refuses_conflicts():
+async def test_a_runner_s_id_is_the_one_its_envelope_declares():
+    """Builder Core's runners carry no ID of their own (its D63): the envelope is the source."""
     named = runner("chat", url="https://named", metadata=envelope("gemma", CHAT, runner_id="one"))
-    conflict = runner("chat", url="https://two", metadata=envelope("gemma", CHAT, runner_id="one"))
+    nameless = runner("chat", url="https://nameless", metadata=envelope("gemma", CHAT))
 
     class Source:
         async def fetch(self):
-            return (named.model_copy(update={"runner_id": None}), conflict)
+            return (named, nameless)
 
-    found = await FilteredDiscovery(Source(), frozenset({"chat"}), ()).fetch()
-    assert [r.runner_id for r in found] == ["one"]
+    # Discovery keeps both as they came; a runner with no ID serves where no approval is needed.
+    assert await FilteredDiscovery(Source(), frozenset({"chat"}), ()).fetch() == (named, nameless)
+    assert eligible([named, nameless]) == [named, nameless]
+    granted = approval("https://orch.example", "one", "gemma")
+    assert eligible([named, nameless], approvals=(granted,), only=True) == [named]
 
 
 def test_selection_filters_model_capability_profile_and_capacity_before_ranking():
@@ -114,14 +118,15 @@ def test_selection_filters_model_capability_profile_and_capacity_before_ranking(
 
 @pytest.mark.parametrize("admission", ["private", "gold"])
 def test_private_or_unknown_admission_needs_an_approval_on_validated_routes(admission):
-    meta = envelope("gemma", CHAT, admission=admission)
+    meta = envelope("gemma", CHAT, admission=admission, runner_id="runner")
     held = runner("chat", url="https://runner", metadata=meta, orchestrator_url="https://orch")
     assert eligible([held]) == []
     assert eligible([held], approvals=(approval("https://orch", "runner", "gemma"),)) == [held]
 
 
 def test_native_jobs_need_an_approval_for_every_runner():
-    open_runner = runner("chat", url="https://runner", metadata=envelope("gemma", CHAT))
+    meta = envelope("gemma", CHAT, runner_id="runner")
+    open_runner = runner("chat", url="https://runner", metadata=meta)
     request = JobRequest(app="chat", model="gemma", path=CHAT_PATH, capability=NATIVE)
     with pytest.raises(NoCapacity):
         selection().order([open_runner], request)
@@ -141,7 +146,8 @@ def test_native_jobs_need_an_approval_for_every_runner():
     ],
 )
 def test_an_approval_binds_runner_model_revision_profile_origin_and_expiry(change):
-    candidate = runner("chat", url="https://runner", metadata=envelope("gemma", CHAT))
+    meta = envelope("gemma", CHAT, runner_id="runner")
+    candidate = runner("chat", url="https://runner", metadata=meta)
     fields = {"orchestrator": "https://orch.example", "runner_id": "runner", "model": "gemma"}
     granted = approval(**{**fields, **change})
     assert eligible([candidate], approvals=(granted,), only=True) == []

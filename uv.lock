@@ -759,7 +759,7 @@ dev = [
 requires-dist = [
     { name = "anyio", specifier = ">=4,<5" },
     { name = "fastapi", specifier = ">=0.115,<1" },
-    { name = "livepeer-builder", git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=15142129ebbf51103658f8ad48fd5adae052c56d" },
+    { name = "livepeer-builder", git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=719378fef583a70f2321f0de5dcf8553df978667" },
     { name = "livepeer-runner-contract", git = "https://github.com/NE-Build-Track/live-runner-standard.git?subdirectory=python%2Frunner-contract&rev=fa020206d8785a5768a54decd9479b106fe750ae" },
     { name = "livepeer-runner-registry", git = "https://github.com/NE-Build-Track/live-runner-standard.git?subdirectory=python%2Frunner-registry&rev=1b71cabc5d70adb0378a8c5ff39e5fde11f28692" },
     { name = "pydantic", specifier = ">=2.7,<3" },
@@ -1012,8 +1012,8 @@ wheels = [
 
 [[package]]
 name = "livepeer-builder"
-version = "0.1.1.dev159+g1514212"
-source = { git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=15142129ebbf51103658f8ad48fd5adae052c56d#15142129ebbf51103658f8ad48fd5adae052c56d" }
+version = "0.2.2.dev166+g719378f"
+source = { git = "https://github.com/NE-Build-Track/livepeer-builder-core.git?rev=719378fef583a70f2321f0de5dcf8553df978667#719378fef583a70f2321f0de5dcf8553df978667" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiosqlite" },
@@ -1024,6 +1024,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "yarl" },
 ]
 
 [[package]]

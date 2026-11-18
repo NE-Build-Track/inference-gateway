@@ -85,10 +85,12 @@ def gateway(*supply, replies=None, tmp_path=None, prices=None, routes=None):
             if not endpoints and not (item.validated and capability == "chat"):
                 continue
             runner_id = f"runner-{index}-{capability}"
+            # The ID is in the envelope: Builder Core's runners carry none of their own (its D63).
             metadata = runner_envelope(
                 item.model,
                 endpoints or GENERATION,
                 revision=revision,
+                runner_id=runner_id,
                 runtime={"name": "sglang", "image": "sha256:" + "a" * 64},
                 limits={"context_tokens": 16384},
             )
@@ -99,7 +101,7 @@ def gateway(*supply, replies=None, tmp_path=None, prices=None, routes=None):
                     metadata=metadata,
                     orchestrator_url="https://orch",
                     capacity_available=item.capacity,
-                ).model_copy(update={"runner_id": runner_id})
+                )
             )
             mode = "validated" if item.validated else "native"
             default_routes.append(ModelRoute(name=item.model, capability=capability, mode=mode))
@@ -583,19 +585,22 @@ async def test_real_engine_selects_pays_and_records_a_decision():
     from inference_gateway.native import forward
 
     revision = "sha256:" + "b" * 64
+    # The engine's discovery reader keeps orchestrator_url only on the runner URL's origin (D63).
     decision_runner = runner(
         "decision",
+        "https://orch/apps/one/app",
         orchestrator_url="https://orch",
-        metadata=runner_envelope("clef", (SYSTEM_ONE,), revision=revision),
+        metadata=runner_envelope("clef", (SYSTEM_ONE,), revision=revision, runner_id="one"),
         capacity_available=1,
-    ).model_copy(update={"runner_id": "one"})
+    )
     # A chat profile under the decision App ID serves neither, so it is never chosen.
     chat_runner = runner(
         "decision",
+        "https://orch/apps/chat/app",
         orchestrator_url="https://orch",
-        metadata=runner_envelope("clef", (CHAT,), revision=revision),
+        metadata=runner_envelope("clef", (CHAT,), revision=revision, runner_id="chat"),
         capacity_available=100,
-    ).model_copy(update={"runner_id": "chat", "url": "https://chat-runner"})
+    )
     granted = approval("https://orch", "one", "clef", SYSTEM_ONE, revision=revision)
     approvals = FixedApprovals((granted,))
     raw_reply = json.dumps(DECISION).encode()
@@ -909,16 +914,14 @@ def test_validated_selection_skips_a_runner_that_does_not_declare_the_job_path()
     from inference_gateway.backends.discovery import ContractSelection
 
     def candidate(name, capacity, endpoints):
-        metadata = runner_envelope("m", endpoints)
-        return runner("chat", metadata=metadata, capacity_available=capacity).model_copy(
-            update={"runner_id": name}
-        )
+        metadata = runner_envelope("m", endpoints, runner_id=name)
+        return runner("chat", url=f"https://{name}", metadata=metadata, capacity_available=capacity)
 
     decision = candidate("decision", 100, (SYSTEM_ONE,))
     chat = candidate("chat", 1, (CHAT,))
     policy = ContractSelection(MostCapacityFirst(), contract(), FixedApprovals())
     job = JobRequest(app="chat", model="m", path="/v1/chat/completions")
-    assert [r.runner_id for r in policy.order([decision, chat], job)] == ["chat"]
+    assert [r.url for r in policy.order([decision, chat], job)] == ["https://chat"]
     with pytest.raises(NoCapacity):
         policy.order([decision], job)
 

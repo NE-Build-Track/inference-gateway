@@ -87,13 +87,28 @@ def supply():
         "m",
         ("chat_completions",),
         revision=REVISION,
+        runner_id="one",  # the only source: Builder Core's runners carry no ID of their own (D63)
         runtime={"name": "vllm", "image": "sha256:" + "a" * 64},
         limits={"context_tokens": 4096},
     )
+    # On the orchestrator's origin: Core's discovery reader keeps orchestrator_url only there.
     r = runner(
-        "chat", orchestrator_url="https://orch", metadata=meta, capacity_available=1
-    ).model_copy(update={"runner_id": "one"})
+        "chat",
+        "https://orch/apps/one/app",
+        orchestrator_url="https://orch",
+        metadata=meta,
+        capacity_available=1,
+    )
     return r, approval("https://orch", "one", "m", revision=REVISION, expires_at=200)
+
+
+def renamed(candidate, runner_id):
+    """The same runner with another ID in its envelope, or with none."""
+    meta = json.loads(candidate.metadata)
+    meta.pop("runner_id")
+    if runner_id is not None:
+        meta["runner_id"] = runner_id
+    return candidate.model_copy(update={"metadata": json.dumps(meta, separators=(",", ":"))})
 
 
 def test_selection_requires_external_matching_current_evidence():
@@ -457,23 +472,15 @@ def test_optional_usage_details_still_reject_malformed_values(details):
         observer.finish()
 
 
-@pytest.mark.parametrize("metadata_identity", [False, True])
 @pytest.mark.parametrize("status", [200, 400])
-async def test_native_selection_embeds_in_real_engine_before_transport(metadata_identity, status):
+async def test_native_selection_embeds_in_real_engine_before_transport(status):
     from livepeer_builder import ActorContext, EngineSupply
     from livepeer_builder.testing import ScriptedStreamTransport, StreamScript, make_engine
 
     right, granted = supply()
-    wrong = right.model_copy(
-        update={"url": "https://wrong", "runner_id": "wrong", "capacity_available": 100}
+    wrong = renamed(right, "wrong").model_copy(
+        update={"url": "https://orch/apps/wrong/app", "capacity_available": 100}
     )
-    if metadata_identity:
-        right = right.model_copy(
-            update={
-                "runner_id": None,
-                "metadata": json.dumps({**json.loads(right.metadata), "runner_id": "one"}),
-            }
-        )
 
     def decorate(parts):
         return replace(
@@ -540,58 +547,44 @@ def test_native_image_counts_toward_request_size_limit():
     assert request(raw, max_bytes=len(raw)).body is raw
 
 
-@pytest.mark.parametrize("advertised", [None, "", "one"])
-async def test_metadata_runner_identity_is_normalized_without_changing_transport(advertised):
+async def test_the_envelope_s_runner_identity_admits_without_changing_transport():
     original, granted = supply()
-    meta = {**json.loads(original.metadata), "runner_id": "one"}
-    candidate = original.model_copy(
-        update={
-            "runner_id": advertised,
-            "metadata": json.dumps(meta),
-            "url": "https://opaque.proxy.example",
-        }
-    )
+    candidate = original.model_copy(update={"url": "https://opaque.proxy.example"})
 
     class Source:
         async def fetch(self):
             return (candidate,)
 
     discovered = await FilteredDiscovery(Source(), frozenset({"chat"}), ("https://orch",)).fetch()
-    assert len(discovered) == 1
-    normalized = discovered[0]
-    assert normalized.runner_id == "one"
-    assert normalized.url == candidate.url
-    assert normalized.metadata == candidate.metadata
-    assert normalized.orchestrator_url == candidate.orchestrator_url
+    assert discovered == (candidate,)  # discovery hands the runner on as it came
     assert admitting(granted).order(discovered, NATIVE_CHAT) == list(discovered)
-    # Metadata is not authorization, including when the top-level ID is absent.
+    # Metadata is not authorization: the envelope names the runner, an approval admits it.
     with pytest.raises(NoCapacity):
         admitting().order(discovered, NATIVE_CHAT)
 
 
-@pytest.mark.parametrize("declared,top", [("other", "one"), (None, None)])
-async def test_missing_or_conflicting_identity_never_passes_native_admission(declared, top):
+@pytest.mark.parametrize("declared", ["other", None])
+async def test_a_missing_or_other_identity_never_passes_native_admission(declared):
     original, granted = supply()
-    meta = json.loads(original.metadata)
-    if declared is not None:
-        meta["runner_id"] = declared
-    candidate = original.model_copy(update={"runner_id": top, "metadata": json.dumps(meta)})
+    candidate = renamed(original, declared)
 
     class Source:
         async def fetch(self):
             return (candidate,)
 
     discovered = await FilteredDiscovery(Source(), frozenset({"chat"}), ("https://orch",)).fetch()
-    # A conflict is dropped from discovery; a runner with no ID can't match any approval.
-    assert discovered == (() if declared else (candidate,))
-    # Selection also refuses a conflict if a custom source bypasses normalization.
+    # Discovery lists it; an ID the approval doesn't name, or no ID, can't match the approval.
+    assert discovered == (candidate,)
     with pytest.raises(NoCapacity):
         admitting(granted).order([candidate], NATIVE_CHAT)
 
 
 def test_identity_is_never_inferred_from_urls():
     candidate, granted = supply()
-    missing = candidate.model_copy(update={"runner_id": None, "url": "https://orch/apps/one/app"})
+    missing = renamed(candidate, None)
+    assert (
+        missing.url == "https://orch/apps/one/app"
+    )  # the approved ID is in the URL, not the envelope
     with pytest.raises(NoCapacity):
         admitting(granted).order([missing], NATIVE_CHAT)
 
