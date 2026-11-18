@@ -325,6 +325,26 @@ async def test_paid_failure_does_not_retry(failure):
     assert (await engine.jobs.list_jobs(ACTOR))[0].state == "uncertain"
 
 
+@pytest.mark.parametrize(
+    "content_type",
+    ["text/event-stream; charset=utf-8", "Text/Event-Stream; charset=utf-8", "TEXT/EVENT-STREAM"],
+)
+async def test_real_engine_event_stream_is_read_whatever_its_parameters_and_case(content_type):
+    """Builder Core passes a runner's Content-Type through as sent (#113, C27)."""
+    script = StreamScript(events=[frame({"content": "done"}), *ending()], content_type=content_type)
+    async with make_engine(
+        runners=[runner(APP, metadata=envelope("qwen", CHAT))],
+        supply=EngineSupply(transport=ScriptedStreamTransport(opens=[script])),
+        allocation_mode="per_application",
+        shared_payment_key="fixture-key",
+        shared_allocation_id="fixture-allocation",
+        stream_settle_s=0.01,
+    ) as engine:
+        result = await GenerationService(validated_backend(engine, OPTIONS)).complete(REQUEST)
+        assert result.content == (Text("done"),)
+        assert (await engine.jobs.list_jobs(ACTOR))[0].state == "succeeded"
+
+
 @pytest.mark.parametrize("disconnect", [False, True])
 async def test_real_engine_records_completion_or_abandonment(disconnect):
     events = (

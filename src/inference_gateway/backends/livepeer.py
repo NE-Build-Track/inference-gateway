@@ -175,9 +175,9 @@ class LivepeerBackend:
             try:
                 if self._job_recorder:
                     self._job_recorder(operation_ref, str(stream.job.id))
-                if stream.status_code != 200 or not stream.content_type.startswith(
-                    "text/event-stream"
-                ):
+                # Core passes the runner's header through as sent; a media type has no case.
+                media_type = stream.content_type.partition(";")[0].strip().lower()
+                if stream.status_code != 200 or media_type != "text/event-stream":
                     raise BackendError("Runner did not return an SSE completion")
                 sse = SSEDecoder(self._settings.max_event_bytes)
                 verdict = self._contract.reader(

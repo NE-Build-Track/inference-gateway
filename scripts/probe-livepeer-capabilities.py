@@ -305,7 +305,9 @@ async def probe(engine, settings, route, feature, changes):
             )
             row["job_id"] = str(stream.job.id)
             row["http_status"] = stream.status_code
-            if stream.status_code != 200 or not stream.content_type.startswith("text/event-stream"):
+            # Core passes the runner's header through as sent; a media type has no case.
+            media_type = stream.content_type.partition(";")[0].strip().lower()
+            if stream.status_code != 200 or media_type != "text/event-stream":
                 row.update(
                     status="inconclusive", detail="Runner returned non-success or non-SSE response"
                 )
